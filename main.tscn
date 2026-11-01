@@ -1,0 +1,61 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="3_hud"]
+[ext_resource type="Script" path="res://world/island.gd" id="4_island"]
+[ext_resource type="Script" path="res://world/day_night.gd" id="5_day_night"]
+[ext_resource type="Shader" path="res://world/water.gdshader" id="6_water"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_top_color = Color(0.18, 0.36, 0.62, 1)
+sky_horizon_color = Color(0.62, 0.74, 0.86, 1)
+ground_bottom_color = Color(0.09, 0.15, 0.2, 1)
+ground_horizon_color = Color(0.55, 0.65, 0.75, 1)
+sun_angle_max = 24.0
+
+[sub_resource type="Sky" id="Sky_main"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_main")
+ambient_light_source = 3
+ambient_light_energy = 0.8
+tonemap_mode = 3
+glow_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.62, 0.72, 0.82, 1)
+fog_density = 0.0035
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_water"]
+size = Vector2(900, 900)
+subdivide_width = 64
+subdivide_depth = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_water"]
+shader = ExtResource("6_water")
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 40, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 220.0
+script = ExtResource("5_day_night")
+
+[node name="World" type="Node3D" parent="."]
+script = ExtResource("4_island")
+
+[node name="Water" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_water")
+material_override = SubResource("ShaderMaterial_water")
+cast_shadow = 0
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+
+[node name="HUD" parent="." instance=ExtResource("3_hud")]

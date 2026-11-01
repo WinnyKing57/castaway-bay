@@ -1,0 +1,11 @@
+# Godot 4 : cache d'import, recréé automatiquement à l'ouverture du projet.
+.godot/
+
+# Builds exportés
+build/
+export/
+
+# Divers
+*.tmp
+*.translation
+.DS_Store
