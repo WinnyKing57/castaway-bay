@@ -8,6 +8,7 @@ extends Node3D
 @onready var player: Player = $Player
 @onready var hud: Hud = $HUD
 @onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
+@onready var menu: MenuPanel = $HUD/MenuPanel
 @onready var construction: Construction = $Construction
 
 
@@ -18,7 +19,17 @@ func _ready() -> void:
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
-	GameState.notify("Bienvenue — approche un arbre et appuie sur E")
+	menu.new_game_requested.connect(_on_menu_new_game)
+	menu.continue_requested.connect(_on_menu_continue)
+	menu.resume_requested.connect(_on_menu_resume)
+	menu.save_requested.connect(_on_menu_save)
+	menu.main_menu_requested.connect(_on_menu_main_menu)
+	menu.quit_requested.connect(_on_menu_quit)
+
+	if _is_dev_run():
+		GameState.notify("Bienvenue — approche un arbre et appuie sur E")
+	else:
+		_show_start_menu()
 
 	if "--overview" in OS.get_cmdline_user_args():
 		_apply_overview_camera()
@@ -31,6 +42,12 @@ func _ready() -> void:
 		await _run_smoke_test()
 
 
+## Les outils de dev (tests, captures) démarrent directement en jeu.
+func _is_dev_run() -> bool:
+	var args := OS.get_cmdline_user_args()
+	return "--smoke-test" in args or "--overview" in args or "--show-crafting" in args
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if crafting_panel.is_open():
@@ -40,11 +57,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			construction.toggle()
 			return
 		if not GameState.is_dead:
-			Input.mouse_mode = (
-				Input.MOUSE_MODE_VISIBLE
-				if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-				else Input.MOUSE_MODE_CAPTURED
-			)
+			_open_pause_menu()
+			return
 
 	if GameState.is_dead:
 		if event.is_action_pressed("ui_accept"):
@@ -84,6 +98,70 @@ func _unhandled_input(event: InputEvent) -> void:
 	for index in GameState.hotbar_items.size():
 		if event.is_action_pressed("hotbar_%d" % (index + 1)):
 			GameState.select_hotbar(index)
+
+
+# --- Menus -------------------------------------------------------------------
+
+func _show_start_menu() -> void:
+	menu.open_start()
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _open_pause_menu() -> void:
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	menu.open_pause()
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _resume_game() -> void:
+	get_tree().paused = false
+	menu.close()
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _on_menu_new_game() -> void:
+	GameState.reset()
+	construction.clear_all()
+	world.regenerate(randi())
+	player.global_position = world.find_spawn_point()
+	player.velocity = Vector3.ZERO
+	hud.hide_death()
+	_resume_game()
+	GameState.notify("Nouvelle île, nouvelle vie.")
+
+
+func _on_menu_continue() -> void:
+	if not SaveSystem.load_game_into(player, world, construction):
+		GameState.notify("Aucune sauvegarde")
+		return
+	hud.hide_death()
+	_resume_game()
+	GameState.notify("Partie chargée")
+
+
+func _on_menu_resume() -> void:
+	_resume_game()
+
+
+func _on_menu_save() -> void:
+	if SaveSystem.save_game(player, construction):
+		GameState.notify("Partie sauvegardée")
+	else:
+		GameState.notify("Échec de la sauvegarde")
+
+
+func _on_menu_main_menu() -> void:
+	_show_start_menu()
+
+
+func _on_menu_quit() -> void:
+	get_tree().quit()
 
 
 func _on_player_died() -> void:
@@ -144,6 +222,8 @@ func _run_smoke_test() -> void:
 		errors.append("terrain absent")
 	if hud == null:
 		errors.append("HUD absent")
+	if menu == null:
+		errors.append("menu absent")
 	if Database.items.size() < 5:
 		errors.append("base d'objets incomplète (%d)" % Database.items.size())
 	if Database.recipes.size() < 2:

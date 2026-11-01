@@ -27,6 +27,9 @@ L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
 aucun fichier audio n'est nécessaire.
 
+Au lancement, le **menu principal** propose de commencer une nouvelle île
+ou de reprendre la sauvegarde existante.
+
 ---
 
 ## Lancer le jeu
@@ -80,7 +83,7 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 | Clic gauche | poser l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
-| Échap | libérer / capturer la souris |
+| Échap | pause (reprendre, sauvegarder, menu principal) |
 | Espace | réapparaître après la mort |
 
 ---
@@ -93,7 +96,7 @@ data/            définitions de données : ItemData, RecipeData, BuildableData 
 player/          contrôleur joueur (scène + script)
 world/           île procédurale, ressources récoltables, éléments construits, océan
 systems/         mode construction (grille, aperçu fantôme, sauvegarde)
-ui/              HUD, panneau d'artisanat
+ui/              HUD, panneau d'artisanat, menus
 main.tscn/.gd    assemblage de la scène de jeu
 ```
 
@@ -123,7 +126,7 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M4 | Construction : grille, fondations, murs, feu de camp, fantôme | ✅ |
 | M5 | Véhicules : bateau et voiture (physique simple) | ⬜ |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
-| M7 | Finition : menus, réglages, audio, export Linux + page itch.io | ⬜ |
+| M7 | Finition : réglages, export Linux + page itch.io | 🟡 |
 
 Le détail des idées non planifiées est dans [`IDEAS.md`](IDEAS.md).
 
