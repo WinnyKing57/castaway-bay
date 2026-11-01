@@ -244,6 +244,22 @@ func _run_smoke_test() -> void:
 	if int(kinds["arbre"]) == 0:
 		errors.append("aucun arbre généré")
 
+	# Récolte : butin ajouté et ressource déplétée (elle repoussera plus tard).
+	var test_tree: Harvestable = null
+	for child in world.get_children():
+		if child is Harvestable and child.kind == "arbre":
+			test_tree = child
+			break
+	if test_tree == null:
+		errors.append("arbre introuvable pour le test de récolte")
+	else:
+		var wood_before_harvest := GameState.get_item_count("wood")
+		test_tree.interact(player)
+		if GameState.get_item_count("wood") <= wood_before_harvest:
+			errors.append("récolte KO")
+		if test_tree.visible:
+			errors.append("ressource non déplétée après récolte")
+
 	# Sons synthétisés : tous les effets doivent exister.
 	var sound_names := PackedStringArray(["harvest", "eat", "craft", "build", "step", "splash", "death", "ui"])
 	for sound in sound_names:

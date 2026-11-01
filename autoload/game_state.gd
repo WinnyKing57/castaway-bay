@@ -43,12 +43,12 @@ func _process(delta: float) -> void:
 	if is_dead:
 		return
 
-	# Les jauges baissent lentement : ~5 min pour vider la faim, ~3 min pour la soif.
-	stats.hunger = maxf(0.0, stats.hunger - delta * 0.35)
-	stats.thirst = maxf(0.0, stats.thirst - delta * 0.55)
+	# Les jauges baissent lentement : ~20 min pour vider la faim, ~14 min pour la soif.
+	stats.hunger = maxf(0.0, stats.hunger - delta * 0.08)
+	stats.thirst = maxf(0.0, stats.thirst - delta * 0.12)
 
 	if stats.hunger <= 0.0 or stats.thirst <= 0.0:
-		stats.health = maxf(0.0, stats.health - delta * 2.0)
+		stats.health = maxf(0.0, stats.health - delta * 1.0)
 	elif stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0 and stats.health < 100.0:
 		# Récupération lente quand on est rassasié et hydraté.
 		stats.health = minf(100.0, stats.health + delta * 0.6)

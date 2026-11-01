@@ -9,7 +9,13 @@ extends StaticBody3D
 
 @export_enum("arbre", "palmier", "rocher", "buisson") var kind: String = "arbre"
 
+## Temps de repousse : une ressource récoltée redevient disponible après
+## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
+const REGROW_SECONDS := 120.0
+
 var _loot: Dictionary = {}
+var _depleted := false
+var _regrow_left := 0.0
 
 
 func _ready() -> void:
@@ -17,22 +23,24 @@ func _ready() -> void:
 	collision_mask = 0
 	match kind:
 		"palmier":
-			_loot = {"wood": 2, "coconut": 1}
+			_loot = {"wood": 3, "coconut": 2}
 			_build_palm()
 		"rocher":
-			_loot = {"stone": 2}
+			_loot = {"stone": 3}
 			_build_rock()
 		"buisson":
-			_loot = {"fiber": 4}
-			if randf() < 0.35:
-				_loot["berry"] = 2
+			_loot = {"fiber": 5}
+			if randf() < 0.4:
+				_loot["berry"] = 3
 			_build_bush()
 		_:
-			_loot = {"wood": 3}
+			_loot = {"wood": 4}
 			_build_tree()
 
 
 func get_interaction_prompt() -> String:
+	if _depleted:
+		return ""
 	var parts := PackedStringArray()
 	for item_id in _loot:
 		parts.append("%s x%d" % [GameState.display_name(str(item_id)), _amount_for(str(item_id))])
@@ -40,10 +48,33 @@ func get_interaction_prompt() -> String:
 
 
 func interact(_player: Node) -> void:
+	if _depleted:
+		return
 	Sfx.play("harvest", global_position)
 	for item_id in _loot:
 		GameState.add_item(str(item_id), _amount_for(str(item_id)))
-	queue_free()
+	_start_regrow()
+
+
+func _process(delta: float) -> void:
+	if not _depleted:
+		return
+	_regrow_left -= delta
+	if _regrow_left <= 0.0:
+		_regrow()
+
+
+func _start_regrow() -> void:
+	_depleted = true
+	_regrow_left = REGROW_SECONDS
+	visible = false
+	collision_layer = 0
+
+
+func _regrow() -> void:
+	_depleted = false
+	visible = true
+	collision_layer = 1
 
 
 ## La hache en pierre double le bois récolté : elle donne un intérêt concret
