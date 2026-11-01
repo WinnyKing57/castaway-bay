@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://ui/crafting_panel.tscn" id="7_crafting"]
 [ext_resource type="Script" path="res://systems/construction.gd" id="8_construction"]
 [ext_resource type="PackedScene" path="res://ui/menu_panel.tscn" id="9_menu"]
+[ext_resource type="PackedScene" path="res://ui/settings_panel.tscn" id="10_settings"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.18, 0.36, 0.62, 1)
@@ -69,3 +70,5 @@ script = ExtResource("8_construction")
 [node name="CraftingPanel" parent="HUD" instance=ExtResource("7_crafting")]
 
 [node name="MenuPanel" parent="HUD" instance=ExtResource("9_menu")]
+
+[node name="SettingsPanel" parent="HUD" instance=ExtResource("10_settings")]

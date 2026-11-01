@@ -10,6 +10,7 @@ signal new_game_requested
 signal continue_requested
 signal resume_requested
 signal save_requested
+signal settings_requested
 signal main_menu_requested
 signal quit_requested
 
@@ -18,6 +19,7 @@ const ENTRIES := {
 	"continue": "Continuer",
 	"resume": "Reprendre",
 	"save": "Sauvegarder",
+	"settings": "Réglages",
 	"menu": "Menu principal",
 	"quit": "Quitter",
 }
@@ -39,7 +41,7 @@ func open_start() -> void:
 	_mode = "start"
 	title_label.text = "Castaway Bay"
 	subtitle_label.text = "Survis. Récolte. Fabrique. Construis."
-	_rebuild(["new", "continue", "quit"])
+	_rebuild(["new", "continue", "settings", "quit"])
 	visible = true
 
 
@@ -47,8 +49,16 @@ func open_pause() -> void:
 	_mode = "pause"
 	title_label.text = "Pause"
 	subtitle_label.text = ""
-	_rebuild(["resume", "save", "menu", "quit"])
+	_rebuild(["resume", "save", "settings", "menu", "quit"])
 	visible = true
+
+
+## Réaffiche le menu dans le mode courant (retour depuis les réglages).
+func reopen() -> void:
+	if _mode == "pause":
+		open_pause()
+	else:
+		open_start()
 
 
 func close() -> void:
@@ -94,6 +104,8 @@ func _on_button_pressed(entry: String) -> void:
 			resume_requested.emit()
 		"save":
 			save_requested.emit()
+		"settings":
+			settings_requested.emit()
 		"menu":
 			main_menu_requested.emit()
 		"quit":

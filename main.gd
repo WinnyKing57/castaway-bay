@@ -9,6 +9,7 @@ extends Node3D
 @onready var hud: Hud = $HUD
 @onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
 @onready var menu: MenuPanel = $HUD/MenuPanel
+@onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
 
 
@@ -23,7 +24,9 @@ func _ready() -> void:
 	menu.continue_requested.connect(_on_menu_continue)
 	menu.resume_requested.connect(_on_menu_resume)
 	menu.save_requested.connect(_on_menu_save)
+	menu.settings_requested.connect(_on_menu_settings)
 	menu.main_menu_requested.connect(_on_menu_main_menu)
+	settings_panel.closed.connect(_on_settings_closed)
 	menu.quit_requested.connect(_on_menu_quit)
 
 	if _is_dev_run():
@@ -154,6 +157,16 @@ func _on_menu_save() -> void:
 		GameState.notify("Partie sauvegardée")
 	else:
 		GameState.notify("Échec de la sauvegarde")
+
+
+func _on_settings_closed() -> void:
+	if menu.is_open():
+		menu.visible = true
+		menu.reopen()
+
+func _on_menu_settings() -> void:
+	settings_panel.open()
+	menu.visible = false
 
 
 func _on_menu_main_menu() -> void:
@@ -354,7 +367,17 @@ func _run_smoke_test() -> void:
 	if GameState.is_dead:
 		errors.append("renaissance KO")
 
-	# Construction (pose gratuite, puis sauvegarde/chargement)
+	# Réglages : sauvegarde/chargement et application immédiate.
+	Settings.master_volume = 0.3
+	Settings.mouse_sensitivity = 1.5
+	Settings.save_settings()
+	Settings.load_settings()
+	if abs(Settings.master_volume - 0.3) > 0.01:
+		errors.append("volume non sauvegardé/chargé")
+	if abs(Settings.mouse_sensitivity - 1.5) > 0.01:
+		errors.append("sensibilité non sauvegardée/chargée")
+
+	# Construction : pose gratuite, bascule, sauvegarde/chargement.
 	var foundation_data: BuildableData = Database.get_buildable("foundation")
 	if foundation_data == null:
 		errors.append("constructible 'fondation' absent")

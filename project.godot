@@ -22,6 +22,7 @@ GameState="*res://autoload/game_state.gd"
 Database="*res://autoload/database.gd"
 Sfx="*res://autoload/sfx.gd"
 SaveSystem="*res://autoload/save_system.gd"
+Settings="*res://autoload/settings.gd"
 
 [display]
 

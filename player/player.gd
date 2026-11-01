@@ -11,6 +11,8 @@ signal interaction_target_changed(prompt: String)
 const WALK_SPEED := 4.5
 const SPRINT_SPEED := 7.5
 const JUMP_VELOCITY := 5.0
+## Multiplicateur appliqué à la sensibilité de base de la souris (0.0022).
+## Les valeurs viennent de l'autoload Settings (réglages persistants).
 const MOUSE_SENSITIVITY := 0.0022
 const PITCH_LIMIT := deg_to_rad(89.0)
 
@@ -76,8 +78,8 @@ func set_controls_enabled(enabled: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
+		rotate_y(-event.relative.x * MOUSE_SENSITIVITY * Settings.mouse_sensitivity)
+		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY * Settings.mouse_sensitivity)
 		head.rotation.x = clampf(head.rotation.x, -PITCH_LIMIT, PITCH_LIMIT)
 
 	if event.is_action_pressed("interact"):
