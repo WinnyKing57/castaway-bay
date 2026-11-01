@@ -91,6 +91,7 @@ func _on_player_died() -> void:
 		crafting_panel.close()
 	if construction.is_active():
 		construction.toggle()
+	Sfx.play_ui("death")
 	player.set_controls_enabled(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -163,6 +164,40 @@ func _run_smoke_test() -> void:
 	if int(kinds["arbre"]) == 0:
 		errors.append("aucun arbre généré")
 
+	# Sons synthétisés : tous les effets doivent exister.
+	var sound_names := PackedStringArray(["harvest", "eat", "craft", "build", "step", "splash", "death", "ui"])
+	for sound in sound_names:
+		var wav := Sfx.get_stream(sound) as AudioStreamWAV
+		if wav == null or wav.data.is_empty():
+			errors.append("son manquant : %s" % sound)
+
+	# Nage : on place le joueur au-dessus d'un fond profond, au large.
+	var swim_point := Vector3.ZERO
+	var radii: Array[float] = [120.0, 124.0, 127.0]
+	for radius in radii:
+		for i in 24:
+			var angle := i * TAU / 24.0
+			var sx: float = cos(angle) * radius
+			var sz: float = sin(angle) * radius
+			var ground := world.get_height_at(sx, sz)
+			if ground < -2.0:
+				swim_point = Vector3(sx, ground + 0.2, sz)
+				break
+		if swim_point != Vector3.ZERO:
+			break
+	if swim_point == Vector3.ZERO:
+		errors.append("aucune zone profonde trouvée")
+	else:
+		player.global_position = swim_point
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		if not player.is_swimming():
+			errors.append("nage KO")
+		if not player.is_underwater():
+			errors.append("caméra sous-marine KO")
+		player.global_position = world.find_spawn_point()
+		await get_tree().physics_frame
+
 	# Inventaire
 	var wood_before := GameState.get_item_count("wood")
 	GameState.add_item("wood", 3)
@@ -228,6 +263,8 @@ func _run_smoke_test() -> void:
 		errors.append("constructions non restaurées")
 
 	if errors.is_empty():
+		Sfx.stop_all()
+		await get_tree().process_frame
 		print("SMOKE_TEST OK")
 		get_tree().quit(0)
 	else:

@@ -4,9 +4,9 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 à M4 terminés** — île procédurale, océan, cycle
-> jour/nuit, joueur FPS, récolte, survie (faim/soif/mort), artisanat,
-> construction et sauvegarde.
+> État actuel : **M0 à M4 terminés**, M1 partiel (nage, sons synthétisés) —
+> île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
+> artisanat, construction et sauvegarde.
 
 ---
 
@@ -22,6 +22,10 @@ ni code d'un jeu commercial n'est utilisé).
    feu de camp). Clic gauche pose, **R** tourne, molette change d'élément.
 5. **Sauvegarder** : **F9** / **F10**. La graine de l'île et les
    constructions sont conservées.
+
+L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
+peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
+aucun fichier audio n'est nécessaire.
 
 ---
 
@@ -113,7 +117,7 @@ main.tscn/.gd    assemblage de la scène de jeu
 | Jalon | Contenu | État |
 |---|---|---|
 | M0 | Socle : projet, île, joueur, récolte, inventaire, sauvegarde | ✅ |
-| M1 | Eau/nage, grottes, plusieurs biomes, ambiance sonore | ⬜ |
+| M1 | Eau/nage, grottes, plusieurs biomes, ambiance sonore | 🟡 |
 | M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
 | M3 | Artisanat : interface, recettes, outils | ✅ |
 | M4 | Construction : grille, fondations, murs, feu de camp, fantôme | ✅ |
@@ -122,6 +126,8 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M7 | Finition : menus, réglages, audio, export Linux + page itch.io | ⬜ |
 
 Le détail des idées non planifiées est dans [`IDEAS.md`](IDEAS.md).
+
+Légende : ✅ terminé · 🟡 partiel · ⬜ à faire
 
 ---
 

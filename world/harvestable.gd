@@ -40,6 +40,7 @@ func get_interaction_prompt() -> String:
 
 
 func interact(_player: Node) -> void:
+	Sfx.play("harvest", global_position)
 	for item_id in _loot:
 		GameState.add_item(str(item_id), _amount_for(str(item_id)))
 	queue_free()

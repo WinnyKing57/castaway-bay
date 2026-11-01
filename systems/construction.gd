@@ -133,6 +133,7 @@ func _place() -> void:
 	var cell := Vector2i(floori(position.x), floori(position.z))
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_occupied[_cell_key(data.kind, cell)] = true
+	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
 

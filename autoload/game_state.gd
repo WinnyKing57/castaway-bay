@@ -138,6 +138,7 @@ func use_selected_item() -> bool:
 	stats.thirst = minf(100.0, stats.thirst + data.thirst_restore)
 	stats.health = minf(100.0, stats.health + data.health_restore)
 	remove_item(item_id, 1)
+	Sfx.play_ui("eat")
 	notify("Consommé : %s" % data.display_name)
 	return true
 
@@ -154,6 +155,7 @@ func craft(recipe: RecipeData) -> bool:
 	consume_items(recipe.inputs)
 	for item_id in recipe.outputs:
 		add_item(str(item_id), int(recipe.outputs[item_id]))
+	Sfx.play_ui("craft")
 	notify("Fabriqué : %s" % recipe.display_name)
 	return true
 

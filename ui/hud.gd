@@ -15,6 +15,7 @@ extends CanvasLayer
 @onready var hotbar: HBoxContainer = $Root/Hotbar
 @onready var build_info: Label = $Root/BuildInfo
 @onready var death_overlay: ColorRect = $Root/DeathOverlay
+@onready var underwater_tint: ColorRect = $Root/UnderwaterTint
 
 const TOAST_DURATION := 2.5
 const SLOT_COLORS := {
@@ -24,6 +25,7 @@ const SLOT_COLORS := {
 }
 
 var _toast_time_left := 0.0
+var _player: Player
 var _slot_panels: Array[PanelContainer] = []
 var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
@@ -44,6 +46,7 @@ func _ready() -> void:
 
 ## Branché par main.gd une fois le joueur instancié.
 func setup(player: Player) -> void:
+	_player = player
 	player.interaction_target_changed.connect(_on_prompt_changed)
 
 
@@ -52,6 +55,9 @@ func _process(delta: float) -> void:
 	hunger_bar.value = GameState.stats.hunger
 	thirst_bar.value = GameState.stats.thirst
 	clock_label.text = _format_time(GameState.world_time)
+
+	if _player != null:
+		underwater_tint.visible = _player.is_underwater()
 
 	if _toast_time_left > 0.0:
 		_toast_time_left -= delta
