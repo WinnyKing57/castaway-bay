@@ -33,6 +33,9 @@ func _ready() -> void:
 			if randf() < 0.4:
 				_loot["berry"] = 3
 			_build_bush()
+		"seed":
+			_loot = {"seed": 2}
+			_build_seed()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
@@ -66,7 +69,7 @@ func _process(delta: float) -> void:
 
 func _start_regrow() -> void:
 	_depleted = true
-	_regrow_left = REGROW_SECONDS
+	_regrow_left = REGROW_SECONDS if kind != "seed" else 30.0
 	visible = false
 	collision_layer = 0
 
@@ -87,6 +90,27 @@ func _amount_for(item_id: String) -> int:
 
 
 # --- Construction visuelle ---------------------------------------------------
+
+func _build_seed() -> void:
+	# Petite plante verte avec une tige et une feuille.
+	var stem := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.height = 0.5
+	cyl.top_radius = 0.03
+	cyl.bottom_radius = 0.05
+	stem.mesh = cyl
+	stem.position = Vector3(0.0, 0.25, 0.0)
+	stem.material_override = _make_material(Color(0.2, 0.7, 0.2))
+	add_child(stem)
+
+	var leaf := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(0.3, 0.3)
+	leaf.mesh = plane
+	leaf.position = Vector3(0.0, 0.5, 0.0)
+	leaf.rotation = Vector3(0.0, 0.0, PI / 4.0)
+	leaf.material_override = _make_material(Color(0.3, 0.8, 0.2))
+	add_child(leaf)
 
 func _build_tree() -> void:
 	_add_trunk(2.4, 0.13, 0.22)

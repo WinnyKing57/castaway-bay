@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_build"]
+
+[resource]
+script = ExtResource("1_build")
+id = "roof"
+display_name = "Toit"
+description = "Toit en planches, pose sur mur ou fondation."
+category = "maison"
+collision_layer = 8
+costs = {"wood": 6, "fiber": 2}
+visual_tag = "roof"

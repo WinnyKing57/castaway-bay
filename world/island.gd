@@ -180,8 +180,8 @@ func _spawn_props() -> void:
 
 		var prop: Harvestable = scene.instantiate()
 		if height < 4.0:
-			# Bord de plage : palmiers et buissons.
-			prop.kind = "palmier" if rng.randf() < 0.6 else "buisson"
+			# Bord de plage : palmiers, buissons, graines.
+			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
 		elif height > 9.0:
 			prop.kind = "rocher"
 		elif rng.randf() < 0.55:

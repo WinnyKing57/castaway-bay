@@ -51,6 +51,14 @@ func _build_visuals() -> void:
 	match kind:
 		"wall":
 			_build_wall()
+		"roof":
+			_build_roof()
+		"door":
+			_build_door()
+		"window":
+			_build_window()
+		"chest":
+			_build_chest()
 		"campfire":
 			_build_campfire()
 		_:
@@ -164,3 +172,53 @@ func _make_material(color: Color) -> StandardMaterial3D:
 	material.roughness = 1.0
 	material.metallic = 0.0
 	return material
+
+func _build_roof() -> void:
+	_add_box(Vector3(1.0, 0.1, 1.2), Vector3(0.0, 2.3, 0.0), Color(0.55, 0.38, 0.22))
+	# Pente.
+	var slope := MeshInstance3D.new()
+	var slope_mesh := PrismMesh.new()
+	slope_mesh.size = Vector3(0.9, 0.2, 1.0)
+	slope.mesh = slope_mesh
+	slope.position = Vector3(0.0, 2.35, 0.0)
+	slope.rotation = Vector3(deg_to_rad(30.0), 0.0, 0.0)
+	slope.material_override = _make_material(Color(0.6, 0.42, 0.28))
+	add_child(slope)
+	_add_collision_box(Vector3(1.0, 0.3, 1.2), Vector3(0.0, 2.3, 0.0))
+
+func _build_door() -> void:
+	_add_box(Vector3(0.8, 2.0, 0.16), Vector3(0.0, 1.0, 0.0), Color(0.52, 0.38, 0.24))
+	var knob := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.06
+	sphere.radial_segments = 6
+	sphere.rings = 3
+	knob.mesh = sphere
+	knob.position = Vector3(0.35, 1.0, 0.0)
+	knob.material_override = _make_material(Color(0.3, 0.25, 0.12))
+	add_child(knob)
+	_add_collision_box(Vector3(0.8, 2.0, 0.16), Vector3(0.0, 1.0, 0.0))
+
+func _build_window() -> void:
+	_add_box(Vector3(0.8, 0.7, 0.16), Vector3(0.0, 1.3, 0.0), Color(0.7, 0.65, 0.55))
+	var glass := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(0.7, 0.55)
+	glass.mesh = plane
+	glass.position = Vector3(0.0, 1.3, 0.05)
+	glass.rotation = Vector3(0.0, PI / 2.0, 0.0)
+	glass.material_override = _make_material(Color(0.85, 0.9, 1.0))
+	add_child(glass)
+	_add_collision_box(Vector3(0.8, 0.7, 0.16), Vector3(0.0, 1.3, 0.0))
+
+func _build_chest() -> void:
+	_add_box(Vector3(0.9, 0.7, 0.6), Vector3(0.0, 0.35, 0.0), Color(0.42, 0.3, 0.18))
+	# Couvercle avec charnière.
+	var lid := MeshInstance3D.new()
+	var lid_mesh := BoxMesh.new()
+	lid_mesh.size = Vector3(0.85, 0.08, 0.55)
+	lid.mesh = lid_mesh
+	lid.position = Vector3(0.0, 0.75, 0.0)
+	lid.material_override = _make_material(Color(0.5, 0.36, 0.24))
+	add_child(lid)
+	_add_collision_box(Vector3(0.9, 0.7, 0.6), Vector3(0.0, 0.35, 0.0))

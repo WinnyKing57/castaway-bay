@@ -345,8 +345,16 @@ func _run_smoke_test() -> void:
 	var ui_button: Button = null
 	for child in crafting_panel.recipes_box.get_children():
 		if child is Button and not (child as Button).disabled:
-			ui_button = child
-			break
+			var txt := (child as Button).text
+			if txt.contains("Torch") or txt.contains("Torche"):
+				ui_button = child
+				break
+	if ui_button == null:
+		# Fallback : premier bouton actif.
+		for child in crafting_panel.recipes_box.get_children():
+			if child is Button and not (child as Button).disabled:
+				ui_button = child
+				break
 	if ui_button == null:
 		errors.append("aucun bouton d'artisanat actif")
 	else:
