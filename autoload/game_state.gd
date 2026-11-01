@@ -2,16 +2,22 @@ extends Node
 ## État global de la partie (autoload "GameState").
 ##
 ## Centralise ce qui doit survivre aux changements de scène :
-## inventaire, jauges de survie et horloge du monde.
+## inventaire, jauges de survie, horloge du monde et barre rapide.
 ## Les vues (HUD) lisent cet état et écoutent ses signaux.
 
 signal inventory_changed
+signal hotbar_changed
 signal toast(text: String)
+signal died
 
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
 const SECONDS_PER_DAY := 86400.0
 const SAVE_VERSION := 1
+
+## Objets accessibles depuis la barre rapide (touches 1 à 4).
+var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe"]
+var hotbar_index := 0
 
 ## item_id -> quantité
 var inventory: Dictionary = {}
@@ -25,9 +31,17 @@ var stats := {
 ## Secondes écoulées depuis minuit dans le monde du jeu.
 var world_time := 8.0 * 3600.0
 
+## Graine de génération de l'île : sauvegardée pour retrouver le même monde.
+var world_seed := 0
+
+var is_dead := false
+
 
 func _process(delta: float) -> void:
 	world_time = fmod(world_time + delta * (SECONDS_PER_DAY / DAY_LENGTH_SECONDS), SECONDS_PER_DAY)
+
+	if is_dead:
+		return
 
 	# Les jauges baissent lentement : ~5 min pour vider la faim, ~3 min pour la soif.
 	stats.hunger = maxf(0.0, stats.hunger - delta * 0.35)
@@ -35,6 +49,13 @@ func _process(delta: float) -> void:
 
 	if stats.hunger <= 0.0 or stats.thirst <= 0.0:
 		stats.health = maxf(0.0, stats.health - delta * 2.0)
+	elif stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0 and stats.health < 100.0:
+		# Récupération lente quand on est rassasié et hydraté.
+		stats.health = minf(100.0, stats.health + delta * 0.6)
+
+	if stats.health <= 0.0:
+		is_dead = true
+		died.emit()
 
 
 # --- Inventaire -------------------------------------------------------------
@@ -63,7 +84,7 @@ func remove_item(item_id: String, amount: int = 1) -> bool:
 
 func has_items(costs: Dictionary) -> bool:
 	for item_id in costs:
-		if get_item_count(item_id) < int(costs[item_id]):
+		if get_item_count(str(item_id)) < int(costs[item_id]):
 			return false
 	return true
 
@@ -72,7 +93,7 @@ func consume_items(costs: Dictionary) -> bool:
 	if not has_items(costs):
 		return false
 	for item_id in costs:
-		remove_item(item_id, int(costs[item_id]))
+		remove_item(str(item_id), int(costs[item_id]))
 	return true
 
 
@@ -81,6 +102,68 @@ func display_name(item_id: String) -> String:
 	if Database.items.has(item_id):
 		return Database.items[item_id].display_name
 	return item_id.capitalize()
+
+
+# --- Barre rapide et consommation -------------------------------------------
+
+func select_hotbar(index: int) -> void:
+	hotbar_index = clampi(index, 0, hotbar_items.size() - 1)
+	hotbar_changed.emit()
+
+
+func selected_hotbar_item() -> String:
+	if hotbar_items.is_empty():
+		return ""
+	return hotbar_items[hotbar_index]
+
+
+## Utilise l'objet de la case sélectionnée (manger, boire...).
+func use_selected_item() -> bool:
+	var item_id := selected_hotbar_item()
+	if item_id.is_empty():
+		return false
+	if get_item_count(item_id) <= 0:
+		notify("Pas de %s en stock" % display_name(item_id))
+		return false
+
+	var data: ItemData = Database.get_item(item_id)
+	if data == null:
+		return false
+
+	if not data.is_consumable:
+		notify("Équipé : %s" % data.display_name)
+		return false
+
+	stats.hunger = minf(100.0, stats.hunger + data.hunger_restore)
+	stats.thirst = minf(100.0, stats.thirst + data.thirst_restore)
+	stats.health = minf(100.0, stats.health + data.health_restore)
+	remove_item(item_id, 1)
+	notify("Consommé : %s" % data.display_name)
+	return true
+
+
+# --- Artisanat --------------------------------------------------------------
+
+func can_craft(recipe: RecipeData) -> bool:
+	return recipe != null and has_items(recipe.inputs)
+
+
+func craft(recipe: RecipeData) -> bool:
+	if recipe == null or not can_craft(recipe):
+		return false
+	consume_items(recipe.inputs)
+	for item_id in recipe.outputs:
+		add_item(str(item_id), int(recipe.outputs[item_id]))
+	notify("Fabriqué : %s" % recipe.display_name)
+	return true
+
+
+# --- Mort / renaissance -----------------------------------------------------
+
+func respawn() -> void:
+	stats = {"health": 60.0, "hunger": 60.0, "thirst": 60.0}
+	is_dead = false
+	inventory_changed.emit()
 
 
 # --- Divers -----------------------------------------------------------------
@@ -94,4 +177,7 @@ func reset() -> void:
 	inventory.clear()
 	stats = {"health": 100.0, "hunger": 100.0, "thirst": 100.0}
 	world_time = 8.0 * 3600.0
+	hotbar_index = 0
+	is_dead = false
 	inventory_changed.emit()
+	hotbar_changed.emit()

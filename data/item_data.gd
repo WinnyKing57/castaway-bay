@@ -16,3 +16,10 @@ var category: String = "ressource"
 
 ## Valeur de revente éventuelle (utilisée plus tard par les marchands).
 @export var value: int = 1
+
+@export_group("Consommation")
+## Si vrai, l'objet peut être mangé / bu (touche F sur la barre rapide).
+@export var is_consumable: bool = false
+@export var hunger_restore: float = 0.0
+@export var thirst_restore: float = 0.0
+@export var health_restore: float = 0.0

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "stone_axe"
+display_name = "Hache en pierre"
+description = "Un outil simple mais efficace pour abattre les arbres."
+inputs = {
+"fiber": 2,
+"stone": 4,
+"wood": 3
+}
+outputs = {
+"stone_axe": 1
+}
+craft_time = 1.5
+required_station = ""

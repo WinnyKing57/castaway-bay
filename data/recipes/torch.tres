@@ -4,15 +4,15 @@
 
 [resource]
 script = ExtResource("1_recipe")
-id = "campfire"
-display_name = "Feu de camp"
-description = "Un point de chaleur et de cuisson pour survivre la nuit."
+id = "torch"
+display_name = "Torche"
+description = "Un brandon pour éclairer la nuit."
 inputs = {
-"stone": 3,
-"wood": 5
+"fiber": 2,
+"wood": 2
 }
 outputs = {
-"campfire": 1
+"torch": 1
 }
-craft_time = 1.0
+craft_time = 0.0
 required_station = ""

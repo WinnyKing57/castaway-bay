@@ -4,8 +4,24 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 terminé** — socle technique jouable (île procédurale,
-> océan, cycle jour/nuit, joueur FPS, récolte, inventaire, sauvegarde).
+> État actuel : **M0 à M4 terminés** — île procédurale, océan, cycle
+> jour/nuit, joueur FPS, récolte, survie (faim/soif/mort), artisanat,
+> construction et sauvegarde.
+
+---
+
+## Boucle de jeu
+
+1. **Récolter** : arbres (bois), palmiers (bois + noix de coco), rochers
+   (pierre), buissons (fibres, parfois baies).
+2. **Survivre** : la faim et la soif baissent en permanence. Mange et bois
+   avec la barre rapide (**1-4** puis **F**).
+3. **Fabriquer** : **C** ouvre l'artisanat (torche, hache en pierre).
+   La hache double le bois récolté.
+4. **Construire** : **B** active le mode construction (fondation, mur,
+   feu de camp). Clic gauche pose, **R** tourne, molette change d'élément.
+5. **Sauvegarder** : **F9** / **F10**. La graine de l'île et les
+   constructions sont conservées.
 
 ---
 
@@ -51,9 +67,17 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 | Maj | courir |
 | Espace | sauter |
 | E | interagir / récolter |
+| 1 à 4 | sélectionner un objet de la barre rapide |
+| F | utiliser l'objet sélectionné (manger, boire) |
+| C | ouvrir / fermer l'artisanat |
+| B | activer / quitter le mode construction |
+| R | tourner l'élément en cours de construction |
+| Molette | changer d'élément à construire |
+| Clic gauche | poser l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
 | Échap | libérer / capturer la souris |
+| Espace | réapparaître après la mort |
 
 ---
 
@@ -61,17 +85,19 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 
 ```
 autoload/        singletons globaux (état, base de données, sauvegarde, audio)
-data/            définitions de données : ItemData, RecipeData + .tres
+data/            définitions de données : ItemData, RecipeData, BuildableData + .tres
 player/          contrôleur joueur (scène + script)
-world/           île procédurale, ressources récoltables, océan, jour/nuit
-ui/              HUD
+world/           île procédurale, ressources récoltables, éléments construits, océan
+systems/         mode construction (grille, aperçu fantôme, sauvegarde)
+ui/              HUD, panneau d'artisanat
 main.tscn/.gd    assemblage de la scène de jeu
 ```
 
 ### Les 4 règles d'architecture
 
-1. **Data-driven** : un objet ou une recette = un fichier `.tres` dans
-   `data/items/` ou `data/recipes/`. Aucun code à écrire pour en ajouter.
+1. **Data-driven** : un objet, une recette ou un constructible = un fichier
+   `.tres` dans `data/items/`, `data/recipes/` ou `data/buildables/`.
+   Aucun code à écrire pour en ajouter.
 2. **Interface plutôt que types** : tout ce qui est interactif expose
    `interact(player)` et `get_interaction_prompt()`. Le joueur ne connaît
    aucun type concret.
@@ -88,9 +114,9 @@ main.tscn/.gd    assemblage de la scène de jeu
 |---|---|---|
 | M0 | Socle : projet, île, joueur, récolte, inventaire, sauvegarde | ✅ |
 | M1 | Eau/nage, grottes, plusieurs biomes, ambiance sonore | ⬜ |
-| M2 | Survie complète : cuisson, eau potable, repos, mort/respawn | ⬜ |
-| M3 | Artisanat : interface, établis, déblocages par niveau | ⬜ |
-| M4 | Construction : grille, murs, toits, portes, placement fantôme | ⬜ |
+| M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
+| M3 | Artisanat : interface, recettes, outils | ✅ |
+| M4 | Construction : grille, fondations, murs, feu de camp, fantôme | ✅ |
 | M5 | Véhicules : bateau et voiture (physique simple) | ⬜ |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
 | M7 | Finition : menus, réglages, audio, export Linux + page itch.io | ⬜ |

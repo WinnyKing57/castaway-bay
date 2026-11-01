@@ -1,71 +1,84 @@
 class_name Harvestable
 extends StaticBody3D
-## Ressource récoltable : arbre, rocher ou buisson.
+## Ressource récoltable : arbre, palmier, rocher ou buisson.
 ##
 ## Le visuel et la collision sont construits en code selon `kind`, ce qui
-## évite trois scènes quasi identiques. La scène ne contient que ce script.
+## évite quatre scènes quasi identiques. La scène ne contient que ce script.
+## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
+## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "rocher", "buisson") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson") var kind: String = "arbre"
 
-var _item_id := "wood"
-var _amount := 3
+var _loot: Dictionary = {}
 
 
 func _ready() -> void:
 	collision_layer = 1
 	collision_mask = 0
 	match kind:
+		"palmier":
+			_loot = {"wood": 2, "coconut": 1}
+			_build_palm()
 		"rocher":
-			_item_id = "stone"
-			_amount = 2
+			_loot = {"stone": 2}
 			_build_rock()
 		"buisson":
-			_item_id = "fiber"
-			_amount = 4
+			_loot = {"fiber": 4}
+			if randf() < 0.35:
+				_loot["berry"] = 2
 			_build_bush()
 		_:
-			_item_id = "wood"
-			_amount = 3
+			_loot = {"wood": 3}
 			_build_tree()
 
 
 func get_interaction_prompt() -> String:
-	return "Récolter : %s (E)" % GameState.display_name(_item_id)
+	var parts := PackedStringArray()
+	for item_id in _loot:
+		parts.append("%s x%d" % [GameState.display_name(str(item_id)), _amount_for(str(item_id))])
+	return "Récolter : %s (E)" % ", ".join(parts)
 
 
 func interact(_player: Node) -> void:
-	GameState.add_item(_item_id, _amount)
+	for item_id in _loot:
+		GameState.add_item(str(item_id), _amount_for(str(item_id)))
 	queue_free()
+
+
+## La hache en pierre double le bois récolté : elle donne un intérêt concret
+## à l'artisanat, sans ajouter d'étape d'équipement.
+func _amount_for(item_id: String) -> int:
+	var amount := int(_loot[item_id])
+	if item_id == "wood" and GameState.get_item_count("stone_axe") > 0:
+		amount *= 2
+	return amount
 
 
 # --- Construction visuelle ---------------------------------------------------
 
 func _build_tree() -> void:
-	var trunk := MeshInstance3D.new()
-	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.13
-	trunk_mesh.bottom_radius = 0.22
-	trunk_mesh.height = 2.4
-	trunk_mesh.radial_segments = 6
-	trunk_mesh.rings = 1
-	trunk.mesh = trunk_mesh
-	trunk.position.y = 1.2
-	trunk.material_override = _make_material(Color(0.36, 0.24, 0.15))
-	add_child(trunk)
-
-	var leaves := MeshInstance3D.new()
-	var leaves_mesh := CylinderMesh.new()
-	leaves_mesh.top_radius = 0.05
-	leaves_mesh.bottom_radius = 1.5
-	leaves_mesh.height = 2.8
-	leaves_mesh.radial_segments = 7
-	leaves_mesh.rings = 1
-	leaves.mesh = leaves_mesh
-	leaves.position.y = 3.3
-	leaves.material_override = _make_material(Color(0.16, 0.42, 0.18))
-	add_child(leaves)
-
+	_add_trunk(2.4, 0.13, 0.22)
+	_add_cone(3.3, 1.5, 2.8, Color(0.16, 0.42, 0.18))
 	_add_box_collision(Vector3(0.7, 4.6, 0.7), Vector3(0.0, 2.3, 0.0))
+
+
+func _build_palm() -> void:
+	_add_trunk(4.2, 0.11, 0.2)
+	# Feuillage : quelques palmes aplaties autour du sommet.
+	for i in 5:
+		var leaf := MeshInstance3D.new()
+		var leaf_mesh := SphereMesh.new()
+		leaf_mesh.radius = 0.75
+		leaf_mesh.height = 0.35
+		leaf_mesh.radial_segments = 6
+		leaf_mesh.rings = 2
+		leaf.mesh = leaf_mesh
+		leaf.material_override = _make_material(Color(0.22, 0.5, 0.2))
+		leaf.position = Vector3(cos(i * TAU / 5.0) * 0.8, 4.15, sin(i * TAU / 5.0) * 0.8)
+		leaf.scale = Vector3(1.0, 1.0, 1.9)
+		leaf.rotation.y = i * TAU / 5.0
+		add_child(leaf)
+	_add_box_collision(Vector3(0.6, 4.4, 0.6), Vector3(0.0, 2.2, 0.0))
 
 
 func _build_rock() -> void:
@@ -99,6 +112,34 @@ func _build_bush() -> void:
 	add_child(bush)
 
 	_add_box_collision(Vector3(1.5, 0.9, 1.4), Vector3(0.0, 0.45, 0.0))
+
+
+func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:
+	var trunk := MeshInstance3D.new()
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = top_radius
+	trunk_mesh.bottom_radius = bottom_radius
+	trunk_mesh.height = height
+	trunk_mesh.radial_segments = 6
+	trunk_mesh.rings = 1
+	trunk.mesh = trunk_mesh
+	trunk.position.y = height * 0.5
+	trunk.material_override = _make_material(Color(0.36, 0.24, 0.15))
+	add_child(trunk)
+
+
+func _add_cone(y: float, radius: float, height: float, color: Color) -> void:
+	var leaves := MeshInstance3D.new()
+	var leaves_mesh := CylinderMesh.new()
+	leaves_mesh.top_radius = 0.05
+	leaves_mesh.bottom_radius = radius
+	leaves_mesh.height = height
+	leaves_mesh.radial_segments = 7
+	leaves_mesh.rings = 1
+	leaves.mesh = leaves_mesh
+	leaves.position.y = y
+	leaves.material_override = _make_material(color)
+	add_child(leaves)
 
 
 func _add_box_collision(size: Vector3, offset: Vector3) -> void:

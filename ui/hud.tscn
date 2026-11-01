@@ -175,8 +175,8 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -420.0
-offset_top = -150.0
+offset_left = -440.0
+offset_top = -200.0
 offset_right = -24.0
 offset_bottom = -24.0
 grow_horizontal = 0
@@ -187,8 +187,67 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 15
 text = "ZQSD / WASD : se déplacer
 Maj : courir — Espace : sauter
-E : interagir
+E : interagir — F : utiliser
+1-4 : barre rapide
+C : artisanat — B : construire
+R : tourner (construction)
 F9 : sauvegarder — F10 : charger
 Échap : libérer la souris"
 horizontal_alignment = 2
 vertical_alignment = 2
+
+[node name="Hotbar" type="HBoxContainer" parent="Root"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -230.0
+offset_top = -104.0
+offset_right = 230.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="BuildInfo" type="Label" parent="Root"]
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -156.0
+offset_right = 320.0
+offset_bottom = -116.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 19
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DeathOverlay" type="ColorRect" parent="Root"]
+visible = false
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.35, 0.02, 0.02, 0.55)
+mouse_filter = 2
+
+[node name="Label" type="Label" parent="Root/DeathOverlay"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 42
+text = "Vous êtes mort
+
+Espace pour réapparaître"
+horizontal_alignment = 1
+vertical_alignment = 1

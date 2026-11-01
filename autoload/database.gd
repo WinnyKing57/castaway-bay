@@ -7,17 +7,23 @@ extends Node
 
 const ITEMS_DIR := "res://data/items"
 const RECIPES_DIR := "res://data/recipes"
+const BUILDABLES_DIR := "res://data/buildables"
 
 ## item_id -> ItemData
 var items: Dictionary = {}
 ## recipe_id -> RecipeData
 var recipes: Dictionary = {}
+## buildable_id -> BuildableData
+var buildables: Dictionary = {}
 
 
 func _ready() -> void:
 	_load_dir(ITEMS_DIR, items)
 	_load_dir(RECIPES_DIR, recipes)
-	print("[Database] %d objets, %d recettes chargés" % [items.size(), recipes.size()])
+	_load_dir(BUILDABLES_DIR, buildables)
+	print("[Database] %d objets, %d recettes, %d constructions chargés" % [
+		items.size(), recipes.size(), buildables.size()
+	])
 
 
 func get_item(item_id: String) -> Resource:
@@ -26,6 +32,10 @@ func get_item(item_id: String) -> Resource:
 
 func get_recipe(recipe_id: String) -> Resource:
 	return recipes.get(recipe_id)
+
+
+func get_buildable(buildable_id: String) -> Resource:
+	return buildables.get(buildable_id)
 
 
 func _load_dir(dir_path: String, target: Dictionary) -> void:

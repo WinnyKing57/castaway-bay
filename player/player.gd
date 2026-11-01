@@ -20,11 +20,45 @@ const PITCH_LIMIT := deg_to_rad(89.0)
 
 var _gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity", 9.8))
 var _current_prompt := ""
+var _controls_enabled := true
+var _torch_light: OmniLight3D
 
 
 func _ready() -> void:
 	if DisplayServer.get_name() != "headless":
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+	# Lumière portée : allumée seulement quand la torche est sélectionnée.
+	_torch_light = OmniLight3D.new()
+	_torch_light.light_color = Color(1.0, 0.62, 0.28)
+	_torch_light.light_energy = 1.6
+	_torch_light.omni_range = 8.0
+	_torch_light.position = Vector3(0.0, 1.2, 0.0)
+	_torch_light.visible = false
+	add_child(_torch_light)
+
+	GameState.hotbar_changed.connect(_update_torch_light)
+	GameState.inventory_changed.connect(_update_torch_light)
+	_update_torch_light()
+
+
+func _update_torch_light() -> void:
+	if _torch_light == null:
+		return
+	var item := GameState.selected_hotbar_item()
+	_torch_light.visible = item == "torch" and GameState.get_item_count("torch") > 0
+
+
+## Active/désactive les commandes (utilisé par les menus et le mode construction).
+func set_controls_enabled(enabled: bool) -> void:
+	_controls_enabled = enabled
+	set_physics_process(enabled)
+	set_process_unhandled_input(enabled)
+	if not enabled:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_current_prompt = ""
+		interaction_target_changed.emit("")
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "foundation"
+display_name = "Fondation"
+description = "Une plateforme en bois qui stabilise le sol et sert de base aux murs."
+kind = "foundation"
+costs = {
+"wood": 4
+}
+grid_size = 1

@@ -2,20 +2,30 @@ extends Node3D
 ## Point d'entrée du jeu (scène main.tscn).
 ##
 ## Rôle : assembler le monde, placer le joueur, brancher le HUD,
-## et gérer les commandes globales (sauvegarde, souris, outils de dev).
+## et gérer les commandes globales (sauvegarde, souris, mort, outils de dev).
 
 @onready var world: Island = $World
 @onready var player: Player = $Player
 @onready var hud: Hud = $HUD
+@onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
+@onready var construction: Construction = $Construction
 
 
 func _ready() -> void:
 	player.global_position = world.find_spawn_point()
 	hud.setup(player)
+	construction.setup(player, hud)
+	GameState.died.connect(_on_player_died)
+	crafting_panel.opened.connect(_on_crafting_opened)
+	crafting_panel.closed.connect(_on_crafting_closed)
 	GameState.notify("Bienvenue — approche un arbre et appuie sur E")
 
 	if "--overview" in OS.get_cmdline_user_args():
 		_apply_overview_camera()
+
+	# Outil de développement : ouvre un panneau au démarrage pour les captures.
+	if "--show-crafting" in OS.get_cmdline_user_args():
+		crafting_panel.open()
 
 	if "--smoke-test" in OS.get_cmdline_user_args():
 		await _run_smoke_test()
@@ -23,23 +33,90 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = (
-			Input.MOUSE_MODE_VISIBLE
-			if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-			else Input.MOUSE_MODE_CAPTURED
-		)
+		if crafting_panel.is_open():
+			crafting_panel.close()
+			return
+		if construction.is_active():
+			construction.toggle()
+			return
+		if not GameState.is_dead:
+			Input.mouse_mode = (
+				Input.MOUSE_MODE_VISIBLE
+				if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+				else Input.MOUSE_MODE_CAPTURED
+			)
+
+	if GameState.is_dead:
+		if event.is_action_pressed("ui_accept"):
+			_respawn()
+		return
+
+	if event.is_action_pressed("toggle_crafting"):
+		if construction.is_active():
+			construction.toggle()
+		crafting_panel.toggle()
+		return
+
+	if event.is_action_pressed("toggle_build"):
+		if crafting_panel.is_open():
+			crafting_panel.close()
+		construction.toggle()
+		return
+
+	if crafting_panel.is_open():
+		return
 
 	if event.is_action_pressed("save_game"):
-		if SaveSystem.save_game(player):
+		if SaveSystem.save_game(player, construction):
 			GameState.notify("Partie sauvegardée")
 		else:
 			GameState.notify("Échec de la sauvegarde")
 
 	if event.is_action_pressed("load_game"):
-		if SaveSystem.load_game_into(player):
+		if SaveSystem.load_game_into(player, world, construction):
 			GameState.notify("Partie chargée")
 		else:
 			GameState.notify("Aucune sauvegarde")
+
+	if event.is_action_pressed("use_item"):
+		GameState.use_selected_item()
+
+	for index in GameState.hotbar_items.size():
+		if event.is_action_pressed("hotbar_%d" % (index + 1)):
+			GameState.select_hotbar(index)
+
+
+func _on_player_died() -> void:
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_crafting_opened() -> void:
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_crafting_closed() -> void:
+	if GameState.is_dead:
+		return
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _respawn() -> void:
+	GameState.respawn()
+	player.global_position = world.find_spawn_point()
+	player.velocity = Vector3.ZERO
+	player.set_controls_enabled(true)
+	hud.hide_death()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	GameState.notify("Tu te réveilles sur la plage...")
 
 
 ## Outil de développement : vue aérienne pour inspecter l'île générée.
@@ -66,13 +143,27 @@ func _run_smoke_test() -> void:
 		errors.append("terrain absent")
 	if hud == null:
 		errors.append("HUD absent")
-	if Database.items.size() < 3:
+	if Database.items.size() < 5:
 		errors.append("base d'objets incomplète (%d)" % Database.items.size())
-	if Database.recipes.size() < 1:
-		errors.append("aucune recette chargée")
+	if Database.recipes.size() < 2:
+		errors.append("recettes incomplètes (%d)" % Database.recipes.size())
+	if Database.buildables.size() < 3:
+		errors.append("constructibles incomplets (%d)" % Database.buildables.size())
 	if player != null and player.global_position.y < 0.0:
 		errors.append("joueur sous le niveau de la mer")
 
+	# Végétation : l'île doit contenir de quoi survivre (bois, fibres, cocos).
+	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0}
+	for child in world.get_children():
+		if child is Harvestable:
+			kinds[child.kind] = int(kinds.get(child.kind, 0)) + 1
+	print("[Test] végétation : ", kinds)
+	if int(kinds["palmier"]) == 0:
+		errors.append("aucun palmier généré")
+	if int(kinds["arbre"]) == 0:
+		errors.append("aucun arbre généré")
+
+	# Inventaire
 	var wood_before := GameState.get_item_count("wood")
 	GameState.add_item("wood", 3)
 	if GameState.get_item_count("wood") != wood_before + 3:
@@ -80,14 +171,61 @@ func _run_smoke_test() -> void:
 	if not GameState.remove_item("wood", 1):
 		errors.append("retrait d'objet KO")
 
+	# Consommation (case 1 = noix de coco)
+	GameState.add_item("coconut", 1)
+	GameState.stats.thirst = 40.0
+	GameState.select_hotbar(0)
+	if not GameState.use_selected_item():
+		errors.append("consommation KO")
+	if GameState.stats.thirst <= 40.0:
+		errors.append("soif non restaurée")
+	if GameState.get_item_count("coconut") != 0:
+		errors.append("objet non consommé")
+
+	# Artisanat (torche : 2 bois + 2 fibres)
+	GameState.add_item("wood", 2)
+	GameState.add_item("fiber", 2)
+	var torch_recipe: RecipeData = Database.get_recipe("torch")
+	if not GameState.craft(torch_recipe):
+		errors.append("artisanat KO")
+	if GameState.get_item_count("torch") < 1:
+		errors.append("objet fabriqué absent")
+
+	# Mort et renaissance
+	GameState.stats.health = 0.0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not GameState.is_dead:
+		errors.append("mort non détectée")
+	GameState.respawn()
+	if GameState.is_dead:
+		errors.append("renaissance KO")
+
+	# Construction (pose gratuite, puis sauvegarde/chargement)
+	var foundation_data: BuildableData = Database.get_buildable("foundation")
+	if foundation_data == null:
+		errors.append("constructible 'fondation' absent")
+	elif not GameState.has_items(foundation_data.costs):
+		GameState.add_item("wood", 10)
+		if not GameState.consume_items(foundation_data.costs):
+			errors.append("coût de construction KO")
+	var placed := construction.place_free("foundation", "foundation", Vector3(3.5, 0.0, 3.5), 0.0)
+	if placed == null:
+		errors.append("pose de construction KO")
+
+	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
-	if not SaveSystem.save_game(player):
+	var expected_buildings := construction.to_save_data().size()
+	if not SaveSystem.save_game(player, construction):
 		errors.append("écriture de sauvegarde KO")
 	GameState.inventory.clear()
-	if not SaveSystem.load_game_into(player):
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
 		errors.append("lecture de sauvegarde KO")
 	if GameState.get_item_count("wood") != expected:
 		errors.append("inventaire non restauré")
+	if construction.to_save_data().size() != expected_buildings:
+		errors.append("constructions non restaurées")
 
 	if errors.is_empty():
 		print("SMOKE_TEST OK")

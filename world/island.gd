@@ -3,12 +3,12 @@ extends Node3D
 ## Génère l'île de façon procédurale : relief, couleurs, collision, végétation.
 ##
 ## M0 : un seul îlot, généré au démarrage avec une graine aléatoire.
-## Les jalons suivants remplaceront ce générateur par des scènes de zones
-## (village, phare, épave...) chargées à la demande.
+## La graine est mémorisée dans GameState.world_seed et sauvegardée, afin
+## qu'un chargement retrouve exactement le même relief.
 
 const ISLAND_SIZE := 260.0
 const GRID_RES := 96
-const PROP_COUNT := 70
+const PROP_COUNT := 80
 const SEA_LEVEL := 0.0
 
 var _noise: FastNoiseLite
@@ -32,8 +32,20 @@ func generate(seed_value: int = 0) -> void:
 	_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_noise.fractal_octaves = 4
 
+	GameState.world_seed = _noise.seed
+
 	_build_terrain()
 	_spawn_props()
+
+
+## Détruit le monde et le reconstruit avec une autre graine (chargement).
+func regenerate(seed_value: int) -> void:
+	for child in get_children():
+		remove_child(child)
+		child.queue_free()
+	_generated = false
+	_mesh_instance = null
+	generate(seed_value)
 
 
 ## Hauteur du terrain (y monde) à une position donnée.
@@ -167,7 +179,10 @@ func _spawn_props() -> void:
 			continue
 
 		var prop: Harvestable = scene.instantiate()
-		if height > 9.0:
+		if height < 4.0:
+			# Bord de plage : palmiers et buissons.
+			prop.kind = "palmier" if rng.randf() < 0.6 else "buisson"
+		elif height > 9.0:
 			prop.kind = "rocher"
 		elif rng.randf() < 0.55:
 			prop.kind = "arbre"

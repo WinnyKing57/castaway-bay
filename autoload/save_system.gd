@@ -17,11 +17,12 @@ func delete_save() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 
-func save_game(player: Node3D) -> bool:
+func save_game(player: Node3D, construction: Node = null) -> bool:
 	var data := {
 		"version": GameState.SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(),
 		"world_time": GameState.world_time,
+		"world_seed": GameState.world_seed,
 		"stats": GameState.stats.duplicate(),
 		"inventory": GameState.inventory.duplicate(),
 		"player": {
@@ -29,6 +30,8 @@ func save_game(player: Node3D) -> bool:
 			"rotation_y": player.rotation.y,
 		},
 	}
+	if construction != null:
+		data["construction"] = construction.to_save_data()
 
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -41,12 +44,18 @@ func save_game(player: Node3D) -> bool:
 
 
 ## Lit la sauvegarde et l'applique à l'état global + au joueur.
-func load_game_into(player: Node3D) -> bool:
+## Si `world` est fourni et que la graine a changé, l'île est régénérée
+## avant de replacer le joueur (sinon il tomberait dans le vide).
+func load_game_into(player: Node3D, world: Node = null, construction: Node = null) -> bool:
 	var data := _read_save()
 	if data.is_empty():
 		return false
 
 	GameState.world_time = float(data.get("world_time", GameState.world_time))
+
+	var saved_seed := int(data.get("world_seed", 0))
+	if world != null and saved_seed != 0 and saved_seed != GameState.world_seed:
+		world.regenerate(saved_seed)
 
 	var saved_stats: Dictionary = data.get("stats", {})
 	for key in saved_stats:
@@ -59,6 +68,9 @@ func load_game_into(player: Node3D) -> bool:
 		GameState.inventory[key] = int(saved_inventory[key])
 	GameState.inventory_changed.emit()
 
+	if construction != null:
+		construction.load_save_data(data.get("construction", []))
+
 	var saved_player: Dictionary = data.get("player", {})
 	var pos: Array = saved_player.get("position", [])
 	if pos.size() == 3:
@@ -67,6 +79,7 @@ func load_game_into(player: Node3D) -> bool:
 	if player is CharacterBody3D:
 		(player as CharacterBody3D).velocity = Vector3.ZERO
 
+	GameState.is_dead = false
 	return true
 
 

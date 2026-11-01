@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "campfire"
+display_name = "Feu de camp"
+description = "Une flamme pour passer la nuit. Éclaire les alentours."
+kind = "campfire"
+costs = {
+"stone": 3,
+"wood": 5
+}
+grid_size = 1
