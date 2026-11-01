@@ -322,6 +322,28 @@ func _run_smoke_test() -> void:
 	if GameState.get_item_count("torch") < 1:
 		errors.append("objet fabriqué absent")
 
+	# Interface d'artisanat : ouverture, bouton actif, fabrication, fermeture.
+	GameState.add_item("wood", 4)
+	GameState.add_item("fiber", 4)
+	var torches_before_ui := GameState.get_item_count("torch")
+	crafting_panel.open()
+	if not crafting_panel.is_open():
+		errors.append("panneau d'artisanat non ouvert")
+	var ui_button: Button = null
+	for child in crafting_panel.recipes_box.get_children():
+		if child is Button and not (child as Button).disabled:
+			ui_button = child
+			break
+	if ui_button == null:
+		errors.append("aucun bouton d'artisanat actif")
+	else:
+		ui_button.pressed.emit()
+		if GameState.get_item_count("torch") <= torches_before_ui:
+			errors.append("bouton d'artisanat sans effet")
+	crafting_panel.close()
+	if crafting_panel.is_open():
+		errors.append("panneau d'artisanat non fermé")
+
 	# Mort et renaissance
 	GameState.stats.health = 0.0
 	await get_tree().process_frame
@@ -343,6 +365,14 @@ func _run_smoke_test() -> void:
 	var placed := construction.place_free("foundation", "foundation", Vector3(3.5, 0.0, 3.5), 0.0)
 	if placed == null:
 		errors.append("pose de construction KO")
+
+	# Mode construction : entrée puis sortie (le fantôme doit être créé/nettoyé).
+	construction.toggle()
+	if not construction.is_active():
+		errors.append("mode construction non activé")
+	construction.toggle()
+	if construction.is_active():
+		errors.append("mode construction non désactivé")
 
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
