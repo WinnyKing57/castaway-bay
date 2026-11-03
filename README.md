@@ -80,6 +80,8 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 | B | activer / quitter le mode construction |
 | R | tourner l'élément en cours de construction |
 | Molette | changer d'élément à construire |
+| PgUp / PgDn | changer le niveau de construction |
+| V | verrouiller le niveau de construction |
 | Clic gauche | poser l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
@@ -123,7 +125,7 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M1 | Eau/nage, grottes, plusieurs biomes, ambiance sonore | 🟡 |
 | M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
 | M3 | Artisanat : interface, recettes, outils | ✅ |
-| M4 | Construction : grille, fondations, murs, feu de camp, fantôme | ✅ |
+| M4 | Construction : grille, fondations, murs, feu de camp, fantôme, niveaux | ✅ |
 | M5 | Véhicules : bateau et voiture (physique simple) | ⬜ |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
 | M7 | Finition : réglages, export Linux + page itch.io | 🟡 |
