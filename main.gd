@@ -405,6 +405,18 @@ func _run_smoke_test() -> void:
 	if construction.is_active():
 		errors.append("mode construction non désactivé")
 
+	# Sauvegarde robuste : un fichier corrompu doit être rejeté sans erreur de script.
+	if not SaveSystem.save_game(player, construction):
+		errors.append("écriture de sauvegarde KO")
+	var corrupt_file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
+	if corrupt_file == null:
+		errors.append("écriture sauvegarde corrompue KO")
+	else:
+		corrupt_file.store_string('{"stats": []}')
+		corrupt_file.close()
+	if SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde corrompue acceptée")
+
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
 	var expected_buildings := construction.to_save_data().size()
