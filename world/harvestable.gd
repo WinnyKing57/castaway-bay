@@ -103,7 +103,12 @@ func interact(_player: Node) -> void:
 	Sfx.play("harvest", global_position)
 	for item_id in _loot:
 		GameState.add_item(str(item_id), _amount_for(str(item_id)))
-	_start_regrow()
+	# La carcasse est une ressource unique : elle ne repousse pas.
+	if kind != "carcasse":
+		_start_regrow()
+	else:
+		visible = false
+		collision_layer = 0
 
 
 func _process(delta: float) -> void:

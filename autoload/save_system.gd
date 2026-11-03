@@ -17,14 +17,14 @@ func delete_save() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 
-func save_game(player: Node3D, construction: Node = null) -> bool:
+func save_game(player: Node3D, world: Node = null, construction: Node = null) -> bool:
 	var data := {
 		"version": GameState.SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(),
 		"world_time": GameState.world_time,
 		"world_seed": GameState.world_seed,
-		"stats": GameState.stats.duplicate(),
-		"inventory": GameState.inventory.duplicate(),
+		"stats": _stats_to_plain(GameState.stats),
+		"inventory": _dict_to_plain(GameState.inventory),
 		"player": {
 			"position": [player.global_position.x, player.global_position.y, player.global_position.z],
 			"rotation_y": player.rotation.y,
@@ -32,6 +32,28 @@ func save_game(player: Node3D, construction: Node = null) -> bool:
 	}
 	if construction != null:
 		data["construction"] = construction.to_save_data()
+
+	# État des ressources du monde : repousse des récoltables et croissance
+	# des cultures. Sans cela, tout l'île se régénérait à chaque chargement.
+	if world != null:
+		var resources: Array = []
+		for node in world.get_children():
+			if node is Harvestable or node is Crop:
+				var state: String = node.get_save_state()
+				if not state.is_empty():
+					var entry := {
+						"type": "crop" if node is Crop else "harvest",
+						"state": state,
+					}
+					if node is Harvestable:
+						# Clé stable : index d'apparition sur l'ile (reproduit a
+						# lidentique grace a la graine), ou save_key si defini.
+						entry["id"] = str(node.save_key) if not node.save_key.is_empty() \
+							else str(node.get_meta("save_index", -1))
+					else:
+						entry["id"] = str(node.get_meta("crop_index", -1))
+					resources.append(entry)
+		data["world_resources"] = resources
 
 	var tmp_path := SAVE_PATH + ".tmp"
 	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
@@ -74,6 +96,34 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 
 	if construction != null:
 		construction.load_save_data(data.get("construction", []))
+
+	# Repopulation des ressources : la graine régénère une île identique,
+	# on y réapplique ensuite l'état sauvegardé (repousse / cultures).
+	if world != null:
+		var saved_resources: Array = data.get("world_resources", [])
+		var by_key := {}
+		var crop_by_index := {}
+		for entry in saved_resources:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var key := str(entry.get("id", "-1"))
+			var state := str(entry.get("state", ""))
+			if str(entry.get("type", "")) == "crop":
+				crop_by_index[key] = state
+			else:
+				by_key[key] = state
+		var harvest_idx := 0
+		for node in world.get_children():
+			if node is Harvestable:
+				node.set_meta("save_index", harvest_idx)
+				var hkey := str(node.save_key) if not node.save_key.is_empty() else str(harvest_idx)
+				if by_key.has(hkey):
+					node.apply_save_state(str(by_key[hkey]))
+				harvest_idx += 1
+			elif node is Crop:
+				var ci := int(node.get_meta("crop_index", -1)) if node.has_meta("crop_index") else -1
+				if crop_by_index.has(str(ci)):
+					node.apply_save_state(str(crop_by_index[str(ci)]))
 
 	var saved_player: Dictionary = data.get("player", {})
 	var pos: Array = saved_player.get("position", [])
@@ -120,4 +170,23 @@ func _is_valid(data: Dictionary) -> bool:
 		return false
 	if typeof(data.get("construction", [])) != TYPE_ARRAY:
 		return false
+	if typeof(data.get("world_resources", [])) != TYPE_ARRAY:
+		return false
 	return int(data.get("version", 0)) <= GameState.SAVE_VERSION
+
+
+## JSON n'accepte que des dictionnaires "plain" : les Dictionary de Godot
+## marqués en lecture seule (duplicates profondes de Resource) peuvent sinon
+## faire échouer JSON.stringify. On re-crée donc des dicos neufs.
+func _stats_to_plain(stats: Dictionary) -> Dictionary:
+	var out := {}
+	for key in stats:
+		out[str(key)] = float(stats[key])
+	return out
+
+
+func _dict_to_plain(source: Dictionary) -> Dictionary:
+	var out := {}
+	for key in source:
+		out[str(key)] = int(source[key])
+	return out

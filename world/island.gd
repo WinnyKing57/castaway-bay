@@ -15,6 +15,11 @@ var _noise: FastNoiseLite
 var _mesh_instance: MeshInstance3D
 var _generated := false
 
+## Compteurs d'apparition : servent de clés stables pour la sauvegarde de
+## l'état des ressources (repousse, cultures). Réinitialisés à chaque generate().
+var prop_index := 0
+var crop_index := 0
+
 
 func _ready() -> void:
 	generate()
@@ -159,6 +164,35 @@ func _color_for_height(height: float) -> Color:
 
 # --- Végétation --------------------------------------------------------------
 
+## Positionne une carcasse d'animal échoué près de la plage : c'est la seule
+## source de viande (et de tissu) du jeu, donc elle doit exister sur toutes
+## les graines. En dernier recours, on force un point haut pour qu'elle ne
+## trempe pas dans l'eau.
+func _spawn_carcass(rng: RandomNumberGenerator) -> void:
+	var candidates: Array[float] = [1.8, 2.2, 2.6, 3.0, 4.0, 5.0, 6.0, 8.0]
+	for radius in candidates:
+		for step in 12:
+			var angle := step * TAU / 12.0 + rng.randf() * 0.4
+			var x := cos(angle) * radius * 8.0
+			var z := sin(angle) * radius * 8.0
+			var height := get_height_at(x, z)
+			if height >= 0.8 and height < 2.6:
+				var prop := Harvestable.new()
+				prop.kind = "carcasse"
+				prop.save_key = str(prop_index)
+				prop_index += 1
+				prop.position = Vector3(x, height, z)
+				prop.rotation.y = rng.randf() * TAU
+				add_child(prop)
+				return
+	var fallback := find_spawn_point()
+	var prop := Harvestable.new()
+	prop.kind = "carcasse"
+	prop.save_key = str(prop_index)
+	prop.position = Vector3(fallback.x + 6.0, get_height_at(fallback.x + 6.0, fallback.z + 6.0), fallback.z + 6.0)
+	add_child(prop)
+
+
 func _spawn_props() -> void:
 	var scene: PackedScene = load("res://world/harvestable.tscn")
 	if scene == null:
@@ -167,6 +201,11 @@ func _spawn_props() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1234567
+
+	# Index d'apparition = clé de sauvegarde stable (l'ordre de génération ne
+	# dépend que de la graine, il est identique après un regenerate()).
+	prop_index = 0
+	_spawn_carcass(rng)
 
 	var placed := 0
 	var attempts := 0
@@ -196,6 +235,8 @@ func _spawn_props() -> void:
 
 		prop.position = Vector3(x, height, z)
 		prop.rotation.y = rng.randf() * TAU
+		prop.save_key = str(prop_index)
+		prop_index += 1
 		add_child(prop)
 		placed += 1
 
@@ -222,6 +263,7 @@ func _spawn_crops() -> void:
 	var count := 6
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9876543
+	crop_index = 0
 	var placed := 0
 	var attempts := 0
 	while placed < count and attempts < 2000:
@@ -236,5 +278,7 @@ func _spawn_crops() -> void:
 		var crop := Crop.new()
 		crop.item_id = "berry"
 		crop.position = Vector3(x, height, z)
+		crop.set_meta("crop_index", crop_index)
+		crop_index += 1
 		add_child(crop)
 		placed += 1

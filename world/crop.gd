@@ -11,6 +11,26 @@ var progress := 0.0
 var _planted := false
 var _visual: MeshInstance3D
 
+## État sérialisable pour SaveSystem : vide si la parcelle est en jachère,
+## sinon le temps de croissance écoulé en secondes.
+func get_save_state() -> String:
+	if not _planted:
+		return ""
+	return str(progress)
+
+
+func apply_save_state(state: String) -> void:
+	if state.is_empty():
+		return
+	var p := float(state)
+	if p <= 0.0:
+		return
+	_planted = true
+	progress = p
+	if _visual != null:
+		var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0)
+		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth, 1.0)
+
 
 func _ready() -> void:
 	collision_layer = 1
