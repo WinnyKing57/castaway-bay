@@ -143,6 +143,14 @@ Légende : ✅ terminé · 🟡 partiel · ⬜ à faire
 Le binaire produit est autonome (PCK intégré), testable sur toute
 distribution Linux x86_64 récente.
 
+Vérification rapide (sans interface graphique) :
+
+```bash
+./build/linux/castaway-bay.x86_64 --headless -- --smoke-test
+```
+
+Doit afficher : `SMOKE_TEST OK`.
+
 ---
 
 ## Crédits et licence
