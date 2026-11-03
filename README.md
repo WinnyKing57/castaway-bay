@@ -126,7 +126,7 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
 | M3 | Artisanat : interface, recettes, outils | ✅ |
 | M4 | Construction : grille, fondations, murs, feu de camp, fantôme, niveaux | ✅ |
-| M5 | Véhicules : bateau et voiture (physique simple) | ⬜ |
+| M5 | Véhicules : bateau et voiture (physique simple) | 🟡 |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
 | M7 | Finition : réglages, export Linux + page itch.io | 🟡 |
 
@@ -152,6 +152,9 @@ Vérification rapide (sans interface graphique) :
 ```
 
 Doit afficher : `SMOKE_TEST OK`.
+
+Côté projet, `./run.sh --test` passe aussi : `SMOKE_TEST OK`, 0 erreur
+(validé en local et sur le device).
 
 ---
 

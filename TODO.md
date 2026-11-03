@@ -7,13 +7,12 @@
 - [x] Menu principal / pause / réglages
 - [x] Nage, sons synthétisés, export templates
 - [x] Maison, matériaux (plank/brick/rope), ferme (seed), nouveaux buildables
+- [x] Tests finaux : `./run.sh --test` propre (0 erreur, SMOKE_TEST OK)
+- [x] Véhicule : bateau sur l'eau (spawn + enter/exit, `Boat`)
 
 ## À faire (par ordre de priorité)
-- [ ] **Tests finaux** : valider `./run.sh --test` propre (+ rendu visuel)
-- [ ] **Finition M7** : réglages son, menus avancés, export Linux `x86_64`
-- [ ] **Grottes / biomes** (M1 suite) : nouvelle zone avec loots spécifiques
-- [ ] **Véhicule** : bateau sur l'eau (physique simple, transport ressources)
-- [ ] **Cave / éclairage** : exploration souterraine avec torches
+- [ ] **Finition M7** : réglages son, menus avancés, export Linux `x86_64` (binaire exporté en place)
+- [ ] **Grottes / biomes** (M1 suite) : nouvelle zone avec loots spécifiques (éclairage torche déjà dispo)
 - [ ] **Farming avancé** : semis manuels, croissance visuelle
 - [ ] **PNJ / commerce / réputation** (M6)
 - [ ] **Finition page / distribution** : itch.io, build autonome
