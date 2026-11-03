@@ -220,8 +220,9 @@ func _touches_existing_structure(cell: Vector2i) -> bool:
 	if _world == null:
 		# Hors scène jouable (tests unitaires pur script) : on n'ancre pas.
 		return true
-	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var c := cell + offset
+	var offsets: Array[Vector2i] = [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	for offset in offsets:
+		var c: Vector2i = cell + offset
 		if _world.get_height_at(float(c.x) + 0.5, float(c.y) + 0.5) > Island.SEA_LEVEL + 0.1:
 			return true
 	for obj in _objects:

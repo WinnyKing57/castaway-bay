@@ -87,12 +87,14 @@ func get_interaction_prompt() -> String:
 
 
 ## Répare la coque : consomme 1 métal dans l'inventaire du joueur.
-func repair() -> void:
+func repair(player: Node = null) -> bool:
 	if not broken:
-		return
+		return false
 	if GameState.remove_item(METAL_ITEM_ID, 1):
 		broken = false
 		fuel = FUEL_MAX
 		GameState.notify("Bateau réparé ! Prêt à appareiller.")
+		return true
 	else:
 		GameState.notify("Réparation impossible : il faut 1 morceau de métal.")
+		return false
