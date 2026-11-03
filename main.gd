@@ -16,7 +16,7 @@ extends Node3D
 func _ready() -> void:
 	player.global_position = world.find_spawn_point()
 	hud.setup(player)
-	construction.setup(player, hud)
+	construction.setup(player, hud, world)
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
