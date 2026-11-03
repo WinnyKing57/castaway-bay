@@ -28,6 +28,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _craft_recipe == null:
 		return
+	# Un craft ne se poursuit ni pendant la pause, ni après la mort du joueur :
+	# les ressources déjà consommées sont perdues si le panneau est fermé
+	# (close()) — mais jamais fabriquées "dans l'autre monde".
+	if get_tree().paused or GameState.is_dead:
+		return
 	_craft_left -= delta
 	if _craft_left > 0.0:
 		status_label.text = "Fabrication de %s… %.1f s" % [_craft_recipe.display_name, _craft_left]
@@ -56,6 +61,12 @@ func open() -> void:
 func close() -> void:
 	if not visible:
 		return
+	# Une fabrication interrompue par la fermeture du panneau rembourse les
+	# ressources consommées au départ (pas de perte punitive).
+	if _craft_recipe != null and _craft_left > 0.0:
+		for item_id in _craft_recipe.inputs:
+			GameState.add_item(str(item_id), int(_craft_recipe.inputs[item_id]))
+		GameState.notify("Fabrication annulée — ressources rendues")
 	_craft_recipe = null
 	_craft_left = 0.0
 	visible = false
