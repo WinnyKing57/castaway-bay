@@ -7,11 +7,15 @@ extends StaticBody3D
 ## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
 ## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile", "carcasse") var kind: String = "arbre"
 
 ## Temps de repousse : une ressource récoltée redevient disponible après
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
 const REGROW_SECONDS := 120.0
+
+## Identifiant stable (index d'apparition) : sert de clé de sauvegarde pour
+## mémoriser l'état de repousse d'une ressource précise entre deux sessions.
+var save_key := ""
 
 var _loot: Dictionary = {}
 var _depleted := false
@@ -42,9 +46,46 @@ func _ready() -> void:
 		"argile":
 			_loot = {"clay": 3}
 			_build_clay()
+		"carcasse":
+			# Épave échouée sur la plage : unique source de viande dans le jeu.
+			_loot = {"meat": 2, "cloth": 1}
+			_build_carcass()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
+
+
+## État sérialisable : vide si la ressource est pleine, sinon le temps
+## restant en secondes-monde. Utilisé par SaveSystem pour persister l'île.
+func get_save_state() -> String:
+	if not _depleted:
+		return ""
+	return str(_regrow_left)
+
+
+func apply_save_state(state: String) -> void:
+	if state.is_empty():
+		return
+	var left := float(state)
+	if left <= 0.0:
+		return
+	_depleted = true
+	_regrow_left = left
+	visible = false
+	collision_layer = 0
+
+
+## Régénère une ressource depuis son état sauvegardé (après regenerate()).
+## La repousse se poursuit ensuite normalement via _process().
+static func restore(parent: Node, kind: String, key: String, position: Vector3, rotation_y: float, state: String) -> Harvestable:
+	var node := Harvestable.new()
+	node.kind = kind
+	node.save_key = key
+	node.position = position
+	node.rotation.y = rotation_y
+	parent.add_child(node)
+	node.apply_save_state(state)
+	return node
 
 
 func get_interaction_prompt() -> String:
@@ -68,7 +109,12 @@ func interact(_player: Node) -> void:
 func _process(delta: float) -> void:
 	if not _depleted:
 		return
-	_regrow_left -= delta
+	# La repousse suit l'horloge du jeu : GameState._process tourne même quand
+	# la partie est en pause (menus) ou après la mort, contrairement aux
+	# nodes du monde. On avance donc la repousse depuis le meme rythme que
+	# world_time, et on peut la persister en secondes-monde.
+	var elapsed := delta * (GameState.SECONDS_PER_DAY / GameState.DAY_LENGTH_SECONDS)
+	_regrow_left -= elapsed
 	if _regrow_left <= 0.0:
 		_regrow()
 
@@ -199,6 +245,32 @@ func _build_clay() -> void:
 	patch.material_override = _make_material(Color(0.6, 0.55, 0.45))
 	add_child(patch)
 	_add_box_collision(Vector3(1.6, 0.5, 1.6), Vector3(0.0, 0.25, 0.0))
+
+
+## Épave échouée : bloc allongé brun-rouge + mât cassé. Source unique de viande.
+func _build_carcass() -> void:
+	var body := MeshInstance3D.new()
+	var body_mesh := BoxMesh.new()
+	body_mesh.size = Vector3(2.4, 0.7, 1.1)
+	body.mesh = body_mesh
+	body.position.y = 0.35
+	body.rotation.y = randf() * TAU
+	body.material_override = _make_material(Color(0.55, 0.32, 0.28))
+	add_child(body)
+
+	var mast := MeshInstance3D.new()
+	var mast_mesh := CylinderMesh.new()
+	mast_mesh.top_radius = 0.05
+	mast_mesh.bottom_radius = 0.1
+	mast_mesh.height = 1.2
+	mast_mesh.radial_segments = 6
+	mast.mesh = mast_mesh
+	mast.position = Vector3(0.6, 0.9, 0.0)
+	mast.rotation.z = 0.5
+	mast.material_override = _make_material(Color(0.36, 0.24, 0.15))
+	add_child(mast)
+
+	_add_box_collision(Vector3(2.4, 1.0, 1.2), Vector3(0.0, 0.5, 0.0))
 
 
 func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:

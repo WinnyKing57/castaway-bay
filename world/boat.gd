@@ -12,8 +12,10 @@ const FUEL_PER_ITEM := 30.0
 const FUEL_ITEM_ID := "fuel"
 const METAL_ITEM_ID := "metal"
 
+## État de réparation : true = coque percée (immobile), false = réparé.
+var broken := true
 var fuel := FUEL_MAX
-var metal := 0
+var _fuel_warning_shown := false
 var _controlled := false
 var _player: Node3D = null
 
@@ -30,7 +32,7 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if not _controlled:
+	if not _controlled or broken:
 		velocity = Vector3.ZERO
 		return
 	if global_position.y > 0.0:
@@ -48,11 +50,13 @@ func _physics_process(_delta: float) -> void:
 		velocity = Vector3.ZERO
 	move_and_slide()
 	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).velocity = velocity
+		# Le joueur voyage avec le bateau : on le déplace et on le garde
+		# au-dessus de l'eau tant qu'il est à bord.
+		_player.global_position = global_position + Vector3(0.0, 1.2, 0.0)
 
 
 func interact(player: Node) -> void:
-	if not _controlled and fuel <= 0.0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
+	if broken:
 		repair()
 		return
 	_controlled = not _controlled
@@ -67,22 +71,28 @@ func interact(player: Node) -> void:
 		GameState.notify("Bateau : carburant insuffisant")
 		return
 	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).enter_boat()
+		(_player as CharacterBody3D).enter_boat(self)
 
 
 func get_interaction_prompt() -> String:
+	if broken:
+		return "Réparer le bateau (1 métal)"
 	if not _controlled:
-		if fuel <= 0.0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
-			return "Réparer le bateau"
+		if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) <= 0:
+			return "Bateau : pas de carburant"
 		return "Monter à bord"
 	if fuel <= 0.0:
-		return "Pas de carburant"
+		return "Descendre (plus de carburant)"
 	return "Descendre"
 
 
+## Répare la coque : consomme 1 métal dans l'inventaire du joueur.
 func repair() -> void:
-	if metal > 0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
-		GameState.remove_item(METAL_ITEM_ID, 1)
-		metal -= 1
+	if not broken:
+		return
+	if GameState.remove_item(METAL_ITEM_ID, 1):
+		broken = false
 		fuel = FUEL_MAX
-		GameState.notify("Bateau réparé")
+		GameState.notify("Bateau réparé ! Prêt à appareiller.")
+	else:
+		GameState.notify("Réparation impossible : il faut 1 morceau de métal.")

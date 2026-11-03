@@ -57,10 +57,14 @@ func _process(delta: float) -> void:
 		# Récupération lente quand on est rassasié et hydraté.
 		stats.health = minf(100.0, stats.health + delta * 0.6)
 
-	# Fatigue : baisse avec l'activité, se restaure au repos.
+	# Fatigue : baisse avec l'activité, se restaure quand le joueur est nourri
+	# et hydraté (récupération doublée la nuit). Jamais bloquée à 100 : sans
+	# cette correction, un respawn à 60 de fatigue menait à la mort inévitable.
 	stats.fatigue = maxf(0.0, stats.fatigue - delta * 0.015)
-	if stats.fatigue >= 100.0 and stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0:
-		stats.fatigue = minf(100.0, stats.fatigue + delta * 0.05)
+	var is_night := world_time < 6.0 * 3600.0 or world_time >= 20.0 * 3600.0
+	if stats.fatigue < 100.0 and stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0:
+		var regen_rate := 0.05 if is_night else 0.02
+		stats.fatigue = minf(100.0, stats.fatigue + delta * regen_rate)
 
 	if stats.fatigue <= 0.0:
 		stats.health = maxf(0.0, stats.health - delta * 0.5)

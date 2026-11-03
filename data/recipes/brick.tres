@@ -7,7 +7,5 @@ script = ExtResource("1_recipe")
 id = "brick"
 display_name = "Brique"
 description = "2 bois + 1 pierre -> 2 briques."
-category = "artisanal"
 inputs = {"wood": 2, "stone": 1}
 outputs = {"brick": 2}
-time_limit_multiplier := 0.6

@@ -46,7 +46,16 @@ func setup(player: Player, hud: Hud) -> void:
 
 
 func toggle() -> void:
-	active = not active
+	set_active(not active)
+
+
+## Active ou désactive le mode construction. Idempotent : contrairement à
+## toggle(), un appel redondant ne peut pas réactiver la construction (par
+## exemple après une mort, quand main.gd ferme déjà le mode).
+func set_active(value: bool) -> void:
+	if active == value:
+		return
+	active = value
 	if active:
 		_ensure_ghost()
 		_update_build_info()
@@ -65,7 +74,10 @@ func is_active() -> bool:
 
 
 func _process(_delta: float) -> void:
-	if not active or _ghost == null:
+	# Le mode construction se fige si le jeu est en pause ou le joueur mort :
+	# sans ce garde-fou, on pouvait poser des bâtiments via la souris pendant
+	# les menus (process_mode permet à cette boucle de tourner en pause).
+	if not active or _ghost == null or GameState.is_dead or get_tree().paused:
 		return
 
 	var hit := _raycast()
@@ -86,7 +98,7 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not active:
+	if not active or GameState.is_dead or get_tree().paused:
 		return
 
 	if event.is_action_pressed("rotate_build"):
@@ -177,8 +189,6 @@ func _place() -> void:
 		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_occupied[_cell_key(data.kind, cell, level, _rotation_steps)] = true
-	if data.kind == "campfire" or data.kind == "furnace":
-		GameState.craft_station = "campfire" if data.kind == "campfire" else "furnace"
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
