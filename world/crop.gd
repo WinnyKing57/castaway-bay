@@ -37,6 +37,12 @@ func apply_save_state(state: String) -> void:
 	if _visual != null:
 		var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0)
 		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth, 1.0)
+		var mat := _visual.material_override as StandardMaterial3D
+		if mat != null:
+			if growth >= 1.0:
+				mat.albedo_color = Color(0.85, 0.25, 0.3)
+			else:
+				mat.albedo_color = Color(0.2 + 0.3 * growth, 0.55 + 0.2 * growth, 0.2)
 
 
 func _ready() -> void:
@@ -76,10 +82,12 @@ func interact(_player: Node) -> void:
 		return
 	if progress < GROWTH_SECONDS:
 		return
-	GameState.add_item(item_id, 1)
+	GameState.add_item(item_id, 2)
+	# Rendement pérenne : une récolte mature fournit aussi des graines
+	GameState.add_item(SEED_ITEM_ID, 1)
 	_planted = false
 	progress = 0.0
-	GameState.notify("Récolte")
+	GameState.notify("Récolte (+2 %s, +1 %s)" % [GameState.display_name(item_id), GameState.display_name(SEED_ITEM_ID)])
 
 
 func _make_material(color: Color) -> StandardMaterial3D:

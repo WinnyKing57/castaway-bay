@@ -4,24 +4,33 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 à M4 terminés**, M1 partiel (nage, sons synthétisés) —
+> État actuel : **M0 à M5 terminés**, M7 export et réglages validés —
 > île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
-> artisanat, construction et sauvegarde.
+> artisanat avancé, construction modulaire à étages, véhicule marin fonctionnel,
+> menu complet de réglages et sauvegarde persistante.
 
 ---
 
 ## Boucle de jeu
 
-1. **Récolter** : arbres (bois), palmiers (bois + noix de coco), rochers
-   (pierre), buissons (fibres, parfois baies).
-2. **Survivre** : la faim et la soif baissent en permanence. Mange et bois
-   avec la barre rapide (**1-4** puis **F**).
-3. **Fabriquer** : **C** ouvre l'artisanat (torche, hache en pierre).
-   La hache double le bois récolté.
-4. **Construire** : **B** active le mode construction (fondation, mur,
-   feu de camp). Clic gauche pose, **R** tourne, molette change d'élément.
-5. **Sauvegarder** : **F9** / **F10**. La graine de l'île et les
-   constructions sont conservées.
+1. **Récolter & Explorer** : arbres (bois), palmiers (bois + noix de coco), rochers
+   (pierre), buissons (fibres, baies), affleurements de fer (métal), gisements côtiers
+   (argile), parcelles sauvages (graines) et épaves échouées (viande + tissu).
+2. **Survivre & Cultiver** : la faim, la soif et la fatigue évoluent constamment. Mangez
+   et buvez avec la barre rapide (**1-4** puis **F**). Maintenez vos jauges au-dessus
+   de 60 pour régénérer la fatigue. Plantez des graines sur les parcelles agricoles pour
+   produire de la nourriture (la culture grandit, vire au rouge à maturité et produit à la
+   fois 2 récoltes et 1 graine pour pérenniser vos plantations).
+3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (outils comme la hache en pierre
+   qui double le rendement du bois, torches, planches, cordes, briques cuites, composants
+   électroniques et carburant).
+4. **Construire son abri** : **B** active le mode construction (fondations, murs, portes,
+   fenêtres, toits, coffres, feux de camp, tentes, lits, fours et générateurs).
+   Clic gauche pose, **R** fait pivoter, la molette change d'élément.
+5. **Naviguer** : repérez le bateau échoué au large, réparez sa coque avec du métal, faites le plein
+   de carburant et naviguez pour explorer les pourtours de l'océan.
+6. **Sauvegarder & Reprendre** : **F9** / **F10** ou via le menu pause. La graine de l'île,
+   l'inventaire, les constructions et l'état de repousse des ressources sont intégralement conservés.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
@@ -85,8 +94,35 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 | Clic gauche | poser l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
-| Échap | pause (reprendre, sauvegarder, menu principal) |
+| Échap | pause (reprendre, sauvegarder, réglages, menu principal) |
 | Espace | réapparaître après la mort |
+
+---
+
+## Règles de construction avancées
+
+Le système de construction modulaire suit des règles physiques et structurelles réalistes :
+
+1. **Ancrage au sol et contiguïté** :
+   - Une première pièce au sol (niveau 0) doit obligatoirement être ancrée sur la terre ferme (hors des abysses marins).
+   - Les fondations et structures suivantes peuvent s'étendre au-dessus de l'eau à condition d'être adjacentes à un élément déjà posé.
+2. **Gestion des étages & Support vertical** :
+   - La hauteur d'élévation se règle par paliers (**PgUp / PgDn**).
+   - Pour poser un élément en hauteur (étage ≥ 1), la cellule doit impérativement posséder une fondation ou un support au niveau inférieur. Il est impossible de construire dans le vide.
+3. **Alignement et verrouillage d'altitude** :
+   - En approchant une structure existante, le fantôme de prévisualisation s'aligne automatiquement sur le niveau de la pièce voisine.
+   - La touche **V** permet de verrouiller l'altitude actuelle pour bâtir des passerelles ou des plateformes parfaitement planes sur un terrain vallonné.
+4. **Catalogue d'éléments** :
+   - Fondations, murs, portes, fenêtres, toits, tentes, feux de camp, coffres, fours, lits et générateurs électriques.
+
+---
+
+## Réglages & Options de triche (Mode créatif)
+
+Accessible depuis le menu pause ou l'écran principal (**Échap ▸ Réglages**) :
+- **Audio & Sensibilité** : curseurs de volume global et sensibilité de la souris avec application immédiate et persistance indépendante (`user://settings.cfg`).
+- **Affichage** : bascule plein écran / fenêtré.
+- **Mode créatif (Ressources infinies)** : option de triche intégrée permettant de fabriquer et construire sans consommer de composants de l'inventaire. L'option peut être activée ou désactivée à tout moment sans corrompre la sauvegarde du jeu.
 
 ---
 
@@ -126,9 +162,9 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
 | M3 | Artisanat : interface, recettes, outils | ✅ |
 | M4 | Construction : grille, fondations, murs, feu de camp, fantôme, niveaux | ✅ |
-| M5 | Véhicules : bateau et voiture (physique simple) | 🟡 |
+| M5 | Véhicules : bateau sur l'eau (réparation, carburant, locomotion) | ✅ |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
-| M7 | Finition : réglages, export Linux + page itch.io | 🟡 |
+| M7 | Finition : réglages son/souris/vidéo/cheat, export autonome Linux validé | ✅ |
 
 Le détail des idées non planifiées est dans [`IDEAS.md`](IDEAS.md).
 
