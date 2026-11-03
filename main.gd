@@ -366,6 +366,59 @@ func _run_smoke_test() -> void:
 	if crafting_panel.is_open():
 		errors.append("panneau d'artisanat non fermé")
 
+	# Récupération de fatigue : avec faim/soif au-dessus du seuil (>60), la
+	# jauge doit remonter (correction du respawn qui menait à une mort lente).
+	GameState.stats.hunger = 90.0
+	GameState.stats.thirst = 90.0
+	GameState.stats.fatigue = 50.0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if GameState.stats.fatigue <= 50.0:
+		errors.append("regain fatigue KO")
+
+	# Réparation du bateau : il faut du métal, la coque doit se réparer,
+	# et le métal doit être consommé.
+	var boat: Boat = null
+	for child in world.get_children():
+		if child is Boat:
+			boat = child
+			break
+	if boat == null:
+		errors.append("bateau absent de l'ile")
+	else:
+		boat.broken = true
+		GameState.inventory.clear()
+		if boat.repair(player):
+			errors.append("reparation acceptee sans metal")
+		GameState.add_item("metal", 1)
+		if not boat.repair(player):
+			errors.append("reparation KO avec metal")
+		if boat.broken:
+			errors.append("coque toujours cassee apres reparation")
+		if GameState.get_item_count("metal") != 0:
+			errors.append("metal non consomme par la reparation")
+
+	# Sources d'items : chaque item de Database doit avoir une source
+	# (drop de récolte ou sortie de recette) — invariant "pas d'item orphelin".
+	var sources := {}
+	for h in world.get_children():
+		if h is Harvestable:
+			for loot_id in h._loot:
+				sources[str(loot_id)] = true
+	for recipe_id in Database.recipes:
+		var r: RecipeData = Database.recipes[recipe_id]
+		for out_id in r.outputs:
+			sources[str(out_id)] = true
+	for crop in world.get_children():
+		if crop is Crop:
+			sources[crop.item_id] = true
+	var orphans: PackedStringArray = []
+	for item_id in Database.items:
+		if not sources.has(str(item_id)):
+			orphans.append(str(item_id))
+	if not orphans.is_empty():
+		errors.append("items sans source : %s" % ", ".join(orphans))
+
 	# Mort et renaissance
 	GameState.stats.health = 0.0
 	await get_tree().process_frame
@@ -394,6 +447,34 @@ func _run_smoke_test() -> void:
 		GameState.add_item("wood", 10)
 		if not GameState.consume_items(foundation_data.costs):
 			errors.append("coût de construction KO")
+	# Règles d'ancrage : une fondation isolée au-dessus de l'eau profonde est
+	# refusée ("pas en plein milieu"), une fondation contiguë du terrain sec est
+	# acceptée, et un étage sans base au niveau inférieur est refusé.
+	for i in construction._catalog.size():
+		if str(construction._catalog[i].id) == "foundation":
+			construction._selected = i
+			break
+	var deep_cell := Vector2i(-90, -90)
+	if world.get_height_at(float(deep_cell.x) + 0.5, float(deep_cell.y) + 0.5) < Island.SEA_LEVEL:
+		if construction._touches_existing_structure(deep_cell):
+			errors.append("ancrage KO : structure acceptée en pleine mer")
+	var spawn_cell := Vector2i(floori(world.find_spawn_point().x), floori(world.find_spawn_point().z))
+	if not construction._touches_existing_structure(spawn_cell):
+		errors.append("ancrage KO : terrain sec près du spawn refusé")
+	if construction._has_ground_support(Vector2i(50, 50), 1):
+		errors.append("support KO : étage accepté sans base")
+
+	# Mode créatif (cheat réglages) : has_items/consume_items ignorent les coûts.
+	Settings.infinite_resources = true
+	var wood_cheat_before := GameState.get_item_count("wood")
+	if not GameState.has_items({"wood": 9999}):
+		errors.append("mode créatif KO : has_items refuse")
+	if not GameState.consume_items({"wood": 9999}) or GameState.get_item_count("wood") != wood_cheat_before:
+		errors.append("mode créatif KO : inventaire modifié")
+	Settings.infinite_resources = false
+	if GameState.has_items({"wood": 9999}):
+		errors.append("mode créatif KO : cheat encore actif après extinction")
+
 	var placed := construction.place_free("foundation", "foundation", Vector3(3.5, 0.0, 3.5), 0.0)
 	if placed == null:
 		errors.append("pose de construction KO")
@@ -472,6 +553,23 @@ func _run_smoke_test() -> void:
 		errors.append("inventaire non restauré")
 	if construction.to_save_data().size() != expected_buildings:
 		errors.append("constructions non restaurées")
+
+	# Persistance du monde : une ressource récoltée doit rester en repousse
+	# après sauvegarde/rechargement (clé = save_key ou index d'apparition).
+	if test_tree != null:
+		test_tree.interact(player)
+		if not test_tree.get_save_state().is_empty():
+			SaveSystem.save_game(player, world, construction)
+			test_tree.visible = true
+			if SaveSystem.load_game_into(player, world, construction):
+				var still_depleted := false
+				for child in world.get_children():
+					if child is Harvestable and str(child.save_key) == str(test_tree.save_key) \
+							and not child.get_save_state().is_empty():
+						still_depleted = true
+						break
+				if not still_depleted:
+					errors.append("repousse non persistee apres chargement")
 
 	# Hotbar : chaque case sélectionnable doit avoir une action InputMap.
 	for index in GameState.hotbar_items.size():

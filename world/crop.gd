@@ -15,14 +15,21 @@ var _visual: MeshInstance3D
 ## sinon le temps de croissance écoulé en secondes.
 func get_save_state() -> String:
 	if not _planted:
-		return ""
-	return str(progress)
+		return "E"
+	return "P" + str(progress)
 
 
 func apply_save_state(state: String) -> void:
 	if state.is_empty():
 		return
-	var p := float(state)
+	if state == "E":
+		# Jachère sauvegardée (parcelle récoltée avant la sauvegarde).
+		_planted = false
+		progress = 0.0
+		if _visual != null:
+			_visual.scale = Vector3(1.0, 0.2, 1.0)
+		return
+	var p := float(state.substr(1)) if state.begins_with("P") else float(state)
 	if p <= 0.0:
 		return
 	_planted = true

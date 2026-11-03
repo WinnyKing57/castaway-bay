@@ -145,6 +145,20 @@ func _cycle(direction: int) -> void:
 	_update_build_info()
 
 
+## Version publique de la vérification de cellule (utilisée par le smoke
+## test et les outils de debug). `ignore_costs` court-circuite l'inventaire
+## pour ne tester que les collisions/doublons.
+func can_place_at(cell: Vector2i, level: int = 0, rotation: int = 0, ignore_costs: bool = false) -> bool:
+	if ignore_costs:
+		return not _occupied.has(_cell_key(_selected_kind(), cell, level, rotation))
+	return _can_place(cell, level, rotation)
+
+
+func _selected_kind() -> String:
+	var data := _selected_data()
+	return data.kind if data != null else "foundation"
+
+
 func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 	var data := _selected_data()
 	if data == null:
