@@ -84,7 +84,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("save_game"):
-		if SaveSystem.save_game(player, construction):
+		if SaveSystem.save_game(player, world, construction):
 			GameState.notify("Partie sauvegardée")
 		else:
 			GameState.notify("Échec de la sauvegarde")
@@ -154,7 +154,7 @@ func _on_menu_resume() -> void:
 
 
 func _on_menu_save() -> void:
-	if SaveSystem.save_game(player, construction):
+	if SaveSystem.save_game(player, world, construction):
 		GameState.notify("Partie sauvegardée")
 	else:
 		GameState.notify("Échec de la sauvegarde")
@@ -448,7 +448,7 @@ func _run_smoke_test() -> void:
 		errors.append("mode construction non désactivé")
 
 	# Sauvegarde robuste : un fichier corrompu doit être rejeté sans erreur de script.
-	if not SaveSystem.save_game(player, construction):
+	if not SaveSystem.save_game(player, world, construction):
 		errors.append("écriture de sauvegarde KO")
 	var corrupt_file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
 	if corrupt_file == null:
@@ -462,7 +462,7 @@ func _run_smoke_test() -> void:
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
 	var expected_buildings := construction.to_save_data().size()
-	if not SaveSystem.save_game(player, construction):
+	if not SaveSystem.save_game(player, world, construction):
 		errors.append("écriture de sauvegarde KO")
 	GameState.inventory.clear()
 	construction.clear_all()

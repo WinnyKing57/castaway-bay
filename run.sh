@@ -28,7 +28,7 @@ case "${1:-}" in
     exec $GODOT_BIN --headless --path . -- --smoke-test
     ;;
   --overview)
-    exec $GODOT_BIN --path .
+    exec $GODOT_BIN --path . -- --overview
     ;;
   *)
     exec $GODOT_BIN --editor --path .

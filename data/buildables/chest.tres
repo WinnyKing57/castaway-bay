@@ -6,5 +6,5 @@ id = "chest"
 display_name = "Coffre"
 description = "Coffre de stockage en planches."
 kind = "chest"
-costs = {"wood": 5, "fiber": 3}
+costs = {"wood": 5, "cloth": 2}
 grid_size = 1
