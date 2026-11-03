@@ -173,8 +173,8 @@ func _spawn_carcass(rng: RandomNumberGenerator) -> void:
 	for radius in candidates:
 		for step in 12:
 			var angle := step * TAU / 12.0 + rng.randf() * 0.4
-			var x := cos(angle) * radius * 8.0
-			var z := sin(angle) * radius * 8.0
+			var x: float = cos(angle) * radius * 8.0
+			var z: float = sin(angle) * radius * 8.0
 			var height := get_height_at(x, z)
 			if height >= 0.8 and height < 2.6:
 				var prop := Harvestable.new()
@@ -252,8 +252,8 @@ func _spawn_boat() -> void:
 	for radius in [40.0, 50.0, 60.0, 70.0, 80.0, 95.0]:
 		for step in 16:
 			var angle := step * TAU / 16.0
-			var x := cos(angle) * radius
-			var z := sin(angle) * radius
+			var x: float = cos(angle) * radius
+			var z: float = sin(angle) * radius
 			if get_height_at(x, z) < SEA_LEVEL - 1.0:
 				boat.global_position = Vector3(x, SEA_LEVEL - 0.8, z)
 				return

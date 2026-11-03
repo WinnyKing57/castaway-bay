@@ -10,6 +10,7 @@ description = "Un générateur qui alimente les constructions et l'éclairage."
 kind = "generator"
 costs = {
 "wood": 4,
-"stone": 2
+"stone": 2,
+"electronics": 1
 }
 grid_size = 1
