@@ -37,6 +37,7 @@ var _controls_enabled := true
 var _torch_light: OmniLight3D
 var _swimming := false
 var _step_timer := 0.0
+var _in_boat := false
 
 
 func _ready() -> void:
@@ -87,6 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _in_boat:
+		return
 	var was_swimming := _swimming
 	# Hystérésis : on entre dans l'eau plus profond qu'on n'en sort.
 	var depth := WATER_LEVEL - global_position.y
@@ -129,6 +132,14 @@ func _physics_process(delta: float) -> void:
 
 
 ## Vrai quand le joueur nage (l'eau lui arrive au-dessus de la taille).
+func enter_boat() -> void:
+	_in_boat = true
+
+
+func exit_boat() -> void:
+	_in_boat = false
+
+
 func is_swimming() -> bool:
 	return _swimming
 

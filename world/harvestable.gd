@@ -7,7 +7,7 @@ extends StaticBody3D
 ## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
 ## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "palmier", "rocher", "buisson") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile") var kind: String = "arbre"
 
 ## Temps de repousse : une ressource récoltée redevient disponible après
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
@@ -36,6 +36,12 @@ func _ready() -> void:
 		"seed":
 			_loot = {"seed": 2}
 			_build_seed()
+		"fer":
+			_loot = {"metal": 2}
+			_build_metal()
+		"argile":
+			_loot = {"clay": 3}
+			_build_clay()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
@@ -168,6 +174,31 @@ func _build_bush() -> void:
 	add_child(bush)
 
 	_add_box_collision(Vector3(1.5, 0.9, 1.4), Vector3(0.0, 0.45, 0.0))
+
+
+func _build_metal() -> void:
+	var rock := MeshInstance3D.new()
+	var rock_mesh := SphereMesh.new()
+	rock_mesh.radius = 0.7
+	rock_mesh.height = 1.4
+	rock_mesh.radial_segments = 7
+	rock_mesh.rings = 3
+	rock.mesh = rock_mesh
+	rock.position.y = 0.5
+	rock.material_override = _make_material(Color(0.4, 0.38, 0.36))
+	add_child(rock)
+	_add_box_collision(Vector3(1.4, 1.0, 1.4), Vector3(0.0, 0.5, 0.0))
+
+
+func _build_clay() -> void:
+	var patch := MeshInstance3D.new()
+	var patch_mesh := BoxMesh.new()
+	patch_mesh.size = Vector3(1.6, 0.5, 1.6)
+	patch.mesh = patch_mesh
+	patch.position.y = 0.25
+	patch.material_override = _make_material(Color(0.6, 0.55, 0.45))
+	add_child(patch)
+	_add_box_collision(Vector3(1.6, 0.5, 1.6), Vector3(0.0, 0.25, 0.0))
 
 
 func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:

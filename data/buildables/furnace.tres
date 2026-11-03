@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "furnace"
+display_name = "Four"
+description = "Un four de cuisson et de fusion."
+kind = "furnace"
+costs = {
+"stone": 8,
+"wood": 6
+}
+grid_size = 1

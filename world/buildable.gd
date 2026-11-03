@@ -61,6 +61,14 @@ func _build_visuals() -> void:
 			_build_chest()
 		"campfire":
 			_build_campfire()
+		"furnace":
+			_build_furnace()
+		"tent":
+			_build_tent()
+		"bed":
+			_build_bed()
+		"generator":
+			_build_generator()
 		_:
 			_build_foundation()
 
@@ -144,6 +152,71 @@ func _build_campfire() -> void:
 	add_child(light)
 
 	_add_collision_box(Vector3(1.0, 0.6, 1.0), Vector3(0.0, 0.3, 0.0))
+
+
+func _build_furnace() -> void:
+	_add_box(Vector3(1.1, 2.2, 0.9), Vector3(0.0, 1.1, 0.0), Color(0.5, 0.48, 0.45))
+	var chimney := MeshInstance3D.new()
+	var chimney_mesh := BoxMesh.new()
+	chimney_mesh.size = Vector3(0.25, 1.6, 0.25)
+	chimney.mesh = chimney_mesh
+	chimney.position = Vector3(0.3, 2.9, 0.0)
+	chimney.material_override = _make_material(Color(0.55, 0.5, 0.42))
+	add_child(chimney)
+	var glow := MeshInstance3D.new()
+	var glow_mesh := SphereMesh.new()
+	glow_mesh.radius = 0.22
+	glow_mesh.height = 0.5
+	glow_mesh.radial_segments = 6
+	glow_mesh.rings = 3
+	glow.mesh = glow_mesh
+	glow.position = Vector3(0.3, 3.4, 0.0)
+	var glow_material := StandardMaterial3D.new()
+	glow_material.albedo_color = Color(1.0, 0.75, 0.45)
+	glow_material.emission_enabled = true
+	glow_material.emission = Color(1.0, 0.6, 0.25)
+	glow_material.emission_energy_multiplier = 4.0
+	glow.material_override = glow_material
+	add_child(glow)
+	_add_collision_box(Vector3(1.1, 2.2, 0.9), Vector3(0.0, 1.1, 0.0))
+
+
+func _build_tent() -> void:
+	var canvas := MeshInstance3D.new()
+	var prism := PrismMesh.new()
+	prism.size = Vector3(2.0, 1.0, 1.6)
+	canvas.mesh = prism
+	canvas.position = Vector3(0.0, 0.9, 0.0)
+	canvas.rotation = Vector3(deg_to_rad(45.0), 0.0, 0.0)
+	canvas.material_override = _make_material(Color(0.6, 0.45, 0.3))
+	add_child(canvas)
+	_add_collision_box(Vector3(2.0, 1.0, 1.6), Vector3(0.0, 0.5, 0.0))
+
+
+func _build_bed() -> void:
+	_add_box(Vector3(1.8, 0.35, 0.6), Vector3(0.0, 0.35, 0.0), Color(0.42, 0.3, 0.2))
+	_add_box(Vector3(1.7, 0.25, 0.5), Vector3(0.0, 0.7, 0.0), Color(0.75, 0.68, 0.58))
+
+
+func _build_generator() -> void:
+	_add_box(Vector3(1.0, 1.0, 0.8), Vector3(0.0, 0.5, 0.0), Color(0.45, 0.44, 0.42))
+	var pole := MeshInstance3D.new()
+	var pole_mesh := CylinderMesh.new()
+	pole_mesh.top_radius = 0.06
+	pole_mesh.bottom_radius = 0.06
+	pole_mesh.height = 2.2
+	pole_mesh.radial_segments = 6
+	pole.mesh = pole_mesh
+	pole.position = Vector3(0.4, 1.1, 0.0)
+	pole.material_override = _make_material(Color(0.35, 0.34, 0.32))
+	add_child(pole)
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.9, 0.7)
+	light.light_energy = 2.0
+	light.omni_range = 6.0
+	light.position = Vector3(0.0, 1.2, 0.0)
+	add_child(light)
+	_add_collision_box(Vector3(1.0, 1.0, 0.8), Vector3(0.0, 0.5, 0.0))
 
 
 func _add_box(size: Vector3, offset: Vector3, color: Color) -> void:

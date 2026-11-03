@@ -43,6 +43,9 @@ func _ready() -> void:
 	_streams["death"] = _make_death()
 	_streams["ui"] = _make_ui()
 
+	# Applique le volume général (réglages persistants) dès le démarrage.
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(Settings.master_volume, 0.0001)))
+
 
 func get_stream(sound: String) -> AudioStream:
 	return _streams.get(sound)
