@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "tent"
+display_name = "Tente"
+description = "Une tente de fortune pour se protéger de la nuit."
+kind = "tent"
+costs = {
+"wood": 8,
+"fiber": 4
+}
+grid_size = 1

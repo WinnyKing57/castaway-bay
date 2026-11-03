@@ -345,8 +345,16 @@ func _run_smoke_test() -> void:
 	var ui_button: Button = null
 	for child in crafting_panel.recipes_box.get_children():
 		if child is Button and not (child as Button).disabled:
-			ui_button = child
-			break
+			var txt := (child as Button).text
+			if txt.contains("Torch") or txt.contains("Torche"):
+				ui_button = child
+				break
+	if ui_button == null:
+		# Fallback : premier bouton actif.
+		for child in crafting_panel.recipes_box.get_children():
+			if child is Button and not (child as Button).disabled:
+				ui_button = child
+				break
 	if ui_button == null:
 		errors.append("aucun bouton d'artisanat actif")
 	else:
@@ -389,6 +397,47 @@ func _run_smoke_test() -> void:
 	if placed == null:
 		errors.append("pose de construction KO")
 
+	# Niveaux de construction : alignement fantome, niveau manuel, verrou.
+	var neighbor_cell := Vector2i(4, 3)
+	var aligned_y := construction._compute_ghost_y(world.get_height_at(4.5, 3.5) + 0.5, neighbor_cell, "foundation")
+	if abs(aligned_y - placed.position.y) > 0.01:
+		errors.append("alignement fantome KO")
+
+	construction.toggle()
+	construction._change_level(2)
+	var y_up := construction._compute_ghost_y(0.0, Vector2i(0, 0), "foundation")
+	if abs(y_up - (2 * construction.LEVEL_STEP)) > 0.01:
+		errors.append("niveau + KO")
+	construction._change_level(-2)
+	var y_down := construction._compute_ghost_y(0.0, Vector2i(0, 0), "foundation")
+	if abs(y_down) > 0.01:
+		errors.append("niveau - KO")
+
+	construction._toggle_level_lock()
+	construction._locked_y = construction._compute_ghost_y(0.0, Vector2i(0, 0), "foundation")
+	var y_locked := construction._compute_ghost_y(7.5, Vector2i(0, 0), "foundation")
+	if abs(y_locked - construction._locked_y) > 0.01:
+		errors.append("niveau verrouille KO")
+	construction._level_locked = false
+	construction._build_level = 0
+	construction.toggle()
+
+	construction._selected = 4
+	var stacked_cell := Vector2i(6, 6)
+	var stacked0 := construction.place_free("foundation", "foundation", Vector3(6.5, 0.0, 6.5), 0.0)
+	if stacked0 == null:
+		errors.append("pose fondation niv 0 KO")
+	if construction._can_place(stacked_cell, 0):
+		errors.append("doublon fondation niv 0 accepte")
+	var stacked1 := construction.place_free("foundation", "foundation", Vector3(6.5, 0.2, 6.5), 0.0)
+	if stacked1 == null:
+		errors.append("pose fondation niv 1 KO")
+	if construction._can_place(stacked_cell, 1):
+		errors.append("doublon fondation niv 1 accepte")
+	if not construction._can_place(stacked_cell, 2):
+		errors.append("fondation niv 2 refusee")
+	construction.clear_all()
+
 	# Mode construction : entrée puis sortie (le fantôme doit être créé/nettoyé).
 	construction.toggle()
 	if not construction.is_active():
@@ -396,6 +445,18 @@ func _run_smoke_test() -> void:
 	construction.toggle()
 	if construction.is_active():
 		errors.append("mode construction non désactivé")
+
+	# Sauvegarde robuste : un fichier corrompu doit être rejeté sans erreur de script.
+	if not SaveSystem.save_game(player, construction):
+		errors.append("écriture de sauvegarde KO")
+	var corrupt_file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
+	if corrupt_file == null:
+		errors.append("écriture sauvegarde corrompue KO")
+	else:
+		corrupt_file.store_string('{"stats": []}')
+		corrupt_file.close()
+	if SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde corrompue acceptée")
 
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")

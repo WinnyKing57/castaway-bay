@@ -23,3 +23,4 @@ var category: String = "ressource"
 @export var hunger_restore: float = 0.0
 @export var thirst_restore: float = 0.0
 @export var health_restore: float = 0.0
+@export var fatigue_restore: float = 0.0

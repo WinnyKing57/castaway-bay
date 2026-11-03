@@ -16,7 +16,7 @@ const SECONDS_PER_DAY := 86400.0
 const SAVE_VERSION := 1
 
 ## Objets accessibles depuis la barre rapide (touches 1 à 4).
-var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe"]
+var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe", "cooked"]
 var hotbar_index := 0
 
 ## item_id -> quantité
@@ -26,6 +26,7 @@ var stats := {
 	"health": 100.0,
 	"hunger": 100.0,
 	"thirst": 100.0,
+	"fatigue": 100.0,
 }
 
 ## Secondes écoulées depuis minuit dans le monde du jeu.
@@ -35,6 +36,9 @@ var world_time := 8.0 * 3600.0
 var world_seed := 0
 
 var is_dead := false
+
+## Station de fabrication en cours (ex. "campfire" pour la cuisine).
+var craft_station := ""
 
 
 func _process(delta: float) -> void:
@@ -52,6 +56,14 @@ func _process(delta: float) -> void:
 	elif stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0 and stats.health < 100.0:
 		# Récupération lente quand on est rassasié et hydraté.
 		stats.health = minf(100.0, stats.health + delta * 0.6)
+
+	# Fatigue : baisse avec l'activité, se restaure au repos.
+	stats.fatigue = maxf(0.0, stats.fatigue - delta * 0.015)
+	if stats.fatigue >= 100.0 and stats.health > 0.0 and stats.hunger > 60.0 and stats.thirst > 60.0:
+		stats.fatigue = minf(100.0, stats.fatigue + delta * 0.05)
+
+	if stats.fatigue <= 0.0:
+		stats.health = maxf(0.0, stats.health - delta * 0.5)
 
 	if stats.health <= 0.0:
 		is_dead = true
@@ -137,6 +149,7 @@ func use_selected_item() -> bool:
 	stats.hunger = minf(100.0, stats.hunger + data.hunger_restore)
 	stats.thirst = minf(100.0, stats.thirst + data.thirst_restore)
 	stats.health = minf(100.0, stats.health + data.health_restore)
+	stats.fatigue = minf(100.0, stats.fatigue + data.fatigue_restore)
 	remove_item(item_id, 1)
 	Sfx.play_ui("eat")
 	notify("Consommé : %s" % data.display_name)
@@ -146,7 +159,11 @@ func use_selected_item() -> bool:
 # --- Artisanat --------------------------------------------------------------
 
 func can_craft(recipe: RecipeData) -> bool:
-	return recipe != null and has_items(recipe.inputs)
+	if recipe == null:
+		return false
+	if not recipe.required_station.is_empty() and craft_station != recipe.required_station:
+		return false
+	return has_items(recipe.inputs)
 
 
 func craft(recipe: RecipeData) -> bool:
@@ -163,7 +180,7 @@ func craft(recipe: RecipeData) -> bool:
 # --- Mort / renaissance -----------------------------------------------------
 
 func respawn() -> void:
-	stats = {"health": 60.0, "hunger": 60.0, "thirst": 60.0}
+	stats = {"health": 60.0, "hunger": 60.0, "thirst": 60.0, "fatigue": 60.0}
 	is_dead = false
 	inventory_changed.emit()
 
@@ -177,7 +194,7 @@ func notify(text: String) -> void:
 ## Remet la partie à zéro (nouvelle partie).
 func reset() -> void:
 	inventory.clear()
-	stats = {"health": 100.0, "hunger": 100.0, "thirst": 100.0}
+	stats = {"health": 100.0, "hunger": 100.0, "thirst": 100.0, "fatigue": 100.0}
 	world_time = 8.0 * 3600.0
 	hotbar_index = 0
 	is_dead = false

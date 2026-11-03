@@ -33,13 +33,17 @@ func save_game(player: Node3D, construction: Node = null) -> bool:
 	if construction != null:
 		data["construction"] = construction.to_save_data()
 
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var tmp_path := SAVE_PATH + ".tmp"
+	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	if file == null:
-		push_error("[SaveSystem] Impossible d'écrire : %s" % SAVE_PATH)
+		push_error("[SaveSystem] Impossible d'écrire : %s" % tmp_path)
 		return false
 
 	file.store_string(JSON.stringify(data, "\t"))
 	file.close()
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp_path), ProjectSettings.globalize_path(SAVE_PATH)) != OK:
+		push_error("[SaveSystem] Impossible de renommer la sauvegarde : %s" % SAVE_PATH)
+		return false
 	return true
 
 
@@ -101,4 +105,19 @@ func _read_save() -> Dictionary:
 	var version := int(data.get("version", 0))
 	if version > GameState.SAVE_VERSION:
 		push_warning("[SaveSystem] Sauvegarde d'une version plus récente (%d)" % version)
+	if not _is_valid(data):
+		return {}
 	return data
+
+
+## Valide la structure minimale d'une sauvegarde avant de l'appliquer.
+func _is_valid(data: Dictionary) -> bool:
+	if typeof(data.get("stats")) != TYPE_DICTIONARY:
+		return false
+	if typeof(data.get("inventory")) != TYPE_DICTIONARY:
+		return false
+	if typeof(data.get("player")) != TYPE_DICTIONARY:
+		return false
+	if typeof(data.get("construction", [])) != TYPE_ARRAY:
+		return false
+	return int(data.get("version", 0)) <= GameState.SAVE_VERSION

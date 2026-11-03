@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "brick"
+display_name = "Brique"
+description = "Brique de pierre taillée. Plus résistante que les planches."
+category = "materiau"
+max_stack = 20
+value = 2
+is_consumable = false

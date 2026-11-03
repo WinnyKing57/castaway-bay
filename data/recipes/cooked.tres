@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "cooked"
+display_name = "Ragoût"
+description = "Un ragoût mijoté de viande et de baies."
+inputs = {
+"meat": 2,
+"berry": 2
+}
+outputs = {
+"cooked": 1
+}
+craft_time = 8.0
+required_station = "campfire"

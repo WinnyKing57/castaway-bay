@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "meat"
+display_name = "Viande"
+description = "Viande fraîche cueillie à la chasse."
+category = "nourriture"
+max_stack = 10
+is_consumable = true
+hunger_restore = 30.0
+thirst_restore = 2.0

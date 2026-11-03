@@ -45,14 +45,15 @@ func _load_dir(dir_path: String, target: Dictionary) -> void:
 		return
 
 	for file_name in dir.get_files():
-		if not file_name.ends_with(".tres"):
+		var clean_name := file_name.trim_suffix(".remap")
+		if not clean_name.ends_with(".tres"):
 			continue
-		var res: Resource = load(dir_path.path_join(file_name))
+		var res: Resource = load(dir_path.path_join(clean_name))
 		if res == null:
-			push_warning("[Database] Chargement impossible : %s" % file_name)
+			push_warning("[Database] Chargement impossible : %s" % clean_name)
 			continue
 		var id: String = str(res.get("id"))
 		if id.is_empty():
-			push_warning("[Database] Ressource sans 'id' : %s" % file_name)
+			push_warning("[Database] Ressource sans 'id' : %s" % clean_name)
 			continue
 		target[id] = res

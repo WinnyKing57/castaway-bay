@@ -5,6 +5,10 @@
 build/
 export/
 
+# APK de référence (Ocean Is Home) : données d'inspiration, pas du jeu.
+*.xapk
+ocean_is_home_xapk/
+
 # Divers
 *.tmp
 *.translation

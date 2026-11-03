@@ -36,6 +36,8 @@ func generate(seed_value: int = 0) -> void:
 
 	_build_terrain()
 	_spawn_props()
+	_spawn_boat()
+	_spawn_crops()
 
 
 ## Détruit le monde et le reconstruit avec une autre graine (chargement).
@@ -179,9 +181,12 @@ func _spawn_props() -> void:
 			continue
 
 		var prop: Harvestable = scene.instantiate()
-		if height < 4.0:
-			# Bord de plage : palmiers et buissons.
-			prop.kind = "palmier" if rng.randf() < 0.6 else "buisson"
+		if height < 1.5:
+			prop.kind = "argile"
+		elif height < 4.0:
+			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
+		elif height > 12.0:
+			prop.kind = "fer"
 		elif height > 9.0:
 			prop.kind = "rocher"
 		elif rng.randf() < 0.55:
@@ -192,4 +197,33 @@ func _spawn_props() -> void:
 		prop.position = Vector3(x, height, z)
 		prop.rotation.y = rng.randf() * TAU
 		add_child(prop)
+		placed += 1
+
+
+func _spawn_boat() -> void:
+	var boat := Boat.new()
+	boat.name = "Boat"
+	boat.position = Vector3(0.0, -2.0, 0.0)
+	add_child(boat)
+
+
+func _spawn_crops() -> void:
+	var count := 6
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9876543
+	var placed := 0
+	var attempts := 0
+	while placed < count and attempts < 2000:
+		attempts += 1
+		var angle := rng.randf() * TAU
+		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.44
+		var x := cos(angle) * radius
+		var z := sin(angle) * radius
+		var height := get_height_at(x, z)
+		if height < 4.0:
+			continue
+		var crop := Crop.new()
+		crop.item_id = "berry"
+		crop.position = Vector3(x, height, z)
+		add_child(crop)
 		placed += 1

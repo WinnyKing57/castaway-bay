@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lance Castaway Bay (installation Flatpak de Godot).
+# Lance Castaway Bay (build Linux exporté) ou éditeur Godot.
 #
 #   ./run.sh              -> ouvre l'éditeur Godot sur le projet
 #   ./run.sh --play       -> lance le jeu directement
@@ -8,19 +8,23 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-GODOT=(flatpak run org.godotengine.Godot)
+GODOT_BIN="${GODOT_BIN:-/tmp/opencode/godot/Godot_v4.7-stable_linux.x86_64}"
+
+if [ ! -x "$GODOT_BIN" ]; then
+  GODOT_BIN="flatpak run org.godotengine.Godot"
+fi
 
 case "${1:-}" in
   --play)
-    exec "${GODOT[@]}" --path .
+    exec $GODOT_BIN --path .
     ;;
   --test)
-    exec "${GODOT[@]}" --headless --path . -- --smoke-test
+    exec $GODOT_BIN --headless --path . -- --smoke-test
     ;;
   --overview)
-    exec "${GODOT[@]}" --path . -- --overview
+    exec $GODOT_BIN --path .
     ;;
   *)
-    exec "${GODOT[@]}" --editor --path .
+    exec $GODOT_BIN --editor --path .
     ;;
 esac

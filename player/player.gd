@@ -26,6 +26,8 @@ const SWIM_ENTER_DEPTH := 1.4
 const SWIM_EXIT_DEPTH := 0.5
 ## Profondeur à laquelle le joueur flotte (le corps est à moitié immergé).
 const SWIM_FLOAT_DEPTH := 1.0
+## Limite du monde : le terrain fait ±130 m, on reste dans ce cercle.
+const WORLD_RADIUS := 128.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -37,6 +39,7 @@ var _controls_enabled := true
 var _torch_light: OmniLight3D
 var _swimming := false
 var _step_timer := 0.0
+var _in_boat := false
 
 
 func _ready() -> void:
@@ -87,6 +90,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _in_boat:
+		return
 	var was_swimming := _swimming
 	# Hystérésis : on entre dans l'eau plus profond qu'on n'en sort.
 	var depth := WATER_LEVEL - global_position.y
@@ -124,11 +129,25 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
+	# Limite du monde : on clamp le joueur dans le cercle de rayon WORLD_RADIUS.
+	var horizontal := Vector2(global_position.x, global_position.z)
+	if horizontal.length() > WORLD_RADIUS:
+		var angle := atan2(global_position.z, global_position.x)
+		global_position.x = cos(angle) * WORLD_RADIUS
+		global_position.z = sin(angle) * WORLD_RADIUS
 	_update_interaction_prompt()
 	_update_footsteps(delta)
 
 
 ## Vrai quand le joueur nage (l'eau lui arrive au-dessus de la taille).
+func enter_boat() -> void:
+	_in_boat = true
+
+
+func exit_boat() -> void:
+	_in_boat = false
+
+
 func is_swimming() -> bool:
 	return _swimming
 
