@@ -11,7 +11,13 @@ cd "$(dirname "$0")"
 GODOT_BIN="${GODOT_BIN:-/tmp/opencode/godot/Godot_v4.7-stable_linux.x86_64}"
 
 if [ ! -x "$GODOT_BIN" ]; then
-  GODOT_BIN="flatpak run org.godotengine.Godot"
+  if command -v godot >/dev/null 2>&1; then
+    GODOT_BIN="$(command -v godot)"
+  elif [ -x "$HOME/.local/bin/godot" ]; then
+    GODOT_BIN="$HOME/.local/bin/godot"
+  else
+    GODOT_BIN="flatpak run org.godotengine.Godot"
+  fi
 fi
 
 if [ "${1:-}" != "--editor" ]; then
