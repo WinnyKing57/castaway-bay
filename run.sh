@@ -14,6 +14,12 @@ if [ ! -x "$GODOT_BIN" ]; then
   GODOT_BIN="flatpak run org.godotengine.Godot"
 fi
 
+if [ "${1:-}" != "--editor" ]; then
+  if [ ! -f ".godot/global_script_class_cache.cfg" ]; then
+    $GODOT_BIN --headless --path . --import >/dev/null 2>&1 || true
+  fi
+fi
+
 case "${1:-}" in
   --play)
     exec $GODOT_BIN --path .
