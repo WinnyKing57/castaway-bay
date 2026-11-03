@@ -40,6 +40,7 @@ var _torch_light: OmniLight3D
 var _swimming := false
 var _step_timer := 0.0
 var _in_boat := false
+var _boat: Node3D = null
 
 
 func _ready() -> void:
@@ -139,13 +140,24 @@ func _physics_process(delta: float) -> void:
 	_update_footsteps(delta)
 
 
-## Vrai quand le joueur nage (l'eau lui arrive au-dessus de la taille).
-func enter_boat() -> void:
+## Monte à bord du bateau (le joueur y est "parenté" de fait : le bateau le
+## déplace chaque frame). Sortir près d'une plage remet le joueur sur terre.
+func enter_boat(boat: Node3D = null) -> void:
 	_in_boat = true
+	_boat = boat
 
 
 func exit_boat() -> void:
 	_in_boat = false
+	# Si l'on descend près d'une plage, on se pose au sol ; en pleine eau,
+	# la nage du joueur reprend le relais (hystérésis dans _physics_process).
+	var ground := get_node_or_null("/root/Main/World")
+	if _boat != null and ground != null and ground.has_method("get_height_at"):
+		var pos := global_position
+		var h: float = ground.get_height_at(pos.x, pos.z)
+		if h > -0.5:
+			global_position.y = h + 1.2
+	_boat = null
 
 
 func is_swimming() -> bool:

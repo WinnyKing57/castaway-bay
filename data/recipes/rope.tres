@@ -7,7 +7,5 @@ script = ExtResource("1_recipe")
 id = "rope"
 display_name = "Corde"
 description = "4 fibres -> 3 cordes."
-category = "artisanal"
 inputs = {"fiber": 4}
 outputs = {"rope": 3}
-time_limit_multiplier := 0.5

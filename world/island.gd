@@ -205,6 +205,17 @@ func _spawn_boat() -> void:
 	boat.name = "Boat"
 	boat.position = Vector3(0.0, -2.0, 0.0)
 	add_child(boat)
+	# Le relief est procédural : (0, 0) n'est pas forcément de l'eau. On place
+	# le bateau au premier point sous le niveau marin trouvé en sondant des
+	# anneaux concentriques, sinon il resterait échoué sur la plage.
+	for radius in [40.0, 50.0, 60.0, 70.0, 80.0, 95.0]:
+		for step in 16:
+			var angle := step * TAU / 16.0
+			var x := cos(angle) * radius
+			var z := sin(angle) * radius
+			if get_height_at(x, z) < SEA_LEVEL - 1.0:
+				boat.global_position = Vector3(x, SEA_LEVEL - 0.8, z)
+				return
 
 
 func _spawn_crops() -> void:

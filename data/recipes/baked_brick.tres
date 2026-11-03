@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "baked_brick"
+display_name = "Brique cuite"
+description = "2 argiles -> 2 briques. À fabriquer près d'un feu de camp ou d'un four."
+inputs = {"clay": 2}
+outputs = {"brick": 2}
+craft_time = 3.0
+required_station = "campfire"
