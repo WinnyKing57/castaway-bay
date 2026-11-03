@@ -29,6 +29,9 @@ const SWIM_FLOAT_DEPTH := 1.0
 ## Limite du monde : le terrain fait ±130 m, on reste dans ce cercle.
 const WORLD_RADIUS := 128.0
 
+## Rayon à proximité duquel un feu de camp / fourneau compte comme station.
+const CRAFT_STATION_RANGE := 4.0
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var ray: RayCast3D = $Head/Camera3D/RayCast3D
@@ -136,8 +139,26 @@ func _physics_process(delta: float) -> void:
 		var angle := atan2(global_position.z, global_position.x)
 		global_position.x = cos(angle) * WORLD_RADIUS
 		global_position.z = sin(angle) * WORLD_RADIUS
+	_update_craft_station()
 	_update_interaction_prompt()
 	_update_footsteps(delta)
+
+
+## Station de fabrication à portée : mise à jour chaque frame pour que
+## GameState.craft_station reflète les vraies proximités (et se réinitialise
+## dès qu'on s'éloigne du feu de camp ou du fourneau).
+func _update_craft_station() -> void:
+	var nearest_id := ""
+	var nearest_dist := CRAFT_STATION_RANGE
+	for node in get_tree().get_nodes_in_group("craft_station"):
+		if not node is Node3D or not node.visible:
+			continue
+		var dist := global_position.distance_to((node as Node3D).global_position)
+		if dist <= nearest_dist:
+			nearest_dist = dist
+			nearest_id = str(node.get("kind"))
+	if GameState.craft_station != nearest_id:
+		GameState.craft_station = nearest_id
 
 
 ## Monte à bord du bateau (le joueur y est "parenté" de fait : le bateau le

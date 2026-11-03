@@ -189,8 +189,6 @@ func _place() -> void:
 		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_occupied[_cell_key(data.kind, cell, level, _rotation_steps)] = true
-	if data.kind == "campfire" or data.kind == "furnace":
-		GameState.craft_station = "campfire" if data.kind == "campfire" else "furnace"
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 

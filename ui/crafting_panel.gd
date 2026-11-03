@@ -13,11 +13,33 @@ signal closed
 @onready var status_label: Label = $Panel/Margin/VBox/Status
 @onready var close_button: Button = $Panel/Margin/VBox/Close
 
+## Fabrication en cours (recette, temps restant) : le craft_time des
+## recettes est honoré ici, les ressources sont consommées au départ.
+var _craft_recipe: RecipeData = null
+var _craft_left := 0.0
+
 
 func _ready() -> void:
 	visible = false
 	close_button.pressed.connect(close)
 	GameState.inventory_changed.connect(_on_inventory_changed)
+
+
+func _process(delta: float) -> void:
+	if _craft_recipe == null:
+		return
+	_craft_left -= delta
+	if _craft_left > 0.0:
+		status_label.text = "Fabrication de %s… %.1f s" % [_craft_recipe.display_name, _craft_left]
+		return
+	var finished := _craft_recipe
+	_craft_recipe = null
+	for item_id in finished.outputs:
+		GameState.add_item(str(item_id), int(finished.outputs[item_id]))
+	Sfx.play_ui("craft")
+	GameState.notify("Fabriqué : %s" % finished.display_name)
+	status_label.text = "Fabriqué : %s" % finished.display_name
+	_rebuild()
 
 
 func is_open() -> bool:
@@ -34,6 +56,8 @@ func open() -> void:
 func close() -> void:
 	if not visible:
 		return
+	_craft_recipe = null
+	_craft_left = 0.0
 	visible = false
 	closed.emit()
 
@@ -82,8 +106,24 @@ func _row_text(recipe: RecipeData) -> String:
 
 
 func _on_craft_pressed(recipe: RecipeData) -> void:
-	if GameState.craft(recipe):
-		status_label.text = "Fabriqué : %s" % recipe.display_name
+	if _craft_recipe != null:
+		status_label.text = "Fabrication en cours…"
+		return
+	if not GameState.can_craft(recipe):
+		if not recipe.required_station.is_empty():
+			status_label.text = "Nécessite un établi : %s à proximité." % recipe.required_station
+		else:
+			status_label.text = "Ressources insuffisantes."
+		return
+	GameState.consume_items(recipe.inputs)
+	if recipe.craft_time > 0.0:
+		_craft_recipe = recipe
+		_craft_left = recipe.craft_time
+		status_label.text = "Fabrication de %s…" % recipe.display_name
 	else:
-		status_label.text = "Ressources insuffisantes."
+		for item_id in recipe.outputs:
+			GameState.add_item(str(item_id), int(recipe.outputs[item_id]))
+		Sfx.play_ui("craft")
+		GameState.notify("Fabriqué : %s" % recipe.display_name)
+		status_label.text = "Fabriqué : %s" % recipe.display_name
 	_rebuild()

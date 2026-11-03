@@ -15,6 +15,8 @@ var _ghost_material: StandardMaterial3D
 func _ready() -> void:
 	collision_layer = 8
 	collision_mask = 0
+	if kind == "campfire" or kind == "furnace":
+		add_to_group("craft_station")
 	if get_child_count() == 0:
 		_build_visuals()
 
