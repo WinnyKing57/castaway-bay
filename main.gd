@@ -99,7 +99,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameState.use_selected_item()
 
 	for index in GameState.hotbar_items.size():
-		if event.is_action_pressed("hotbar_%d" % (index + 1)):
+		var hotbar_action: String = "hotbar_%d" % (index + 1)
+		if InputMap.has_action(hotbar_action) and event.is_action_pressed(hotbar_action):
 			GameState.select_hotbar(index)
 
 
@@ -471,6 +472,11 @@ func _run_smoke_test() -> void:
 		errors.append("inventaire non restauré")
 	if construction.to_save_data().size() != expected_buildings:
 		errors.append("constructions non restaurées")
+
+	# Hotbar : chaque case sélectionnable doit avoir une action InputMap.
+	for index in GameState.hotbar_items.size():
+		if not InputMap.has_action("hotbar_%d" % (index + 1)):
+			errors.append("hotbar_%d manquant" % (index + 1))
 
 	if errors.is_empty():
 		Sfx.stop_all()
