@@ -9,23 +9,22 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 GODOT_BIN="${GODOT_BIN:-/tmp/opencode/godot/Godot_v4.7-stable_linux.x86_64}"
-GODOT=(flatpak run org.godotengine.Godot)
 
-if [ -x "$GODOT_BIN" ]; then
-	GODOT=("$GODOT_BIN")
+if [ ! -x "$GODOT_BIN" ]; then
+  GODOT_BIN="flatpak run org.godotengine.Godot"
 fi
 
 case "${1:-}" in
   --play)
-    exec "${GODOT[@]}" --path .
+    exec $GODOT_BIN --path .
     ;;
   --test)
-    exec "${GODOT[@]}" --headless --path . -- --smoke-test
+    exec $GODOT_BIN --headless --path . -- --smoke-test
     ;;
   --overview)
-    exec "${GODOT[@]}" --path .
+    exec $GODOT_BIN --path .
     ;;
   *)
-    exec "${GODOT[@]}" --editor --path .
+    exec $GODOT_BIN --editor --path .
     ;;
 esac
