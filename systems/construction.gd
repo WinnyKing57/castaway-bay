@@ -70,7 +70,7 @@ func _process(_delta: float) -> void:
 	_ghost.visible = true
 	_ghost.global_position = Vector3(cell.x + 0.5, position.y, cell.y + 0.5)
 	_ghost.rotation.y = _rotation_steps * PI * 0.5
-	_valid = _can_place(cell)
+	_valid = _placement_ok(hit, cell)
 	_ghost.set_ghost_valid(_valid)
 
 
@@ -116,6 +116,26 @@ func _can_place(cell: Vector2i) -> bool:
 	if not GameState.has_items(data.costs):
 		return false
 	return not _occupied.has(_cell_key(data.kind, cell))
+
+
+## Valide la pose fantôme : on refuse les supports inexploitables (ressource
+## récoltable, surface trop verticale, niveau sous l'eau) avant de tester la
+## disponibilité de la cellule.
+func _placement_ok(hit: Dictionary, cell: Vector2i) -> bool:
+	if hit.is_empty():
+		return false
+	var collider: Node = hit["collider"]
+	if collider is Harvestable:
+		return false
+	var position: Vector3 = hit["position"]
+	if position.y < Island.SEA_LEVEL + 0.3:
+		return false
+	if collider is Buildable:
+		return _can_place(cell)
+	var normal: Vector3 = hit["normal"]
+	if normal.y < 0.8:
+		return false
+	return _can_place(cell)
 
 
 func _place() -> void:
