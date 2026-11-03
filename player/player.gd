@@ -26,6 +26,8 @@ const SWIM_ENTER_DEPTH := 1.4
 const SWIM_EXIT_DEPTH := 0.5
 ## Profondeur à laquelle le joueur flotte (le corps est à moitié immergé).
 const SWIM_FLOAT_DEPTH := 1.0
+## Limite du monde : le terrain fait ±130 m, on reste dans ce cercle.
+const WORLD_RADIUS := 128.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -127,6 +129,12 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
+	# Limite du monde : on clamp le joueur dans le cercle de rayon WORLD_RADIUS.
+	var horizontal := Vector2(global_position.x, global_position.z)
+	if horizontal.length() > WORLD_RADIUS:
+		var angle := atan2(global_position.z, global_position.x)
+		global_position.x = cos(angle) * WORLD_RADIUS
+		global_position.z = sin(angle) * WORLD_RADIUS
 	_update_interaction_prompt()
 	_update_footsteps(delta)
 
