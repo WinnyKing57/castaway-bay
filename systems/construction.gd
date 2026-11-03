@@ -14,6 +14,7 @@ var active := false
 var _player: Player
 var _hud: Hud
 var _camera: Camera3D
+var _world: Island = null
 
 var _catalog: Array[BuildableData] = []
 var _selected := 0
@@ -33,10 +34,12 @@ var _locked_y := 0.0
 var _ghost_y := 0.0
 
 
-func setup(player: Player, hud: Hud) -> void:
+func setup(player: Player, hud: Hud, world: Node = null) -> void:
 	_player = player
 	_hud = hud
 	_camera = player.get_node("Head/Camera3D")
+	if world is Island:
+		_world = world
 
 	_catalog.clear()
 	var ids := Database.buildables.keys()
@@ -151,9 +154,12 @@ func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 	return not _occupied.has(_cell_key(data.kind, cell, level, rotation))
 
 
-## Valide la pose fantôme : on refuse les supports inexploitables (ressource
-## récoltable, surface trop verticale, niveau sous l'eau) avant de tester la
-## disponibilité de la cellule.
+## Logique de construction : un élément posé en hauteur doit s'appuyer sur
+## quelque chose — sol naturel sous la cellule, ou élément construit au
+## niveau inférieur. Sans ce garde-fou, murs et fondations flottaient
+## n'importe où ("en plein milieu"). Les éléments à même le sol (niveau 0)
+## doivent en plus toucher une case voisine contenant du terrain sec ou une
+## autre construction : on ne fait pas pousser une maison au milieu de la mer.
 func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 	if hit.is_empty():
 		return false
@@ -162,12 +168,55 @@ func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 		return false
 	if ghost_y < Island.SEA_LEVEL + 0.3:
 		return false
+	var level := int(round(ghost_y / LEVEL_STEP))
+	if not _has_ground_support(cell, level):
+		return false
+	if level <= 0 and not _touches_existing_structure(cell):
+		return false
 	if collider is Buildable:
-		return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
+		return _can_place(cell, level, _rotation_steps)
 	var normal: Vector3 = hit["normal"]
 	if normal.y < 0.8:
 		return false
-	return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
+	return _can_place(cell, level, _rotation_steps)
+
+
+## Un élément posé en hauteur (niveau > 0) doit reposer sur un élément
+## construit au niveau immédiatement inférieur dans la même cellule.
+func _has_ground_support(cell: Vector2i, level: int) -> bool:
+	if level <= 0:
+		return true
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
+		if obj_cell != cell:
+			continue
+		var obj_level := int(round(obj.position.y / LEVEL_STEP))
+		if obj_level == level - 1:
+			return true
+	return false
+
+
+## Règle d'ancrage au sol : la première pièce d'une construction doit être
+## contiguë du terrain sec ou d'un élément déjà posé (règle "bords du sol",
+## comme les fondations des jeux de survie). Une fois l'îlot amorcé, on peut
+## étendre la structure cellule par cellule.
+func _touches_existing_structure(cell: Vector2i) -> bool:
+	if _world == null:
+		# Hors scène jouable (tests unitaires pur script) : on n'ancre pas.
+		return true
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var c := cell + offset
+		if _world.get_height_at(float(c.x) + 0.5, float(c.y) + 0.5) > Island.SEA_LEVEL + 0.1:
+			return true
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
+		if absi(obj_cell.x - cell.x) + absi(obj_cell.y - cell.y) <= 1:
+			return true
+	return false
 
 
 func _place() -> void:
@@ -186,7 +235,10 @@ func _place() -> void:
 	var level := int(round(position.y / LEVEL_STEP))
 	var rotation := _rotation_steps * PI * 0.5
 	if data.kind == "wall":
+		# Les murs s'ancrent sur le bord de la case (arête), pas en plein
+		# milieu : décalage d'une demi-cellule le long de la normale.
 		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
+		cell = Vector2i(floori(position.x), floori(position.z))
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_occupied[_cell_key(data.kind, cell, level, _rotation_steps)] = true
 	Sfx.play("build", position)

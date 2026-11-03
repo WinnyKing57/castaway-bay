@@ -99,6 +99,8 @@ func remove_item(item_id: String, amount: int = 1) -> bool:
 
 
 func has_items(costs: Dictionary) -> bool:
+	if Settings.infinite_resources:
+		return true
 	for item_id in costs:
 		if get_item_count(str(item_id)) < int(costs[item_id]):
 			return false
@@ -108,6 +110,9 @@ func has_items(costs: Dictionary) -> bool:
 func consume_items(costs: Dictionary) -> bool:
 	if not has_items(costs):
 		return false
+	if Settings.infinite_resources:
+		# Mode créatif : on pose/fabrique sans rien consommer.
+		return true
 	for item_id in costs:
 		remove_item(str(item_id), int(costs[item_id]))
 	return true
