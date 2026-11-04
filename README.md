@@ -4,30 +4,43 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 à M4 terminés**, M1 partiel (nage, sons synthétisés), passe de
-> stabilisation appliquée —
+> État actuel : **M0 à M4 terminés**, M5 partiel (bateau opérationnel, véhicule
+> terrestre à venir), M1 partiel (nage, sons synthétisés) et M7 partiel
+> (réglages, export Linux) —
 > île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
-> artisanat, construction et sauvegarde.
+> artisanat avancé, construction modulaire, bateau, **persistance complète
+> (format v2)** et sauvegarde automatique.
 
 ---
 
 ## Boucle de jeu
 
-1. **Récolter** : arbres (bois), palmiers (bois + noix de coco), rochers
-   (pierre), buissons (fibres, parfois baies).
-2. **Survivre** : la faim et la soif baissent en permanence. Mange et bois
-   avec la barre rapide (**1-5** puis **F**).
-3. **Fabriquer** : **C** ouvre l'artisanat (torche, hache en pierre).
-   La hache double le bois récolté.
-4. **Construire** : **B** active le mode construction (fondation, mur,
-   feu de camp). Clic gauche pose, **R** tourne, molette change d'élément.
-5. **Sauvegarder** : **F9** / **F10**, plus une **sauvegarde automatique**
-   (toutes les 2 min, en quittant vers le menu, à la fermeture de la fenêtre et
-   quand l'appli passe en arrière-plan). Tout est conservé : graine de l'île,
-   position, cap et regard du joueur, jauges, inventaire, barre rapide,
-   fabrication en cours, constructions, ressources récoltées (et leur délai de
-   repousse), cultures plantées, position et carburant du bateau, et le fait
-   d'être à bord. « Continuer » te ramène exactement où tu étais.
+1. **Récolter & Explorer** : arbres (bois), palmiers (bois + noix de coco),
+   rochers (pierre), buissons (fibres, parfois baies), affleurements de fer
+   (métal), gisements côtiers (argile) et parcelles sauvages (graines).
+2. **Survivre & Cultiver** : la faim, la soif et la fatigue évoluent
+   constamment. Mange et bois avec la barre rapide (**1-5** puis **F**).
+   Maintiens tes jauges au-dessus de 60 pour régénérer la fatigue. Plante des
+   graines sur les parcelles agricoles : la culture grandit, vire au rouge à
+   maturité et fournit 2 récoltes + 1 graine pour pérenniser les plantations.
+3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (hache en
+   pierre qui double le rendement du bois, torches, planches, cordes, briques
+   cuites, composants électroniques et carburant). Les fabrications peuvent être
+   chronométrées et continuent en arrière-plan.
+4. **Construire son abri** : **B** active le mode construction (fondations,
+   murs, portes, fenêtres, toits, coffres, feux de camp, tentes, lits, fours et
+   générateurs). Clic gauche pose, **R** fait pivoter, la molette change
+   d'élément, **PgUp / PgDn** changent d'étage et **V** verrouille l'altitude.
+5. **Naviguer** : repère le bateau échoué au large, répare sa coque avec du
+   métal, fais le plein de carburant et navigue pour explorer les pourtours de
+   l'océan.
+6. **Sauvegarder & Reprendre** : **F9** / **F10**, plus une **sauvegarde
+   automatique** (toutes les 2 min, en quittant vers le menu, à la fermeture de
+   la fenêtre et quand l'appli passe en arrière-plan). Tout est conservé :
+   graine de l'île, position, cap et regard du joueur, jauges, inventaire, barre
+   rapide, fabrication en cours, constructions, ressources récoltées (et leur
+   délai de repousse), cultures plantées, position et carburant du bateau, et le
+   fait d'être à bord. « Continuer » te ramène exactement où tu étais.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
@@ -67,7 +80,8 @@ Le test couvre le socle (île, nage, récolte, artisanat, construction,
 sauvegarde) **et** des tests de non-régression de stabilité :
 
 - inventaire : retraits et coûts négatifs/nuls refusés ;
-- persistance : position/regard du joueur, ressources, cultures, bateau, fabrication en cours, stations, copie de secours `.bak` ;
+- persistance : position/regard du joueur, ressources, cultures, bateau,
+  fabrication en cours, stations, copie de secours `.bak` ;
 - artisanat : fabrication chronométrée, annulation avec remboursement ;
 - construction : chevauchements entre catégories (coffre/feu/toit sur une
   fondation), bords de murs/portes, empreintes conservées après chargement ;
@@ -106,8 +120,49 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | Clic gauche | poser l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
-| Échap | pause (reprendre, sauvegarder, menu principal) |
+| Échap | pause (reprendre, sauvegarder, réglages, menu principal) |
 | Espace | réapparaître après la mort |
+
+---
+
+## Règles de construction avancées
+
+Le système de construction modulaire suit des règles physiques et structurelles
+réalistes :
+
+1. **Ancrage au sol et contiguïté** :
+   - Une première pièce au sol (niveau 0) doit obligatoirement être ancrée sur
+     la terre ferme (hors des abysses marins).
+   - Les fondations et structures suivantes peuvent s'étendre au-dessus de l'eau
+     à condition d'être adjacentes à un élément déjà posé.
+2. **Gestion des étages & support vertical** :
+   - La hauteur d'élévation se règle par paliers (**PgUp / PgDn**).
+   - Pour poser un élément en hauteur (étage ≥ 1), la cellule doit impérativement
+     posséder une fondation ou un support au niveau inférieur. Impossible de
+     construire dans le vide.
+3. **Alignement et verrouillage d'altitude** :
+   - En approchant une structure existante, le fantôme de prévisualisation
+     s'aligne automatiquement sur le niveau de la pièce voisine.
+   - La touche **V** permet de verrouiller l'altitude actuelle pour bâtir des
+     passerelles ou des plateformes parfaitement planes sur un terrain vallonné.
+4. **Catalogue et empreinte** :
+   - Fondations, murs, portes, fenêtres, toits, tentes, feux de camp, coffres,
+     fours, lits et générateurs électriques.
+   - Le `grid_size` est respecté (la tente et le lit occupent 2 x 2 cases) et un
+     élément ne peut pas être posé sur le joueur.
+
+---
+
+## Réglages & options de triche (mode créatif)
+
+Accessible depuis le menu pause ou l'écran principal (**Échap ▸ Réglages**) :
+
+- **Audio & Sensibilité** : curseurs de volume global et de sensibilité de la
+  souris, appliqués immédiatement et persistés dans `user://settings.cfg`.
+- **Affichage** : bascule plein écran / fenêtré.
+- **Mode créatif (Matériaux infinis)** : option de triche permettant de
+  fabriquer et construire sans consommer de composants. Elle peut être activée
+  ou désactivée à tout moment sans corrompre la sauvegarde.
 
 ---
 
@@ -117,7 +172,7 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 autoload/        singletons globaux (état, base de données, sauvegarde, audio)
 data/            définitions de données : ItemData, RecipeData, BuildableData + .tres
 player/          contrôleur joueur (scène + script)
-world/           île procédurale, ressources récoltables, éléments construits, océan
+world/           île procédurale, ressources récoltables, cultures, bateau, océan
 systems/         mode construction (grille, aperçu fantôme, sauvegarde)
 ui/              HUD, panneau d'artisanat, menus
 main.tscn/.gd    assemblage de la scène de jeu
@@ -134,7 +189,9 @@ main.tscn/.gd    assemblage de la scène de jeu
 3. **État global centralisé** : `GameState` (inventaire, jauges, horloge)
    émet des signaux ; l'UI écoute, elle ne modifie rien.
 4. **Sauvegarde en données, pas en scènes** : JSON versionné
-   (`user://savegame.json`), avec un numéro de version pour migrer plus tard.
+   (`user://savegame.json`). La version actuelle du format est **2** ; les
+   sauvegardes de version 1 restent acceptées et les champs ajoutés sont chargés
+   avec des valeurs par défaut lorsqu'ils sont absents.
 
 ---
 
@@ -144,12 +201,12 @@ main.tscn/.gd    assemblage de la scène de jeu
 |---|---|---|
 | M0 | Socle : projet, île, joueur, récolte, inventaire, sauvegarde | ✅ |
 | M1 | Eau/nage, grottes, plusieurs biomes, ambiance sonore | 🟡 |
-| M2 | Survie complète : faim, soif, mort/respawn, consommation | ✅ |
+| M2 | Survie complète : faim, soif, fatigue, mort/respawn, consommation | ✅ |
 | M3 | Artisanat : interface, recettes, outils | ✅ |
-| M4 | Construction : grille, fondations, murs, feu de camp, fantôme, niveaux | ✅ |
-| M5 | Véhicules : bateau et voiture (physique simple) | 🟡 |
+| M4 | Construction : grille, fondations, murs, niveaux, fantôme | ✅ |
+| M5 | Véhicules : bateau opérationnel ; véhicule terrestre à venir | 🟡 |
 | M6 | PNJ, quêtes, commerce, réputation | ⬜ |
-| M7 | Finition : réglages, export Linux + page itch.io | 🟡 |
+| M7 | Finition : réglages et export Linux validés ; page itch.io à venir | 🟡 |
 
 Le détail des idées non planifiées est dans [`IDEAS.md`](IDEAS.md).
 
@@ -163,11 +220,13 @@ Garde-fous en place (voir `./run.sh --test`) :
 
 - **Inventaire** : `remove_item()` refuse toute quantité ≤ 0 ; `has_items()` /
   `consume_items()` refusent les coûts ≤ 0 (donnée corrompue).
-- **Construction** : `grid_size` est respecté (tente et lit occupent 2 x 2 cases) et un élément ne peut pas être posé sur le joueur. L'occupation d'une case ne dépend plus de la catégorie du
-  bâtiment. Deux familles : *éléments de bord* (mur, porte, fenêtre : un par
-  bord, niveau et orientation) et *éléments de centre* (fondation, toit, feu,
-  coffre… : un par case et par niveau). La clé est recalculée depuis la
-  position réelle, donc identique avant et après une sauvegarde.
+- **Construction** : `grid_size` est respecté (tente et lit occupent 2 x 2
+  cases) et un élément ne peut pas être posé sur le joueur. L'occupation d'une
+  case ne dépend plus de la catégorie du bâtiment. Deux familles : *éléments de
+  bord* (mur, porte, fenêtre : un par bord, niveau et orientation) et *éléments
+  de centre* (fondation, toit, feu, coffre… : un par case et par niveau). La clé
+  est recalculée depuis la position réelle, donc identique avant et après une
+  sauvegarde.
 - **Chargement des constructions** : l'identifiant doit exister dans la base
   (la catégorie vient de la base, pas du fichier), les coordonnées doivent être
   finies et bornées, les doublons sont ignorés, la station de fabrication
@@ -177,10 +236,10 @@ Garde-fous en place (voir `./run.sh --test`) :
   quantités ≤ 0 ignorés), jauges bornées à 0-100, position aberrante replacée
   sur la plage. Un fichier invalide est refusé en bloc.
 - **Bateau** : le joueur suit le bateau ; mort, respawn, nouvelle partie ou
-  chargement le libèrent. Recharge automatique du carburant et réparation (1
-  métal) corrigées.
-- **Données** : `chest`, `door`, `roof` et `window` déclarent maintenant leur
-  `kind` (ils étaient construits comme des fondations).
+  chargement le libèrent. Réparation (1 métal) et recharge de carburant
+  corrigées.
+- **Données** : `chest`, `door`, `roof` et `window` déclarent leur `kind` (ils
+  étaient auparavant construits comme des fondations).
 
 ### Persistance (sauvegarde v2)
 
@@ -204,10 +263,10 @@ n'écrit jamais depuis le menu principal ni pendant la mort.
 
 ### Artisanat chronométré
 
-`craft_time` (secondes) est maintenant appliqué : les ingrédients sont pris au
-lancement, la fabrication continue en arrière-plan même panneau fermé, peut être
-annulée depuis le panneau (ingrédients rendus, aussi à la mort) et reprend après
-un chargement. `craft_time = 0` reste instantané.
+`craft_time` (secondes) est appliqué : les ingrédients sont pris au lancement,
+la fabrication continue en arrière-plan même panneau fermé, peut être annulée
+depuis le panneau (ingrédients rendus, aussi à la mort) et reprend après un
+chargement. `craft_time = 0` reste instantané.
 
 ### Limites connues
 
