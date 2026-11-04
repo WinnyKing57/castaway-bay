@@ -10,6 +10,7 @@ signal hotbar_changed
 signal toast(text: String)
 signal died
 signal craft_changed
+signal chest_opened(chest: Node)
 
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
@@ -113,7 +114,7 @@ func has_items(costs: Dictionary) -> bool:
 		# laisser consume_items() fabriquer des objets.
 		if needed <= 0:
 			return false
-		if get_item_count(str(item_id)) < needed:
+		if not Settings.infinite_resources and get_item_count(str(item_id)) < needed:
 			return false
 	return true
 
@@ -121,6 +122,8 @@ func has_items(costs: Dictionary) -> bool:
 func consume_items(costs: Dictionary) -> bool:
 	if not has_items(costs):
 		return false
+	if Settings.infinite_resources:
+		return true
 	for item_id in costs:
 		remove_item(str(item_id), int(costs[item_id]))
 	return true

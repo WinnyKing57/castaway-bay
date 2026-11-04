@@ -8,8 +8,69 @@ extends StaticBody3D
 
 var kind := "foundation"
 var data_id := ""
+## Contenu stocké dans le coffre (item_id -> quantité).
+var chest_inventory: Dictionary = {}
+## État d'ouverture pour les portes.
+var is_open: bool = false
 
+var _door_pivot: Node3D = null
+var _door_shape: CollisionShape3D = null
 var _ghost_material: StandardMaterial3D
+
+
+func get_interaction_prompt() -> String:
+	if kind == "chest":
+		var total_items := 0
+		for count in chest_inventory.values():
+			total_items += int(count)
+		if total_items > 0:
+			return "Ouvrir le coffre (%d objets) (E)" % total_items
+		return "Ouvrir le coffre (vide) (E)"
+	elif kind == "door":
+		return "Fermer la porte (E)" if is_open else "Ouvrir la porte (E)"
+	elif kind == "bed":
+		var hour := (int(GameState.world_time) / 3600) % 24
+		var is_night := hour >= 19 or hour < 6
+		if is_night:
+			return "Dormir jusqu'au matin (E)"
+		return "Se reposer (la nuit seulement) (E)"
+	return ""
+
+
+func interact(_player: Node) -> void:
+	if kind == "chest":
+		GameState.chest_opened.emit(self)
+	elif kind == "door":
+		toggle_door()
+	elif kind == "bed":
+		_use_bed()
+
+
+func toggle_door() -> void:
+	is_open = not is_open
+	_apply_door_state()
+	Sfx.play_ui("ui")
+	GameState.notify("Porte %s" % ("ouverte" if is_open else "fermée"))
+
+
+func _apply_door_state() -> void:
+	if _door_pivot != null:
+		_door_pivot.rotation.y = PI * 0.5 if is_open else 0.0
+	if _door_shape != null:
+		_door_shape.disabled = is_open
+
+
+func _use_bed() -> void:
+	var hour := (int(GameState.world_time) / 3600) % 24
+	var is_night := hour >= 19 or hour < 6
+	if is_night:
+		GameState.world_time = 6.0 * 3600.0
+		GameState.stats.fatigue = 100.0
+		GameState.stats.health = minf(100.0, GameState.stats.health + 30.0)
+		Sfx.play_ui("eat")
+		GameState.notify("Tu te réveilles reposé au lever du jour.")
+	else:
+		GameState.notify("Le soleil brille encore, impossible de dormir.")
 
 
 func _ready() -> void:
@@ -42,7 +103,7 @@ func set_ghost_valid(valid: bool) -> void:
 
 
 func _apply_ghost_material() -> void:
-	for child in get_children():
+	for child in find_children("*", "MeshInstance3D"):
 		if child is MeshInstance3D:
 			child.material_override = _ghost_material
 
@@ -71,6 +132,8 @@ func _build_visuals() -> void:
 			_build_bed()
 		"generator":
 			_build_generator()
+		"stairs":
+			_build_stairs()
 		_:
 			_build_foundation()
 
@@ -262,17 +325,65 @@ func _build_roof() -> void:
 	_add_collision_box(Vector3(1.0, 0.3, 1.2), Vector3(0.0, 2.3, 0.0))
 
 func _build_door() -> void:
-	_add_box(Vector3(0.8, 2.0, 0.16), Vector3(0.0, 1.0, 0.0), Color(0.52, 0.38, 0.24))
+	# Bâti de porte (cadre fixe)
+	_add_box(Vector3(0.1, 2.1, 0.16), Vector3(-0.45, 1.05, 0.0), Color(0.42, 0.3, 0.18))
+	_add_box(Vector3(0.1, 2.1, 0.16), Vector3(0.45, 1.05, 0.0), Color(0.42, 0.3, 0.18))
+	_add_box(Vector3(1.0, 0.1, 0.16), Vector3(0.0, 2.05, 0.0), Color(0.42, 0.3, 0.18))
+
+	# Pivot et battant de porte ouvrant
+	_door_pivot = Node3D.new()
+	_door_pivot.position = Vector3(-0.4, 0.0, 0.0)
+	add_child(_door_pivot)
+
+	var panel := MeshInstance3D.new()
+	var panel_mesh := BoxMesh.new()
+	panel_mesh.size = Vector3(0.8, 1.95, 0.08)
+	panel.mesh = panel_mesh
+	panel.position = Vector3(0.4, 1.0, 0.0)
+	panel.material_override = _make_material(Color(0.52, 0.38, 0.24))
+	_door_pivot.add_child(panel)
+
 	var knob := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.06
 	sphere.radial_segments = 6
 	sphere.rings = 3
 	knob.mesh = sphere
-	knob.position = Vector3(0.35, 1.0, 0.0)
-	knob.material_override = _make_material(Color(0.3, 0.25, 0.12))
-	add_child(knob)
-	_add_collision_box(Vector3(0.8, 2.0, 0.16), Vector3(0.0, 1.0, 0.0))
+	knob.position = Vector3(0.72, 1.0, 0.06)
+	knob.material_override = _make_material(Color(0.8, 0.65, 0.2))
+	_door_pivot.add_child(knob)
+
+	_door_shape = CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.8, 1.95, 0.12)
+	_door_shape.shape = box
+	_door_shape.position = Vector3(0.4, 1.0, 0.0)
+	_door_pivot.add_child(_door_shape)
+
+	_apply_door_state()
+
+func _build_stairs() -> void:
+	var step_count := 4
+	var step_height := 0.25
+	var step_depth := 0.25
+	for i in step_count:
+		var h := (i + 1) * step_height
+		var y := h * 0.5
+		var z := 0.375 - i * step_depth
+		_add_box(Vector3(1.0, h, step_depth), Vector3(0.0, y, z), Color(0.48, 0.35, 0.22))
+
+	# Limons latéraux (rambardes décoratives)
+	_add_box(Vector3(0.08, 0.8, 1.0), Vector3(-0.46, 0.6, 0.0), Color(0.38, 0.26, 0.16))
+	_add_box(Vector3(0.08, 0.8, 1.0), Vector3(0.46, 0.6, 0.0), Color(0.38, 0.26, 0.16))
+
+	# Collision en pente douce pour une ascension fluide
+	var ramp_shape := CollisionShape3D.new()
+	var ramp_box := BoxShape3D.new()
+	ramp_box.size = Vector3(1.0, 0.15, 1.42)
+	ramp_shape.shape = ramp_box
+	ramp_shape.position = Vector3(0.0, 0.5, 0.0)
+	ramp_shape.rotation.x = deg_to_rad(-45.0)
+	add_child(ramp_shape)
 
 func _build_window() -> void:
 	_add_box(Vector3(0.8, 0.7, 0.16), Vector3(0.0, 1.3, 0.0), Color(0.7, 0.65, 0.55))

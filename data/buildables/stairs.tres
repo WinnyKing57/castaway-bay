@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_build"]
+
+[resource]
+script = ExtResource("1_build")
+id = "stairs"
+display_name = "Escalier"
+description = "Escalier en bois permettant d'accéder facilement aux étages supérieurs."
+category = "maison"
+collision_layer = 8
+kind = "stairs"
+costs = {
+"fiber": 2,
+"wood": 6
+}
+grid_size = 1
+visual_tag = "stairs"

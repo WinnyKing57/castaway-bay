@@ -201,10 +201,24 @@ func _spawn_props() -> void:
 		placed += 1
 
 
+## Point d'échouage du bateau sur l'eau près du rivage (hauteur sous l'eau entre -2.0 et -0.3).
+func find_boat_spawn_point() -> Vector3:
+	var radii: Array[float] = [105.0, 112.0, 118.0, 124.0, 128.0]
+	for radius in radii:
+		for step in 24:
+			var angle := step * TAU / 24.0
+			var x: float = cos(angle) * radius
+			var z: float = sin(angle) * radius
+			var height := get_height_at(x, z)
+			if height >= -2.0 and height <= -0.3:
+				return Vector3(x, 0.0, z)
+	return Vector3(0.0, 0.0, 115.0)
+
+
 func _spawn_boat() -> void:
 	var boat := Boat.new()
 	boat.name = "Boat"
-	boat.position = Vector3(0.0, -2.0, 0.0)
+	boat.position = find_boat_spawn_point()
 	add_child(boat)
 
 

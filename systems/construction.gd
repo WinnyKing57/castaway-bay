@@ -83,7 +83,11 @@ func _process(_delta: float) -> void:
 	var ghost_y := _compute_ghost_y(position.y, cell, _ghost.kind)
 	_ghost.visible = true
 	var shift := (maxi(1, _selected_data().grid_size) - 1) * 0.5
-	_ghost.global_position = Vector3(cell.x + 0.5 + shift, ghost_y, cell.y + 0.5 + shift)
+	var ghost_pos := Vector3(cell.x + 0.5 + shift, ghost_y, cell.y + 0.5 + shift)
+	if EDGE_KINDS.has(_ghost.kind):
+		var rot := _rotation_steps * PI * 0.5
+		ghost_pos += Vector3(sin(rot), 0.0, cos(rot)) * 0.5
+	_ghost.global_position = ghost_pos
 	_ghost.rotation.y = _rotation_steps * PI * 0.5
 	_ghost_y = ghost_y
 	_valid = _placement_ok(hit, cell, ghost_y)
@@ -116,6 +120,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cycle(-1)
 			MOUSE_BUTTON_LEFT:
 				_place()
+			MOUSE_BUTTON_RIGHT:
+				_try_demolish()
 
 
 # --- Sélection / pose --------------------------------------------------------
@@ -172,11 +178,7 @@ func _ghost_blocked_by_player() -> bool:
 	var data := _selected_data()
 	if data == null or _ghost == null:
 		return false
-	var center := _ghost.global_position
-	if data.kind == "wall":
-		var rot := _rotation_steps * PI * 0.5
-		center += Vector3(sin(rot), 0.0, cos(rot)) * 0.5
-	return _blocked_by_player(center, _rotation_steps * PI * 0.5, data.kind, data.grid_size)
+	return _blocked_by_player(_ghost.global_position, _rotation_steps * PI * 0.5, data.kind, data.grid_size)
 
 
 ## Test géométrique simple (boîte) entre un élément et la capsule du joueur
@@ -210,9 +212,6 @@ func _place() -> void:
 	if _ghost == null:
 		return
 	var position := _ghost.global_position
-	var rotation := _rotation_steps * PI * 0.5
-	if data.kind == "wall":
-		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
 	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_register_object(node)
 	Sfx.play("build", position)
@@ -251,7 +250,7 @@ func _grid_size_of(data_id: String) -> int:
 ## de grid_size n est centré sur son empreinte n x n : on retire aussi ce décalage.
 func _key_for_object(kind: String, position: Vector3, rotation_y: float, size: int = 1) -> Array[String]:
 	var base := position
-	if kind == "wall":
+	if EDGE_KINDS.has(kind):
 		base = position - Vector3(sin(rotation_y), 0.0, cos(rotation_y)) * 0.5
 	elif size > 1 and not EDGE_KINDS.has(kind):
 		var shift := (size - 1) * 0.5
@@ -316,9 +315,65 @@ func _update_build_info() -> void:
 	if _level_locked:
 		level_text += " [verrouillé]"
 	_hud.set_build_info(
-		"%s · Construction : %s (%d/%d) — %s · Clic gauche : poser · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller"
+		"%s · Construction : %s (%d/%d) — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller"
 		% [level_text, data.display_name, _selected + 1, _catalog.size(), ", ".join(costs)]
 	)
+
+
+func _try_demolish() -> bool:
+	var hit := _raycast()
+	if hit.is_empty():
+		return false
+	var collider: Node = hit.get("collider")
+	if collider is Buildable and not (collider as Buildable).is_queued_for_deletion():
+		return demolish(collider as Buildable)
+	return false
+
+
+## Démolit un élément construit et rembourse une partie des matériaux.
+func demolish(obj: Buildable) -> bool:
+	if obj == null or not is_instance_valid(obj) or not _objects.has(obj):
+		return false
+
+	var refunded_parts := PackedStringArray()
+	var b_data: Variant = Database.buildables.get(obj.data_id)
+	if b_data is BuildableData:
+		var costs: Dictionary = (b_data as BuildableData).costs
+		for item_id in costs:
+			var original := int(costs[item_id])
+			var refund := original if Settings.infinite_resources else maxi(1, int(ceil(original * 0.75)))
+			GameState.add_item(str(item_id), refund)
+			refunded_parts.append("%s x%d" % [GameState.display_name(str(item_id)), refund])
+
+	if obj.kind == "chest" and not obj.chest_inventory.is_empty():
+		for item_id in obj.chest_inventory:
+			var count: int = obj.chest_inventory[item_id]
+			if count > 0:
+				GameState.add_item(str(item_id), count)
+		obj.chest_inventory.clear()
+
+	for key in _key_for_object(obj.kind, obj.position, obj.rotation.y, _grid_size_of(obj.data_id)):
+		_occupied.erase(key)
+
+	_objects.erase(obj)
+
+	if obj.kind == "campfire" or obj.kind == "furnace":
+		var still_has_station := false
+		for remaining in _objects:
+			if remaining.kind == obj.kind:
+				still_has_station = true
+				break
+		if not still_has_station:
+			GameState.craft_stations.erase(obj.kind)
+
+	Sfx.play("harvest", obj.global_position)
+	obj.queue_free()
+
+	if refunded_parts.is_empty():
+		GameState.notify("Élément démoli")
+	else:
+		GameState.notify("Démoli : +%s" % ", ".join(refunded_parts))
+	return true
 
 
 func _raycast() -> Dictionary:
@@ -332,14 +387,24 @@ func _raycast() -> Dictionary:
 
 
 ## Clé d'occupation. Deux familles, indépendantes de la catégorie exacte :
-##  - éléments « de bord » (mur, porte, fenêtre) : un bord par case, niveau et
-##    orientation ; un mur et une porte ne peuvent donc pas partager un bord ;
+##  - éléments « de bord » (mur, porte, fenêtre) : clé canonique partagée par
+##    la frontière entre deux cases (un mur et une porte ne peuvent donc pas
+##    partager un bord, ni deux murs se superposer de part et d'autre) ;
 ##  - tout le reste occupe le centre de la case à un niveau donné : fondation,
 ##    toit, feu, coffre... ne peuvent pas se superposer, quelle que soit leur
 ##    catégorie.
 func _cell_key(kind: String, cell: Vector2i, level: int = 0, rotation: int = 0) -> String:
 	if EDGE_KINDS.has(kind):
-		return "edge:%d:%d:%d:%d" % [cell.x, cell.y, level, wrapi(rotation, 0, 4)]
+		var rot := wrapi(rotation, 0, 4)
+		match rot:
+			0:
+				return "edge_h:%d:%d:%d" % [cell.x, cell.y + 1, level]
+			1:
+				return "edge_v:%d:%d:%d" % [cell.x + 1, cell.y, level]
+			2:
+				return "edge_h:%d:%d:%d" % [cell.x, cell.y, level]
+			3:
+				return "edge_v:%d:%d:%d" % [cell.x, cell.y, level]
 	return "cell:%d:%d:%d" % [cell.x, cell.y, level]
 
 
@@ -409,12 +474,17 @@ func to_save_data() -> Array:
 	for obj in _objects:
 		if not is_instance_valid(obj):
 			continue
-		result.append({
+		var entry := {
 			"kind": obj.kind,
 			"data_id": obj.data_id,
 			"position": [obj.position.x, obj.position.y, obj.position.z],
 			"rotation_y": obj.rotation.y,
-		})
+		}
+		if obj.kind == "chest" and not obj.chest_inventory.is_empty():
+			entry["storage"] = obj.chest_inventory.duplicate()
+		if obj.kind == "door" and obj.is_open:
+			entry["is_open"] = true
+		result.append(entry)
 	return result
 
 
@@ -471,7 +541,17 @@ func load_save_data(entries: Variant) -> void:
 		if duplicate:
 			push_warning("[Construction] Doublon ignoré à %s" % str(position))
 			continue
-		place_free(kind, data_id, position, rotation_y)
+		var node := place_free(kind, data_id, position, rotation_y)
+		if kind == "door" and bool(entry.get("is_open", false)):
+			node.is_open = true
+			node._apply_door_state()
+		if kind == "chest" and entry.has("storage") and typeof(entry["storage"]) == TYPE_DICTIONARY:
+			var storage: Dictionary = entry["storage"]
+			for item_key in storage:
+				var item_id := str(item_key)
+				var count := int(storage[item_key])
+				if Database.items.has(item_id) and count > 0:
+					node.chest_inventory[item_id] = count
 
 
 func clear_all() -> void:

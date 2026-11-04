@@ -8,6 +8,7 @@ extends Node3D
 @onready var player: Player = $Player
 @onready var hud: Hud = $HUD
 @onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
+@onready var storage_panel: StoragePanel = $HUD/StoragePanel
 @onready var menu: MenuPanel = $HUD/MenuPanel
 @onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
@@ -26,6 +27,8 @@ func _ready() -> void:
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
+	storage_panel.opened.connect(_on_storage_opened)
+	storage_panel.closed.connect(_on_storage_closed)
 	menu.new_game_requested.connect(_on_menu_new_game)
 	menu.continue_requested.connect(_on_menu_continue)
 	menu.resume_requested.connect(_on_menu_resume)
@@ -65,6 +68,9 @@ func _is_dev_run() -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		if storage_panel.is_open():
+			storage_panel.close()
+			return
 		if crafting_panel.is_open():
 			crafting_panel.close()
 			return
@@ -78,6 +84,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if GameState.is_dead:
 		if event.is_action_pressed("ui_accept"):
 			_respawn()
+		return
+
+	if storage_panel.is_open():
 		return
 
 	if event.is_action_pressed("toggle_crafting"):
@@ -126,6 +135,8 @@ func _show_start_menu() -> void:
 
 
 func _open_pause_menu() -> void:
+	if storage_panel.is_open():
+		storage_panel.close()
 	if crafting_panel.is_open():
 		crafting_panel.close()
 	if construction.is_active():
@@ -215,6 +226,8 @@ func _notification(what: int) -> void:
 
 
 func _on_player_died() -> void:
+	if storage_panel.is_open():
+		storage_panel.close()
 	if crafting_panel.is_open():
 		crafting_panel.close()
 	if construction.is_active():
@@ -222,6 +235,22 @@ func _on_player_died() -> void:
 	Sfx.play_ui("death")
 	player.set_controls_enabled(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_storage_opened() -> void:
+	if construction.is_active():
+		construction.toggle()
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_storage_closed() -> void:
+	if GameState.is_dead:
+		return
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _on_crafting_opened() -> void:
@@ -270,6 +299,7 @@ func _run_smoke_test() -> void:
 	# Le test écrit dans user:// : on met de côté la vraie sauvegarde et les
 	# vrais réglages du joueur pour les restaurer à la fin.
 	var user_backup := _backup_user_files()
+	Settings.infinite_resources = false
 
 	if player == null:
 		errors.append("joueur absent")
@@ -621,6 +651,27 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 	if construction._can_place(wall_cell, 0, 3):
 		errors.append("porte acceptée sur le bord d'un mur")
 
+	# Éléments de bord canoniques : cell (12, 12) rot 3 partage la même frontière que cell (11, 12) rot 1
+	var neighbor_wall_cell := Vector2i(11, 12)
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(neighbor_wall_cell, 0, 1):
+		errors.append("mur partagé depuis la case voisine accepté (doublon canonique)")
+	construction._selected = _catalog_index("window")
+	if construction._can_place(neighbor_wall_cell, 0, 1):
+		errors.append("fenêtre partagée sur le bord d'un mur acceptée")
+
+	# Mode créatif (matériaux infinis) : artisanat et construction sans consommer
+	Settings.infinite_resources = true
+	var plank_recipe: RecipeData = Database.get_recipe("plank")
+	GameState.inventory.clear()
+	if not GameState.can_craft(plank_recipe):
+		errors.append("mode créatif : fabrication refusée sans ressources")
+	if not GameState.craft(plank_recipe):
+		errors.append("mode créatif : craft KO")
+	if GameState.get_item_count("plank") < 1:
+		errors.append("mode créatif : objet non produit")
+	Settings.infinite_resources = false
+
 	var count_before := construction.to_save_data().size()
 	if not SaveSystem.save_game(player, construction, world):
 		errors.append("sauvegarde (stabilité) KO")
@@ -706,6 +757,65 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 			errors.append("réparation du bateau KO")
 		player.exit_boat()
 		boat._physics_process(0.016)
+
+	# Coffres : stockage, persistance et interface
+	construction.clear_all()
+	var chest_node := construction.place_free("chest", "chest", Vector3(15.5, 0.0, 15.5), 0.0)
+	if chest_node == null:
+		errors.append("pose coffre KO")
+	else:
+		if not chest_node.get_interaction_prompt().contains("vide"):
+			errors.append("prompt coffre vide KO")
+		GameState.inventory.clear()
+		GameState.add_item("wood", 10)
+		GameState.add_item("fiber", 5)
+		storage_panel.open(chest_node)
+		if not storage_panel.is_open():
+			errors.append("panneau coffre non ouvert")
+		storage_panel._put_in_chest("wood", 6)
+		if chest_node.chest_inventory.get("wood", 0) != 6 or GameState.get_item_count("wood") != 4:
+			errors.append("dépôt dans le coffre KO")
+		storage_panel._on_deposit_all()
+		if GameState.get_item_count("wood") != 0 or GameState.get_item_count("fiber") != 0:
+			errors.append("tout déposer dans le coffre KO")
+		if not SaveSystem.save_game(player, construction, world):
+			errors.append("sauvegarde avec coffre KO")
+		construction.clear_all()
+		if not SaveSystem.load_game_into(player, world, construction):
+			errors.append("chargement avec coffre KO")
+		var restored_chest: Buildable = null
+		for obj in construction._objects:
+			if obj.kind == "chest":
+				restored_chest = obj
+				break
+		if restored_chest == null or restored_chest.chest_inventory.get("wood", 0) != 10:
+			errors.append("contenu du coffre non restauré après chargement")
+		if restored_chest != null:
+			storage_panel.open(restored_chest)
+			storage_panel._take_from_chest("wood", 4)
+			if GameState.get_item_count("wood") != 4 or restored_chest.chest_inventory.get("wood", 0) != 6:
+				errors.append("retrait du coffre KO")
+			storage_panel._on_take_all()
+			if not restored_chest.chest_inventory.is_empty() or GameState.get_item_count("wood") != 10 or GameState.get_item_count("fiber") != 5:
+				errors.append("tout retirer du coffre KO")
+			storage_panel.close()
+			if storage_panel.is_open():
+				errors.append("panneau coffre non fermé")
+
+	# Compatibilité v1 : sauvegarde v1 sans world_state, ni craft, ni in_boat
+	var v1_json := '{"version": 1, "saved_at": "2026-01-01T12:00:00", "world_time": 43200.0, "world_seed": 12345, "stats": {"health": 85.0, "hunger": 75.0, "thirst": 65.0, "fatigue": 90.0}, "inventory": {"wood": 12, "stone": 8}, "hotbar_index": 1, "player": {"position": [10.0, 5.0, 10.0], "rotation_y": 0.5, "pitch": -0.2}, "construction": [{"kind": "foundation", "data_id": "foundation", "position": [10.5, 0.0, 10.5], "rotation_y": 0.0}]}'
+	_write_raw_save(v1_json)
+	GameState.inventory.clear()
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement sauvegarde v1 KO")
+	else:
+		if GameState.get_item_count("wood") != 12 or GameState.get_item_count("stone") != 8:
+			errors.append("inventaire sauvegarde v1 non restauré")
+		if absf(GameState.stats.health - 85.0) > 0.01:
+			errors.append("jauges sauvegarde v1 non restaurées")
+		if construction.to_save_data().size() != 1:
+			errors.append("constructions sauvegarde v1 non restaurées")
 	construction.clear_all()
 
 

@@ -5,6 +5,10 @@ extends StaticBody3D
 const GROWTH_SECONDS := 90.0
 const SEED_ITEM_ID := "seed"
 
+const COLOR_SOIL := Color(0.38, 0.28, 0.18)
+const COLOR_GROWING := Color(0.24, 0.62, 0.24)
+const COLOR_MATURE := Color(0.85, 0.28, 0.22)
+
 @export var item_id: String = "berry"
 
 ## Identifiant stable (ordre de génération) pour la sauvegarde. -1 = aucun.
@@ -13,6 +17,7 @@ var save_id := -1
 var progress := 0.0
 var _planted := false
 var _visual: MeshInstance3D
+var _material: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -29,9 +34,11 @@ func _ready() -> void:
 	box_mesh.size = Vector3(1.0, 0.5, 1.0)
 	visual.mesh = box_mesh
 	visual.position = Vector3(0.0, 0.25, 0.0)
-	visual.material_override = _make_material(Color(0.2, 0.55, 0.2))
+	_material = _make_material(COLOR_SOIL)
+	visual.material_override = _material
 	add_child(visual)
 	_visual = visual
+	_update_visual()
 
 
 func is_planted() -> bool:
@@ -46,9 +53,7 @@ func get_save_state() -> Dictionary:
 func apply_save_state(planted: bool, saved_progress: float) -> void:
 	_planted = planted
 	progress = clampf(saved_progress, 0.0, GROWTH_SECONDS * 4.0) if planted else 0.0
-	if _visual != null:
-		var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0) if planted else 0.0
-		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth if planted else 1.0, 1.0)
+	_update_visual()
 
 
 func get_interaction_prompt() -> String:
@@ -65,6 +70,7 @@ func interact(_player: Node) -> void:
 			GameState.remove_item(SEED_ITEM_ID, 1)
 			_planted = true
 			progress = 0.0
+			_update_visual()
 			GameState.notify("Culture plantée")
 		return
 	if progress < GROWTH_SECONDS:
@@ -74,6 +80,7 @@ func interact(_player: Node) -> void:
 	GameState.add_item(SEED_ITEM_ID, 1)
 	_planted = false
 	progress = 0.0
+	_update_visual()
 	GameState.notify("Récolte (+2 %s, +1 %s)" % [GameState.display_name(item_id), GameState.display_name(SEED_ITEM_ID)])
 
 
@@ -89,6 +96,17 @@ func _process(delta: float) -> void:
 	if not _planted:
 		return
 	progress += delta
-	if _visual != null:
-		var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0)
-		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth, 1.0)
+	_update_visual()
+
+
+func _update_visual() -> void:
+	if _visual == null or _material == null:
+		return
+	if not _planted:
+		_visual.scale = Vector3(1.0, 0.2, 1.0)
+		_material.albedo_color = COLOR_SOIL
+		return
+	var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0)
+	_visual.scale = Vector3(1.0, 0.2 + 0.8 * growth, 1.0)
+	var tint := COLOR_GROWING.lerp(COLOR_MATURE, clampf((growth - 0.7) / 0.3, 0.0, 1.0))
+	_material.albedo_color = tint

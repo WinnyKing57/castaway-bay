@@ -255,5 +255,7 @@ func _get_interaction_target() -> Node:
 		return null
 	var collider := ray.get_collider()
 	if collider != null and collider.has_method("interact") and collider.has_method("get_interaction_prompt"):
+		if str(collider.get_interaction_prompt()).is_empty():
+			return null
 		return collider
 	return null

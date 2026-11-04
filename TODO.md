@@ -12,7 +12,7 @@
 - [x] Menu principal, menu pause, panneau de réglages (volume, sensibilité
       souris, plein écran) et option de triche / mode créatif (matériaux infinis)
 - [x] Nage, caméra sous-marine, sons synthétisés à la volée (aucun asset audio)
-- [x] Agriculture : semis manuel (graines), croissance visuelle (teinte rouge à
+- [x] Agriculture : semis manuel (graines), sol meuble au repos, croissance visuelle (teinte rouge à
       maturité), récolte pérenne (+2 récoltes, +1 graine)
 - [x] Sauvegarde et chargement (**F9** / **F10**) + sauvegarde automatique
       (toutes les 2 min, sortie vers le menu, fermeture de fenêtre, perte de
@@ -21,21 +21,22 @@
       inventaire, barre rapide, horloge et graine, fabrication chronométrée,
       constructions et stations, ressources épuisées + repousse, cultures,
       bateau (position, cap, carburant)
-- [x] Bateau : monter/descendre, réparation (1 métal), carburant (réservoir 30,
-      bidon), navigation et sauvegarde de l'état
-- [x] Stabilisation : inventaire (quantités ≤ 0 refusées), occupation
-      inter-catégories, validation des sauvegardes, chargement des
-      constructions, libération joueur/bateau, `kind` des données
+- [x] Bateau : gouvernail (rotation) et propulsion distincts, spawn côtier
+      dans l'eau, monter/descendre avec libération propre, réparation (1 métal),
+      carburant (réservoir 30, bidon), navigation et sauvegarde de l'état
+- [x] Coffres de stockage : interaction (E), interface complète (dépôt/retrait 1 ou tout),
+      persistance du contenu dans les sauvegardes v2
+- [x] Stabilisation avancée : clés de bord canoniques (anti-doublon partagé mur/porte/fenêtre),
+      alignement fantôme d'arêtes, prise en compte directe du mode créatif (matériaux infinis)
+      dans les fabrications et constructions
+- [x] Compatibilité v1 testée et validée sans régression
+- [x] CI GitHub Actions : exécution automatique de `./run.sh --test` en headless
 - [x] Tests de non-régression : `./run.sh --test` → `SMOKE_TEST OK`
 - [x] Export autonome Linux x86_64 en place et testé en mode headless
 
 ## À faire (par ordre de priorité)
-- [ ] **CI** : exécuter `./run.sh --test` (Godot 4.7 headless) sur chaque PR
-- [ ] **Coffres** : contenu stockable (puis sauvegardé)
-- [ ] **Validation manuelle** (Godot avec fenêtre) : monter/descendre du bateau,
-      mourir à bord, charger en navigation, autosauvegarde à la fermeture, rendu,
-      poser mur/porte/fenêtre sur un même bord
-- [ ] **Compatibilité** : vérifier en jeu le chargement d'anciennes sauvegardes v1
+- [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique complet
+      (ambiance météo, fluidité de navigation du bateau en conditions réelles)
 
 ## Prochaines étapes de développement (roadmap)
 

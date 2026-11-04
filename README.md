@@ -223,10 +223,14 @@ Garde-fous en place (voir `./run.sh --test`) :
 - **Construction** : `grid_size` est respecté (tente et lit occupent 2 x 2
   cases) et un élément ne peut pas être posé sur le joueur. L'occupation d'une
   case ne dépend plus de la catégorie du bâtiment. Deux familles : *éléments de
-  bord* (mur, porte, fenêtre : un par bord, niveau et orientation) et *éléments
-  de centre* (fondation, toit, feu, coffre… : un par case et par niveau). La clé
-  est recalculée depuis la position réelle, donc identique avant et après une
-  sauvegarde.
+  bord* (mur, porte, fenêtre : clé canonique partagée par la frontière de deux cases,
+  empêchant les doublons ou superpositions de mur/porte de part et d'autre) et
+  *éléments de centre* (fondation, toit, feu, coffre… : un par case et par niveau).
+  La prévisualisation fantôme des arêtes s'aligne fidèlement et la clé est recalculée
+  depuis la position réelle, donc identique avant et après une sauvegarde.
+- **Coffres de stockage** : stockage persistant d'objets (touche **E** pour ouvrir),
+  interface intuitive de dépôt et retrait (+1 / Tout), boutons de transfert global,
+  persistance du contenu dans les sauvegardes v2.
 - **Chargement des constructions** : l'identifiant doit exister dans la base
   (la catégorie vient de la base, pas du fichier), les coordonnées doivent être
   finies et bornées, les doublons sont ignorés, la station de fabrication
@@ -234,10 +238,12 @@ Garde-fous en place (voir `./run.sh --test`) :
 - **Sauvegarde** : validation complète (types, valeurs finies, version) *avant*
   toute modification de l'état ; inventaire assaini (objets inconnus et
   quantités ≤ 0 ignorés), jauges bornées à 0-100, position aberrante replacée
-  sur la plage. Un fichier invalide est refusé en bloc.
-- **Bateau** : le joueur suit le bateau ; mort, respawn, nouvelle partie ou
-  chargement le libèrent. Réparation (1 métal) et recharge de carburant
-  corrigées.
+  sur la plage. Rétrocompatibilité v1 testée et validée sans régression.
+- **Bateau** : physique de navigation stabilisée avec gouvernail directionnel
+  (rotation) et propulsion indépendante, point d'échouage généré sur l'eau
+  près de la plage, réutilisation du carburant, libération propre du joueur.
+- **Mode créatif** : l'option de matériaux infinis est prise en compte
+  directement dans `has_items()` et `consume_items()`.
 - **Données** : `chest`, `door`, `roof` et `window` déclarent leur `kind` (ils
   étaient auparavant construits comme des fondations).
 
@@ -250,7 +256,7 @@ Garde-fous en place (voir `./run.sh --test`) :
 | `player` | position, `rotation_y`, `pitch` (regard), `in_boat` |
 | `stats`, `inventory`, `hotbar_index`, `world_time`, `world_seed` | état de survie et de la partie |
 | `craft` | fabrication chronométrée en cours (ingrédients déjà consommés) |
-| `construction` | éléments posés (id, position, rotation) ; stations recalculées |
+| `construction` | éléments posés (id, position, rotation, stockage pour les coffres) ; stations recalculées |
 | `world_state` | ressources épuisées (id stable + délai de repousse), cultures plantées (id + progression), bateau (position, cap, carburant) |
 
 Les ressources ont un identifiant stable (ordre de génération, déterministe pour
@@ -272,7 +278,6 @@ chargement. `craft_time = 0` reste instantané.
 
 - Une même recette ne peut pas être mise en file : une seule fabrication à la
   fois.
-- Les coffres n'ont pas encore de contenu (rien à sauvegarder).
 - Les transitions joueur/bateau, l'autosauvegarde à la fermeture de la fenêtre et
   le rendu sont à valider à la main avec fenêtre : le test sans fenêtre couvre la
   logique, pas l'affichage.

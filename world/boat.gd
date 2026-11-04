@@ -31,7 +31,7 @@ func _ready() -> void:
 	add_child(shape)
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if not _controlled:
 		velocity = Vector3.ZERO
 		return
@@ -41,7 +41,7 @@ func _physics_process(_delta: float) -> void:
 	if GameState.is_dead or not _player_is_aboard():
 		_release()
 		return
-	if global_position.y > 0.0:
+	if global_position.y > 0.5:
 		velocity = Vector3.ZERO
 		return
 	# Menus ouverts (artisanat, mort...) : le bateau ne répond plus aux touches.
@@ -50,14 +50,22 @@ func _physics_process(_delta: float) -> void:
 		can_steer = bool(_player.call("are_controls_enabled"))
 	var input := Vector2.ZERO
 	if can_steer:
-		input = Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
-	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
+		input = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+
+	# Rotation du gouvernail (touches gauche / droite)
+	if absf(input.x) > 0.01:
+		rotate_y(-input.x * TURN_SPEED * delta)
+
+	# Propulsion avant / arrière (touches avancer / reculer)
+	var throttle := -input.y
 	# Recharge automatique quand le réservoir est vide et qu'on a du carburant.
-	if fuel <= 0.0 and direction.length() > 0.0 and GameState.remove_item(FUEL_ITEM_ID, 1):
+	if absf(throttle) > 0.01 and fuel <= 0.0 and GameState.remove_item(FUEL_ITEM_ID, 1):
 		fuel = FUEL_MAX
-	if direction.length() > 0.0 and fuel > 0.0:
-		velocity = direction * SPEED
-		fuel = maxf(0.0, fuel - _delta * 5.0)
+
+	if absf(throttle) > 0.01 and fuel > 0.0:
+		var speed := SPEED if throttle > 0.0 else SPEED * 0.5
+		velocity = -transform.basis.z * throttle * speed
+		fuel = maxf(0.0, fuel - delta * 3.0)
 	else:
 		velocity = Vector3.ZERO
 	move_and_slide()
@@ -76,7 +84,7 @@ func board(player: Node) -> void:
 		_player = null
 		return
 	_controlled = true
-	(_player as CharacterBody3D).enter_boat()
+	(_player as CharacterBody3D).enter_boat(self)
 	_player.global_position = global_position + SEAT_OFFSET
 
 
@@ -124,7 +132,7 @@ func interact(player: Node) -> void:
 		return
 	_controlled = true
 	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).enter_boat()
+		(_player as CharacterBody3D).enter_boat(self)
 		_player.global_position = global_position + SEAT_OFFSET
 
 
