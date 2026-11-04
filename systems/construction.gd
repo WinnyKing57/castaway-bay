@@ -172,15 +172,12 @@ func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 
 
 ## Vérifie toutes les cases occupées par l'empreinte du bâtiment. La taille
-## déclarée dans BuildableData est ainsi réellement prise en compte ; une
-## rotation à 90° inverse largeur/profondeur pour les empreintes rectangulaires.
+## déclarée dans BuildableData est ainsi réellement prise en compte. Le
+## paramètre de rotation est conservé pour permettre des empreintes rectangulaires
+## si BuildableData expose ultérieurement largeur et profondeur séparément.
 func _footprint_is_free(data: BuildableData, origin: Vector2i, level: int, rotation: int) -> bool:
 	var width := maxi(1, data.grid_size)
 	var depth := maxi(1, data.grid_size)
-	if posmod(rotation, 2) == 1:
-		var swap := width
-		width = depth
-		depth = swap
 	for x in width:
 		for z in depth:
 			if _occupied.has(_cell_key(data.kind, origin + Vector2i(x, z), level)):
@@ -280,6 +277,11 @@ func _place() -> void:
 	var position := _ghost.global_position
 	var cell := Vector2i(floori(position.x), floori(position.z))
 	var level := int(round(position.y / LEVEL_STEP))
+	if data.kind == "wall":
+		# Le mur est placé sur l'arête de la cellule pour s'aligner avec
+		# les fondations adjacentes.
+		var rotation := _rotation_steps * PI * 0.5
+		position += Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_mark_footprint(data, cell, level, _rotation_steps)
 	Sfx.play("build", position)
