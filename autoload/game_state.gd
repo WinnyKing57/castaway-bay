@@ -13,7 +13,7 @@ signal died
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
 const SECONDS_PER_DAY := 86400.0
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 ## Objets accessibles depuis la barre rapide (touches 1 à 4).
 var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe", "cooked"]
@@ -178,7 +178,8 @@ func can_craft(recipe: RecipeData) -> bool:
 func craft(recipe: RecipeData) -> bool:
 	if recipe == null or not can_craft(recipe):
 		return false
-	consume_items(recipe.inputs)
+	if not consume_items(recipe.inputs):
+		return false
 	for item_id in recipe.outputs:
 		add_item(str(item_id), int(recipe.outputs[item_id]))
 	Sfx.play_ui("craft")
