@@ -30,7 +30,8 @@ ni code d'un jeu commercial n'est utilisé).
 5. **Naviguer** : repérez le bateau échoué au large, réparez sa coque avec du métal, faites le plein
    de carburant et naviguez pour explorer les pourtours de l'océan.
 6. **Sauvegarder & Reprendre** : **F9** / **F10** ou via le menu pause. La graine de l'île,
-   l'inventaire, les constructions, le bateau (position, coque, carburant) et l'état des ressources sont conservés.
+   l'inventaire, les constructions, le bateau (position, orientation, état de coque,
+   carburant), les ressources récoltables et les cultures sont conservés.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
@@ -149,7 +150,35 @@ main.tscn/.gd    assemblage de la scène de jeu
 3. **État global centralisé** : `GameState` (inventaire, jauges, horloge)
    émet des signaux ; l'UI écoute, elle ne modifie rien.
 4. **Sauvegarde en données, pas en scènes** : JSON versionné
-   (`user://savegame.json`), avec un numéro de version pour migrer plus tard.
+   (`user://savegame.json`). La version actuelle du format est **2** ; les
+   sauvegardes de version 1 restent acceptées et les champs ajoutés sont chargés
+   avec des valeurs par défaut lorsqu'ils sont absents.
+
+---
+
+## État de stabilité et vérifications
+
+Les correctifs récents portent notamment sur les contrôles du bateau, sa
+persistance, la récolte permanente des carcasses, les délais de repousse,
+l'annulation des fabrications en mode créatif et la validation de l'empreinte
+des bâtiments. Ils ont été poussés sur la branche
+[`feature/gameplay-final`](https://github.com/WinnyKing57/castaway-bay/tree/feature/gameplay-final).
+
+Avant une fusion vers `main`, effectuer au minimum les vérifications suivantes
+dans Godot 4.7 :
+
+1. Lancer `./run.sh --test` et vérifier le résultat `SMOKE_TEST OK`.
+2. Récolter une carcasse, sauvegarder, recharger et vérifier qu'elle reste épuisée.
+3. Planter une culture, attendre sa maturité, sauvegarder/recharger puis récolter.
+4. Déplacer le bateau, consommer du carburant, sauvegarder/recharger et vérifier
+   sa position, son orientation et son niveau de carburant.
+5. Annuler une fabrication chronométrée en mode normal puis en mode créatif ;
+   vérifier qu'aucune ressource n'est créée ou perdue.
+6. Tester le placement et le rechargement de bâtiments de plusieurs tailles,
+   niveaux et orientations.
+
+Aucun statut CI n'est actuellement publié pour cette branche. Les tests manuels
+ci-dessus restent donc nécessaires.
 
 ---
 
@@ -189,8 +218,12 @@ Vérification rapide (sans interface graphique) :
 
 Doit afficher : `SMOKE_TEST OK`.
 
-Côté projet, `./run.sh --test` passe aussi : `SMOKE_TEST OK`, 0 erreur
-(validé en local et sur le device).
+**État de validation :** la dernière passe de stabilisation a fait l'objet d'une
+revue statique des scripts et des changements GitHub. Le lancement de Godot et
+l'exécution de `./run.sh --test` doivent être refaits dans un environnement
+disposant de Godot 4.7 avant de considérer cette révision comme validée en
+exécution. Ne pas interpréter les résultats de tests antérieurs comme une
+validation automatique de chaque changement récent.
 
 ---
 
