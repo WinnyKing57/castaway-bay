@@ -625,7 +625,7 @@ func _build_house() -> void:
 	_build_roof()
 
 
-## Torche : bâti avec source de lumière (OmniLight) pour éclairer les grottes.
+## Torche : bâti statique (l’éclairage passe par la torche tenue — player).
 func _build_torch() -> void:
 	var stick := MeshInstance3D.new()
 	var stick_mesh := CylinderMesh.new()
@@ -647,10 +647,6 @@ func _build_torch() -> void:
 	flame.position.y = 1.05
 	flame.material_override = _make_material(Color(1.0, 0.6, 0.2))
 	add_child(flame)
-	var light: OmniLight3D = OmniLight3D.new()
-	light.energy = 80.0
-	light.color = Color(1.0, 0.72, 0.42)
-	add_child(light)
 	_add_collision_box(Vector3(0.2, 0.6, 0.2), Vector3(0.0, 0.3, 0.0))
 
 
