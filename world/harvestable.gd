@@ -122,7 +122,7 @@ func interact(_player: Node) -> void:
 
 
 func _process(delta: float) -> void:
-	if not _depleted:
+	if not _depleted or kind == "carcasse":
 		return
 	# Les délais de repousse sont exprimés en secondes réelles, comme la
 	# croissance des cultures. Le compteur est gelé lorsque le SceneTree est
