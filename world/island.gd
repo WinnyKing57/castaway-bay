@@ -39,6 +39,7 @@ func generate(seed_value: int = 0) -> void:
 	_spawn_boat()
 	_spawn_quad()
 	_spawn_crops()
+	_spawn_trader()
 
 
 ## Détruit le monde et le reconstruit avec une autre graine (chargement).
@@ -230,6 +231,13 @@ func _spawn_quad() -> void:
 	add_child(quad)
 
 
+func _spawn_trader() -> void:
+	var trader := Trader.new()
+	trader.name = "Trader"
+	trader.position = Vector3(60.0, get_height_at(60.0, 60.0), 60.0)
+	add_child(trader)
+
+
 func _spawn_crops() -> void:
 	var count := 6
 	var rng := RandomNumberGenerator.new()
@@ -262,6 +270,7 @@ func to_save_data() -> Dictionary:
 	var crops: Array = []
 	var boat_state := {}
 	var quad_state := {}
+	var trader_state := {}
 	for child in get_children():
 		if child is Harvestable and child.save_id >= 0 and child.is_depleted():
 			harvested.append(child.get_save_state())
@@ -271,7 +280,9 @@ func to_save_data() -> Dictionary:
 			boat_state = child.get_save_state()
 		elif child is Quad:
 			quad_state = child.get_save_state()
-	return {"harvestables": harvested, "crops": crops, "boat": boat_state, "quad": quad_state}
+		elif child is Trader:
+			trader_state = child.get_save_state()
+	return {"harvestables": harvested, "crops": crops, "boat": boat_state, "quad": quad_state, "trader": trader_state}
 
 
 ## Applique l'état sauvegardé. Les entrées invalides sont ignorées ; tout ce qui
@@ -306,6 +317,10 @@ func apply_save_data(data: Dictionary) -> void:
 			var quad_state: Variant = data.get("quad", {})
 			if typeof(quad_state) == TYPE_DICTIONARY and not (quad_state as Dictionary).is_empty():
 				child.apply_save_state(quad_state)
+		elif child is Trader:
+			var trader_state: Variant = data.get("trader", {})
+			if typeof(trader_state) == TYPE_DICTIONARY and not (trader_state as Dictionary).is_empty():
+				child.apply_save_state(trader_state)
 
 
 func get_boat() -> Boat:
@@ -318,6 +333,13 @@ func get_boat() -> Boat:
 func get_quad() -> Quad:
 	for child in get_children():
 		if child is Quad:
+			return child
+	return null
+
+
+func get_trader() -> Trader:
+	for child in get_children():
+		if child is Trader:
 			return child
 	return null
 
