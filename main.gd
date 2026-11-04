@@ -324,7 +324,7 @@ func _run_smoke_test() -> void:
 		errors.append("joueur sous le niveau de la mer")
 
 	# Végétation : l'île doit contenir de quoi survivre (bois, fibres, cocos).
-	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0}
+	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0}
 	for child in world.get_children():
 		if child is Harvestable:
 			kinds[child.kind] = int(kinds.get(child.kind, 0)) + 1

@@ -1,13 +1,13 @@
 class_name Harvestable
 extends StaticBody3D
-## Ressource récoltable : arbre, palmier, rocher ou buisson.
+## Ressource récoltable : arbre, palmier, rocher, buisson, minéral ou cristal.
 ##
 ## Le visuel et la collision sont construits en code selon `kind`, ce qui
 ## évite quatre scènes quasi identiques. La scène ne contient que ce script.
 ## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
 ## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile", "cristal") var kind: String = "arbre"
 
 ## Temps de repousse : une ressource récoltée redevient disponible après
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
@@ -46,6 +46,9 @@ func _ready() -> void:
 		"argile":
 			_loot = {"clay": 3}
 			_build_clay()
+		"cristal":
+			_loot = {"crystal": 2}
+			_build_crystal()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
@@ -223,6 +226,17 @@ func _build_clay() -> void:
 	patch.material_override = _make_material(Color(0.6, 0.55, 0.45))
 	add_child(patch)
 	_add_box_collision(Vector3(1.6, 0.5, 1.6), Vector3(0.0, 0.25, 0.0))
+
+
+func _build_crystal() -> void:
+	var gem := MeshInstance3D.new()
+	var gem_mesh := BoxMesh.new()
+	gem_mesh.size = Vector3(0.7, 1.4, 0.7)
+	gem.mesh = gem_mesh
+	gem.position.y = 0.7
+	gem.material_override = _make_material(Color(0.55, 0.8, 0.95))
+	add_child(gem)
+	_add_box_collision(Vector3(0.8, 1.6, 0.8), Vector3(0.0, 0.8, 0.0))
 
 
 func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:

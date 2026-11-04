@@ -141,7 +141,7 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### 1. Grottes et biomes souterrains (M1 suite)
 - [ ] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux
 - [ ] Ambiance d'éclairage sombre nécessitant la torche
-- [ ] Minerais spécifiques et rares dans les profondeurs (métaux précieux, charbon, cristaux)
+- [x] Minerais spécifiques et rares dans les profondeurs (métaaux précieux, charbon, cristaux) — incrément : cristal (kind `cristal`) récoltable
 - [ ] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs
 
 ### 2. Agriculture et élevage avancés

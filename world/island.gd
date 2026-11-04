@@ -187,7 +187,7 @@ func _spawn_props() -> void:
 		elif height < 4.0:
 			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
 		elif height > 12.0:
-			prop.kind = "fer"
+			prop.kind = "fer" if rng.randf() < 0.5 else "cristal"
 		elif height > 9.0:
 			prop.kind = "rocher"
 		elif rng.randf() < 0.55:
