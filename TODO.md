@@ -7,7 +7,8 @@
 - [x] Système de construction modulaire (**B**) : règles d'ancrage, gestion des étages, support vertical, alignement fantôme et verrouillage d'altitude (**V**)
 - [x] Menu principal, menu pause, panneau de réglages (volume, sensibilité souris, plein écran) et option de triche / mode créatif
 - [x] Nage, caméra sous-marine, sons synthétisés à la volée (aucun asset externe requis)
-- [x] Éléments construits, matériaux avancés (planches, briques cuites, cordes, électronique, carburant), cultures
+- [x] Éléments construits, matériaux avancés (planches, briques cuites, cordes, électronique, carburant)
+- [x] Agriculture avancée : cycle visuel de pousse (changement de teinte à maturité), boucle de semis et récolte pérenne (+2 récoltes, +1 graine)
 - [x] Sauvegarde et chargement robustes (**F9** / **F10**), persistance de la graine, inventaire, bâtiments et repousse des ressources du monde
 - [x] Véhicule marin : bateau sur l'eau (`Boat`), réparation avec métal (`repair()`), consommation de carburant et navigation
 - [x] Correctif bloquant `Boat.repair(player)` et validation totale via `./run.sh --test` (0 erreur, SMOKE_TEST OK)

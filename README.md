@@ -19,7 +19,8 @@ ni code d'un jeu commercial n'est utilisé).
 2. **Survivre & Cultiver** : la faim, la soif et la fatigue évoluent constamment. Mangez
    et buvez avec la barre rapide (**1-4** puis **F**). Maintenez vos jauges au-dessus
    de 60 pour régénérer la fatigue. Plantez des graines sur les parcelles agricoles pour
-   produire de la nourriture.
+   produire de la nourriture (la culture grandit, vire au rouge à maturité et produit à la
+   fois 2 récoltes et 1 graine pour pérenniser vos plantations).
 3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (outils comme la hache en pierre
    qui double le rendement du bois, torches, planches, cordes, briques cuites, composants
    électroniques et carburant).
