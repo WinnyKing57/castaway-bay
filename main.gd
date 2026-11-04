@@ -874,6 +874,38 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 			if not expected in kinds_found:
 				errors.append("type %s perdu après chargement" % expected)
 	construction.clear_all()
+
+	# Coins de toit + Ctrl+Z (undo)
+	construction.clear_all()
+	var co_node := construction.place_free("roof_corner_out", "roof_corner_out", Vector3(31.5, 0.0, 24.5), 0.0)
+	var ci_node := construction.place_free("roof_corner_in",  "roof_corner_in",  Vector3(33.5, 0.0, 24.5), 0.0)
+	if co_node == null:
+		errors.append("pose coin toit ext. KO")
+	if ci_node == null:
+		errors.append("pose coin toit int. KO")
+	# Test Ctrl+Z (undo via undo_stack simulé manuellement).
+	construction._undo_stack.push_back(co_node)
+	construction._undo()
+	if construction._objects.has(co_node):
+		errors.append("undo coin toit ext. KO")
+	# Poutres d'angle.
+	construction.clear_all()
+	var w1 := construction.place_free("wall", "wall",
+		Vector3(40.5, 0.0, 40.5) + Vector3(sin(0.0), 0.0, cos(0.0)) * 0.5, 0.0)
+	var w2 := construction.place_free("wall", "wall",
+		Vector3(40.5, 0.0, 40.5) + Vector3(sin(PI * 0.5), 0.0, cos(PI * 0.5)) * 0.5, PI * 0.5)
+	if w1 == null or w2 == null:
+		errors.append("pose murs pour angle KO")
+	else:
+		construction._refresh_corner_beams(w1)
+		construction._refresh_corner_beams(w2)
+		if construction._corner_beams.is_empty():
+			errors.append("poutre d'angle non générée")
+		construction.demolish(w1)
+		var beams_after_demolish := construction._corner_beams.size()
+		if beams_after_demolish >= 1:
+			errors.append("poutre d'angle non retirée après démolition du mur")
+	construction.clear_all()
 ## Tests de persistance : « rien de ce que fait le joueur ne doit se perdre ».
 func _run_persistence_tests(errors: PackedStringArray) -> void:
 	for item_id in Database.items.keys():

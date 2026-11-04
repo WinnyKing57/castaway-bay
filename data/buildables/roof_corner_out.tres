@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "roof_corner_out"
+display_name = "Coin toit ext."
+description = "Raccord de coin saillant (angle extérieur) pour deux pans de toit."
+kind = "roof_corner_out"
+costs = {
+"wood": 5,
+"fiber": 2
+}
+grid_size = 1

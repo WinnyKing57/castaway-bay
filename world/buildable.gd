@@ -151,6 +151,10 @@ func _build_visuals() -> void:
 			_build_roof_slope()
 		"roof_ridge":
 			_build_roof_ridge()
+		"roof_corner_out":
+			_build_roof_corner_out()
+		"roof_corner_in":
+			_build_roof_corner_in()
 		"door":
 			_build_door()
 		"window":
@@ -329,6 +333,81 @@ func _build_roof_ridge() -> void:
 
 	_add_box(Vector3(1.0, 0.1, 1.0), Vector3(0.0, ROOF_Y, 0.0), Color(0.48, 0.34, 0.20))
 	_add_collision_box(Vector3(1.0, 0.7, 1.0), Vector3(0.0, ROOF_Y + 0.35, 0.0))
+
+
+## ── Coin de toit extérieur ────────────────────────────────────────────────────
+## Raccord 45° pour un angle saillant (deux pentes se rejoignent vers l'extérieur).
+
+func _build_roof_corner_out() -> void:
+	var mat_tile := _make_material(Color(0.55, 0.38, 0.22))
+	var mat_base := _make_material(Color(0.48, 0.34, 0.20))
+
+	# Base plate.
+	var base := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.0, 0.12, 1.0)
+	base.mesh = bm
+	base.position = Vector3(0.0, ROOF_Y, 0.0)
+	base.material_override = mat_base
+	add_child(base)
+
+	# Coin en prisme coupé : deux quarts de pente à 45°.
+	# On utilise deux PrismMesh perpendiculaires légèrement imbriqués.
+	for axis in 2:
+		var wedge := MeshInstance3D.new()
+		var pm := PrismMesh.new()
+		pm.size = Vector3(0.5, 0.5, 1.0)
+		wedge.mesh = pm
+		wedge.position = Vector3(
+			-0.25 if axis == 0 else 0.0,
+			ROOF_Y + 0.25,
+			0.0 if axis == 0 else -0.25
+		)
+		wedge.rotation.y = deg_to_rad(90.0 * axis)
+		wedge.material_override = mat_tile
+		add_child(wedge)
+
+	_add_collision_box(Vector3(1.0, 0.62, 1.0), Vector3(0.0, ROOF_Y + 0.25, 0.0))
+
+
+## ── Coin de toit intérieur ────────────────────────────────────────────────────
+## Raccord 45° pour un angle rentrant (deux pentes se rejoignent vers l'intérieur).
+
+func _build_roof_corner_in() -> void:
+	var mat_tile := _make_material(Color(0.55, 0.38, 0.22))
+	var mat_base := _make_material(Color(0.48, 0.34, 0.20))
+
+	# Base plate.
+	var base := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.0, 0.12, 1.0)
+	base.mesh = bm
+	base.position = Vector3(0.0, ROOF_Y, 0.0)
+	base.material_override = mat_base
+	add_child(base)
+
+	# Coin intérieur : deux moitiés plates + noue centrale.
+	for side in 2:
+		var panel := MeshInstance3D.new()
+		var pm := PrismMesh.new()
+		pm.size = Vector3(1.0, 0.5, 0.5)
+		panel.mesh = pm
+		panel.position = Vector3(0.0, ROOF_Y + 0.25, (side * 2 - 1) * 0.25)
+		panel.rotation.x = deg_to_rad(180.0) if side == 1 else 0.0
+		panel.rotation.y = deg_to_rad(90.0)
+		panel.material_override = mat_tile
+		add_child(panel)
+
+	# Noue (creux central).
+	var noue := MeshInstance3D.new()
+	var nm := BoxMesh.new()
+	nm.size = Vector3(0.12, 0.06, 0.12)
+	noue.mesh = nm
+	noue.position = Vector3(0.0, ROOF_Y + 0.08, 0.0)
+	noue.material_override = _make_material(Color(0.40, 0.28, 0.16))
+	add_child(noue)
+
+	_add_collision_box(Vector3(1.0, 0.62, 1.0), Vector3(0.0, ROOF_Y + 0.25, 0.0))
 
 
 # ── Fenêtre ───────────────────────────────────────────────────────────────────

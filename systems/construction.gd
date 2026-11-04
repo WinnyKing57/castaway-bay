@@ -32,6 +32,11 @@ var _valid := false
 var _occupied: Dictionary = {}
 var _objects: Array[Buildable] = []
 
+## Pile d'annulation (Ctrl+Z) : chaque entrée est un Buildable posé.
+## Limitée à UNDO_LIMIT pour éviter une fuite mémoire.
+const UNDO_LIMIT := 20
+var _undo_stack: Array[Buildable] = []
+
 ## Pas de niveau de construction : 1 niveau = LEVEL_STEP (0.2 m, = 1 fondation).
 const LEVEL_STEP := 0.2
 var _build_level := 0
@@ -64,6 +69,7 @@ func toggle() -> void:
 			_hud.set_build_info("")
 		_level_locked = false
 		_build_level = 0
+		_undo_stack.clear()
 	GameState.notify("Mode construction %s" % ("activé" if active else "désactivé"))
 
 
@@ -113,6 +119,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("build_level_lock"):
 		_toggle_level_lock()
+		return
+	if event.is_action_pressed("undo_build"):
+		_undo()
 		return
 
 	if event is InputEventMouseButton and event.pressed:
@@ -228,6 +237,13 @@ func _place() -> void:
 	var position := _ghost.global_position
 	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_register_object(node)
+	# Poutre d'angle : recalcule les angles affectés par ce nouveau mur.
+	if data.kind == "wall" or data.kind == "half_wall":
+		_refresh_corner_beams(node)
+	# Pile d'annulation.
+	_undo_stack.push_back(node)
+	if _undo_stack.size() > UNDO_LIMIT:
+		_undo_stack.pop_front()
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
@@ -240,6 +256,46 @@ func place_free(kind: String, data_id: String, position: Vector3, rotation_y: fl
 	return node
 
 
+## Annule la dernière pose (Ctrl+Z). Rembourse 100 % des matériaux.
+func _undo() -> void:
+	if _undo_stack.is_empty():
+		GameState.notify("Rien à annuler")
+		return
+	var node: Buildable = _undo_stack.pop_back()
+	if not is_instance_valid(node) or not _objects.has(node):
+		GameState.notify("Rien à annuler")
+		return
+	# Remboursement intégral.
+	var b_data: Variant = Database.buildables.get(node.data_id)
+	if b_data is BuildableData:
+		for item_id in (b_data as BuildableData).costs:
+			GameState.add_item(str(item_id), int((b_data as BuildableData).costs[item_id]))
+	# Supprime les poutres d'angle liées avant de libérer le nœud.
+	if node.kind == "wall" or node.kind == "half_wall":
+		_remove_corner_beams_for(node)
+	demolish_silent(node)
+	Sfx.play("harvest", Vector3.ZERO)
+	GameState.notify("Annulé")
+
+
+## Démolit sans remboursement ni message (usage interne : undo, tests).
+func demolish_silent(obj: Buildable) -> void:
+	if obj == null or not is_instance_valid(obj) or not _objects.has(obj):
+		return
+	for key in _key_for_object(obj.kind, obj.position, obj.rotation.y, _grid_size_of(obj.data_id)):
+		_occupied.erase(key)
+	_objects.erase(obj)
+	if obj.kind == "campfire" or obj.kind == "furnace":
+		var still := false
+		for remaining in _objects:
+			if remaining.kind == obj.kind:
+				still = true
+				break
+		if not still:
+			GameState.craft_stations.erase(obj.kind)
+	obj.queue_free()
+
+
 ## Enregistre l'empreinte d'un élément posé (clé d'occupation + station).
 ## Une seule voie pour la pose et le chargement : la clé est recalculée depuis
 ## la position/rotation réelles du nœud, donc identique avant et après une
@@ -249,6 +305,95 @@ func _register_object(node: Buildable) -> void:
 		_occupied[key] = true
 	if node.kind == "campfire" or node.kind == "furnace":
 		GameState.register_station(node.kind)
+
+
+# --- Poutres d'angle ---------------------------------------------------------
+## Dictionnaire angle_key → MeshInstance3D de poutre.
+var _corner_beams: Dictionary = {}
+
+## Recalcule les poutres d'angle aux 4 coins du mur posé.
+## Un angle = jonction de 2 murs perpendiculaires (rot 0|2 et rot 1|3).
+func _refresh_corner_beams(wall: Buildable) -> void:
+	# Récupère la cellule de base de ce mur.
+	var rot := wrapi(int(round(wall.rotation.y / (PI * 0.5))), 0, 4)
+	var base := wall.position - Vector3(sin(wall.rotation.y), 0.0, cos(wall.rotation.y)) * 0.5
+	var cell := Vector2i(floori(base.x), floori(base.z))
+	var level := int(round(wall.position.y / LEVEL_STEP))
+
+	# Les 4 coins de la case (et des cases adjacentes) à vérifier.
+	var corners_to_check: Array[Vector2i] = [
+		cell,
+		Vector2i(cell.x + 1, cell.y),
+		Vector2i(cell.x, cell.y + 1),
+		Vector2i(cell.x + 1, cell.y + 1),
+	]
+	for corner in corners_to_check:
+		_update_corner_beam(corner, level, wall.kind)
+
+
+## Vérifie si deux murs perpendiculaires se rejoignent à un coin donné,
+## et crée ou retire la poutre d'angle correspondante.
+func _update_corner_beam(corner: Vector2i, level: int, wall_kind: String) -> void:
+	var beam_h := 2.4 if wall_kind == "wall" else 1.2
+	var key := "corner:%d:%d:%d" % [corner.x, corner.y, level]
+
+	# Un mur horizontal (rot 0 ou 2) génère des clés edge_h:x:y:l et edge_h:x:(y+1):l.
+	# Il touche le coin (cx, cy) si edge_h:cx:cy:l ou edge_h:(cx-1):cy:l.
+	# Un mur vertical (rot 1 ou 3) génère edge_v:x:y:l et edge_v:(x+1):y:l.
+	# Il touche le coin (cx, cy) si edge_v:cx:cy:l ou edge_v:cx:(cy-1):l.
+	var cx := corner.x
+	var cy := corner.y
+	var has_h := (
+		_occupied.has("edge_h:%d:%d:%d" % [cx,     cy, level]) or
+		_occupied.has("edge_h:%d:%d:%d" % [cx - 1, cy, level])
+	)
+	var has_v := (
+		_occupied.has("edge_v:%d:%d:%d" % [cx, cy,     level]) or
+		_occupied.has("edge_v:%d:%d:%d" % [cx, cy - 1, level])
+	)
+
+	if has_h and has_v:
+		if not _corner_beams.has(key):
+			_spawn_corner_beam(key, corner, level, beam_h)
+	else:
+		_remove_corner_beam(key)
+
+
+func _spawn_corner_beam(key: String, corner: Vector2i, level: int, height: float) -> void:
+	var beam := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.16, height, 0.16)
+	beam.mesh = bm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.34, 0.24, 0.13)
+	mat.roughness = 1.0
+	beam.material_override = mat
+	beam.position = Vector3(corner.x, level * LEVEL_STEP + height * 0.5, corner.y)
+	add_child(beam)
+	_corner_beams[key] = beam
+
+
+func _remove_corner_beam(key: String) -> void:
+	if _corner_beams.has(key):
+		var node: Node = _corner_beams[key]
+		if is_instance_valid(node):
+			node.queue_free()
+		_corner_beams.erase(key)
+
+
+## Supprime toutes les poutres d'angle liées à un mur sur le point d'être démoli.
+func _remove_corner_beams_for(wall: Buildable) -> void:
+	var base := wall.position - Vector3(sin(wall.rotation.y), 0.0, cos(wall.rotation.y)) * 0.5
+	var cell := Vector2i(floori(base.x), floori(base.z))
+	var level := int(round(wall.position.y / LEVEL_STEP))
+	var corners: Array[Vector2i] = [
+		cell,
+		Vector2i(cell.x + 1, cell.y),
+		Vector2i(cell.x, cell.y + 1),
+		Vector2i(cell.x + 1, cell.y + 1),
+	]
+	for corner in corners:
+		_remove_corner_beam("corner:%d:%d:%d" % [corner.x, corner.y, level])
 
 
 func _grid_size_of(data_id: String) -> int:
@@ -329,7 +474,7 @@ func _update_build_info() -> void:
 	if _level_locked:
 		level_text += " [verrouillé]"
 	_hud.set_build_info(
-		"%s · Construction : %s (%d/%d) — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller"
+		"%s · Construction : %s (%d/%d) — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
 		% [level_text, data.display_name, _selected + 1, _catalog.size(), ", ".join(costs)]
 	)
 
@@ -379,6 +524,10 @@ func demolish(obj: Buildable) -> bool:
 				break
 		if not still_has_station:
 			GameState.craft_stations.erase(obj.kind)
+
+	# Retire les poutres d'angle liées à ce mur avant de le supprimer.
+	if obj.kind == "wall" or obj.kind == "half_wall":
+		_remove_corner_beams_for(obj)
 
 	Sfx.play("harvest", obj.global_position)
 	obj.queue_free()
@@ -464,6 +613,10 @@ func _compute_ghost_y(hit_y: float, cell: Vector2i, kind: String) -> float:
 			# posé au Y de la structure porteuse sous-jacente (fondation ou sol).
 			# On cherche la fondation/sol la plus proche sous le hit_y.
 			base_y = _snap_roof_base_y(cell, hit_y)
+		"stairs":
+			# Les escaliers se snap-ent sur la fondation voisine la plus basse
+			# pour aligner leur sommet (+1.0 m) avec l'étage supérieur.
+			base_y = _snap_stairs_base_y(cell, hit_y)
 		_:
 			# Pour tous les autres éléments : on arrondit hit_y au LEVEL_STEP
 			# le plus proche pour coller précisément à la grille verticale.
@@ -498,6 +651,30 @@ func _snap_roof_base_y(cell: Vector2i, hit_y: float) -> float:
 		return best_y
 	# 2. Aucune fondation trouvée : on s'aligne sur le sol (arrondi à LEVEL_STEP).
 	return roundf(hit_y / LEVEL_STEP) * LEVEL_STEP
+
+
+## Snap pour les escaliers : cherche la fondation la plus basse dans les cases
+## voisines immédiates pour aligner le bas des escaliers sur le niveau plancher.
+## Le sommet de la volée sera à base_y + 1.0 m = plancher d'un étage supérieur.
+func _snap_stairs_base_y(cell: Vector2i, hit_y: float) -> float:
+	var best_y := roundf(hit_y / LEVEL_STEP) * LEVEL_STEP
+	var best_dist := INF
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		if obj.kind != "foundation":
+			continue
+		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
+		var dx := absi(obj_cell.x - cell.x)
+		var dz := absi(obj_cell.y - cell.y)
+		if dx > 2 or dz > 2:
+			continue
+		# Préfère la fondation dont le Y est le plus proche du hit_y
+		var dist := absf(obj.position.y - hit_y)
+		if dist < best_dist:
+			best_dist = dist
+			best_y = obj.position.y
+	return best_y
 
 
 func _aligned_neighbor_y(cell: Vector2i, hit_y: float) -> float:
@@ -636,6 +813,24 @@ func load_save_data(entries: Variant) -> void:
 				if Database.items.has(item_id) and count > 0:
 					node.chest_inventory[item_id] = count
 
+	# Reconstruit les poutres d'angle après chargement complet.
+	_rebuild_all_corner_beams()
+
+
+## Recalcule toutes les poutres d'angle à partir de l'état actuel des murs.
+func _rebuild_all_corner_beams() -> void:
+	# Supprime les anciennes.
+	for beam_node in _corner_beams.values():
+		if is_instance_valid(beam_node):
+			(beam_node as Node).queue_free()
+	_corner_beams.clear()
+	# Recalcule à partir de chaque mur.
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		if obj.kind == "wall" or obj.kind == "half_wall":
+			_refresh_corner_beams(obj)
+
 
 func clear_all() -> void:
 	for obj in _objects:
@@ -643,4 +838,10 @@ func clear_all() -> void:
 			obj.queue_free()
 	_objects.clear()
 	_occupied.clear()
+	_undo_stack.clear()
+	# Supprime toutes les poutres d'angle.
+	for beam_node in _corner_beams.values():
+		if is_instance_valid(beam_node):
+			(beam_node as Node).queue_free()
+	_corner_beams.clear()
 	GameState.clear_stations()

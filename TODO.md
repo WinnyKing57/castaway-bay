@@ -57,7 +57,20 @@
 - [x] Tests de non-régression étendus : fenêtre (toggle + persistance), demi-mur, toit pente,
       faîtage → `SMOKE_TEST OK`
 
-## Fait — améliorations construction (batch 2 — ergonomie placement)
+## Fait — améliorations construction (batch 3)
+- [x] **Coins de toit** (`roof_corner_out` coin saillant, `roof_corner_in` coin rentrant) :
+      deux nouveaux types `Buildable` avec géométrie PrismMesh et fichiers `.tres` ;
+      le snap vers la fondation porteuse fonctionne pour eux comme pour les autres toits
+- [x] **Ctrl+Z** : annulation de la dernière pose en mode construction (pile `_undo_stack`,
+      limite 20 entrées, remboursement intégral, suppression des poutres d'angle liées) ;
+      action `undo_build` mappée sur `Ctrl+Z` dans `project.godot` ; mention dans le HUD
+- [x] **Poutres d'angle automatiques** : quand deux murs (ou demi-murs) perpendiculaires
+      se rejoignent à un coin, une poutre 0.16 × height × 0.16 est spawné automatiquement ;
+      retirée quand l'un des deux murs est démoli ou annulé (`Ctrl+Z`) ; reconstruite au
+      chargement d'une sauvegarde (`_rebuild_all_corner_beams`)
+- [x] **Snap escaliers** (`_snap_stairs_base_y`) : les escaliers se magnétisent sur la
+      fondation voisine la plus proche dans un rayon de 2 cases
+- [x] Tests de non-régression : coins de toit, undo, poutres d'angle → `SMOKE_TEST OK`
 - [x] **Snap vertical intelligent par kind** : `_compute_ghost_y` utilise désormais une logique
       propre à chaque type d'élément au lieu d'utiliser le `hit_y` brut du raycast :
   - **Fondations** : magnétisme sur la fondation voisine la plus proche (comportement inchangé,
@@ -80,18 +93,9 @@
       complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau)
 
 ## À faire — améliorations construction (suite)
-- [ ] Coins de toit (intérieur et extérieur) : pièces de raccord 45° pour les angles
 - [ ] Détection d'assemblage : indicateur visuel (contour vert sur l'arête) quand un toit
       est posé contre un autre toit compatible
-
-### Escaliers
-- [ ] Snap automatique vers l'étage voisin quand le joueur place un escalier près d'un étage
 - [ ] Escalier 2 cases de large (`grid_size = 2`) pour les constructions plus grandes
-
-### Murs et construction
-- [ ] Poutres verticales aux angles : quand deux murs sont posés perpendiculairement, afficher
-      un montant 0.15 × 2.4 × 0.15 à l'intersection pour renforcer l'aspect charpente
-- [ ] Annuler la dernière pose (**Ctrl+Z**) sans repasser en mode démolition
 
 ## À faire — interface de construction
 - [ ] Afficher un aperçu des dimensions de l'élément sélectionné dans le HUD (largeur × profondeur)
