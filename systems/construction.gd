@@ -8,13 +8,16 @@ extends Node3D
 
 const REACH := 8.0
 const WORLD_MASK := 1 | 8  # terrain/props + objets construits
+## Coordonnées max acceptées dans une sauvegarde (le terrain fait ±130 m).
+const MAX_COORD := 1000.0
+## Éléments posés sur un bord de case (et non au centre).
+const EDGE_KINDS := ["wall", "door", "window"]
 
 var active := false
 
 var _player: Player
 var _hud: Hud
 var _camera: Camera3D
-var _world: Island = null
 
 var _catalog: Array[BuildableData] = []
 var _selected := 0
@@ -34,12 +37,10 @@ var _locked_y := 0.0
 var _ghost_y := 0.0
 
 
-func setup(player: Player, hud: Hud, world: Node = null) -> void:
+func setup(player: Player, hud: Hud) -> void:
 	_player = player
 	_hud = hud
 	_camera = player.get_node("Head/Camera3D")
-	if world is Island:
-		_world = world
 
 	_catalog.clear()
 	var ids := Database.buildables.keys()
@@ -49,16 +50,7 @@ func setup(player: Player, hud: Hud, world: Node = null) -> void:
 
 
 func toggle() -> void:
-	set_active(not active)
-
-
-## Active ou désactive le mode construction. Idempotent : contrairement à
-## toggle(), un appel redondant ne peut pas réactiver la construction (par
-## exemple après une mort, quand main.gd ferme déjà le mode).
-func set_active(value: bool) -> void:
-	if active == value:
-		return
-	active = value
+	active = not active
 	if active:
 		_ensure_ghost()
 		_update_build_info()
@@ -77,10 +69,7 @@ func is_active() -> bool:
 
 
 func _process(_delta: float) -> void:
-	# Le mode construction se fige si le jeu est en pause ou le joueur mort :
-	# sans ce garde-fou, on pouvait poser des bâtiments via la souris pendant
-	# les menus (process_mode permet à cette boucle de tourner en pause).
-	if not active or _ghost == null or GameState.is_dead or get_tree().paused:
+	if not active or _ghost == null:
 		return
 
 	var hit := _raycast()
@@ -101,7 +90,7 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not active or GameState.is_dead or get_tree().paused:
+	if not active:
 		return
 
 	if event.is_action_pressed("rotate_build"):
@@ -145,64 +134,18 @@ func _cycle(direction: int) -> void:
 	_update_build_info()
 
 
-## Version publique de la vérification de cellule (utilisée par le smoke
-## test et les outils de debug). `ignore_costs` court-circuite l'inventaire
-## pour ne tester que les collisions/doublons.
-func can_place_at(cell: Vector2i, level: int = 0, rotation: int = 0, ignore_costs: bool = false) -> bool:
-	var data := _selected_data()
-	if data == null:
-		return false
-	if ignore_costs:
-		return _footprint_is_free(data, cell, level, rotation)
-	return _can_place(cell, level, rotation)
-
-
-func _selected_kind() -> String:
-	var data := _selected_data()
-	return data.kind if data != null else "foundation"
-
-
 func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 	var data := _selected_data()
 	if data == null:
 		return false
 	if not GameState.has_items(data.costs):
 		return false
-	return _footprint_is_free(data, cell, level, rotation)
+	return not _occupied.has(_cell_key(data.kind, cell, level, rotation))
 
 
-## Vérifie toutes les cases occupées par l'empreinte du bâtiment. La taille
-## déclarée dans BuildableData est ainsi réellement prise en compte. Le
-## paramètre de rotation est conservé pour permettre des empreintes rectangulaires
-## si BuildableData expose ultérieurement largeur et profondeur séparément.
-func _footprint_is_free(data: BuildableData, origin: Vector2i, level: int, rotation: int) -> bool:
-	var width := maxi(1, data.grid_size)
-	var depth := maxi(1, data.grid_size)
-	for x in width:
-		for z in depth:
-			if _occupied.has(_cell_key(data.kind, origin + Vector2i(x, z), level)):
-				return false
-	return true
-
-
-func _mark_footprint(data: BuildableData, origin: Vector2i, level: int, rotation: int) -> void:
-	var width := maxi(1, data.grid_size)
-	var depth := maxi(1, data.grid_size)
-	if posmod(rotation, 2) == 1:
-		var swap := width
-		width = depth
-		depth = swap
-	for x in width:
-		for z in depth:
-			_occupied[_cell_key(data.kind, origin + Vector2i(x, z), level)] = true
-
-
-## Logique de construction : un élément posé en hauteur doit s'appuyer sur
-## quelque chose — sol naturel sous la cellule, ou élément construit au
-## niveau inférieur. Sans ce garde-fou, murs et fondations flottaient
-## n'importe où ("en plein milieu"). Les éléments à même le sol (niveau 0)
-## doivent en plus toucher une case voisine contenant du terrain sec ou une
-## autre construction : on ne fait pas pousser une maison au milieu de la mer.
+## Valide la pose fantôme : on refuse les supports inexploitables (ressource
+## récoltable, surface trop verticale, niveau sous l'eau) avant de tester la
+## disponibilité de la cellule.
 func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 	if hit.is_empty():
 		return false
@@ -211,56 +154,12 @@ func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 		return false
 	if ghost_y < Island.SEA_LEVEL + 0.3:
 		return false
-	var level := int(round(ghost_y / LEVEL_STEP))
-	if not _has_ground_support(cell, level):
-		return false
-	if level <= 0 and not _touches_existing_structure(cell):
-		return false
 	if collider is Buildable:
-		return _can_place(cell, level, _rotation_steps)
+		return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
 	var normal: Vector3 = hit["normal"]
 	if normal.y < 0.8:
 		return false
-	return _can_place(cell, level, _rotation_steps)
-
-
-## Un élément posé en hauteur (niveau > 0) doit reposer sur un élément
-## construit au niveau immédiatement inférieur dans la même cellule.
-func _has_ground_support(cell: Vector2i, level: int) -> bool:
-	if level <= 0:
-		return true
-	for obj in _objects:
-		if not is_instance_valid(obj):
-			continue
-		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
-		if obj_cell != cell:
-			continue
-		var obj_level := int(round(obj.position.y / LEVEL_STEP))
-		if obj_level == level - 1:
-			return true
-	return false
-
-
-## Règle d'ancrage au sol : la première pièce d'une construction doit être
-## contiguë du terrain sec ou d'un élément déjà posé (règle "bords du sol",
-## comme les fondations des jeux de survie). Une fois l'îlot amorcé, on peut
-## étendre la structure cellule par cellule.
-func _touches_existing_structure(cell: Vector2i) -> bool:
-	if _world == null:
-		# Hors scène jouable (tests unitaires pur script) : on n'ancre pas.
-		return true
-	var offsets: Array[Vector2i] = [Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
-	for offset in offsets:
-		var c: Vector2i = cell + offset
-		if _world.get_height_at(float(c.x) + 0.5, float(c.y) + 0.5) > Island.SEA_LEVEL + 0.1:
-			return true
-	for obj in _objects:
-		if not is_instance_valid(obj):
-			continue
-		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
-		if absi(obj_cell.x - cell.x) + absi(obj_cell.y - cell.y) <= 1:
-			return true
-	return false
+	return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
 
 
 func _place() -> void:
@@ -274,16 +173,14 @@ func _place() -> void:
 		GameState.notify("Ressources insuffisantes")
 		return
 
+	if _ghost == null:
+		return
 	var position := _ghost.global_position
-	var cell := Vector2i(floori(position.x), floori(position.z))
-	var level := int(round(position.y / LEVEL_STEP))
+	var rotation := _rotation_steps * PI * 0.5
 	if data.kind == "wall":
-		# Le mur est placé sur l'arête de la cellule pour s'aligner avec
-		# les fondations adjacentes.
-		var rotation := _rotation_steps * PI * 0.5
-		position += Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
-	_spawn(data.kind, data.id, position, _ghost.rotation.y)
-	_mark_footprint(data, cell, level, _rotation_steps)
+		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
+	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
+	_register_object(node)
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
@@ -292,14 +189,31 @@ func _place() -> void:
 ## Utilisé par le chargement de sauvegarde et par les tests d'intégration.
 func place_free(kind: String, data_id: String, position: Vector3, rotation_y: float) -> Buildable:
 	var node := _spawn(kind, data_id, position, rotation_y)
-	var cell := Vector2i(floori(position.x), floori(position.z))
-	var level := int(round(position.y / LEVEL_STEP))
-	var data := Database.get_buildable(data_id) as BuildableData
-	if data != null:
-		_mark_footprint(data, cell, level, roundi(rotation_y / (PI * 0.5)))
-	else:
-		_occupied[_cell_key(node.kind, cell, level)] = true
+	_register_object(node)
 	return node
+
+
+## Enregistre l'empreinte d'un élément posé (clé d'occupation + station).
+## Une seule voie pour la pose et le chargement : la clé est recalculée depuis
+## la position/rotation réelles du nœud, donc identique avant et après une
+## sauvegarde.
+func _register_object(node: Buildable) -> void:
+	_occupied[_key_for_object(node.kind, node.position, node.rotation.y)] = true
+	if node.kind == "campfire" or node.kind == "furnace":
+		GameState.craft_station = node.kind
+
+
+## Clé d'occupation d'un élément déjà posé (position réelle du nœud).
+## Les murs sont décalés d'un demi-mètre vers leur bord : on retire ce décalage
+## pour retrouver la case d'origine, comme au moment de la pose.
+func _key_for_object(kind: String, position: Vector3, rotation_y: float) -> String:
+	var base := position
+	if kind == "wall":
+		base = position - Vector3(sin(rotation_y), 0.0, cos(rotation_y)) * 0.5
+	var cell := Vector2i(floori(base.x), floori(base.z))
+	var level := int(round(position.y / LEVEL_STEP))
+	var steps := wrapi(int(round(rotation_y / (PI * 0.5))), 0, 4)
+	return _cell_key(kind, cell, level, steps)
 
 
 func _spawn(kind: String, data_id: String, position: Vector3, rotation_y: float) -> Buildable:
@@ -358,10 +272,16 @@ func _raycast() -> Dictionary:
 	return get_world_3d().direct_space_state.intersect_ray(params)
 
 
-## La rotation ne fait pas partie de l'identité d'une case : tourner une
-## pièce ne doit jamais permettre de la dupliquer exactement au même endroit.
-func _cell_key(kind: String, cell: Vector2i, level: int = 0, _rotation: int = 0) -> String:
-	return "%s:%d:%d:%d" % [kind, cell.x, cell.y, level]
+## Clé d'occupation. Deux familles, indépendantes de la catégorie exacte :
+##  - éléments « de bord » (mur, porte, fenêtre) : un bord par case, niveau et
+##    orientation ; un mur et une porte ne peuvent donc pas partager un bord ;
+##  - tout le reste occupe le centre de la case à un niveau donné : fondation,
+##    toit, feu, coffre... ne peuvent pas se superposer, quelle que soit leur
+##    catégorie.
+func _cell_key(kind: String, cell: Vector2i, level: int = 0, rotation: int = 0) -> String:
+	if EDGE_KINDS.has(kind):
+		return "edge:%d:%d:%d:%d" % [cell.x, cell.y, level, wrapi(rotation, 0, 4)]
+	return "cell:%d:%d:%d" % [cell.x, cell.y, level]
 
 
 ## Calcule le y du fantome : fondation alignee sur une voisine, puis decalage
@@ -447,16 +367,48 @@ func load_save_data(entries: Variant) -> void:
 	for entry in entries:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var pos_array: Array = entry.get("position", [])
-		if pos_array.size() != 3:
+		var pos_array: Variant = entry.get("position", [])
+		if typeof(pos_array) != TYPE_ARRAY or (pos_array as Array).size() != 3:
 			continue
-		var position := Vector3(float(pos_array[0]), float(pos_array[1]), float(pos_array[2]))
-		place_free(
-			str(entry.get("kind", "foundation")),
-			str(entry.get("data_id", "")),
-			position,
-			float(entry.get("rotation_y", 0.0))
-		)
+		var coords: Array = pos_array
+		var numeric := true
+		for value in coords:
+			if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+				numeric = false
+			elif not is_finite(float(value)) or absf(float(value)) > MAX_COORD:
+				numeric = false
+		if not numeric:
+			continue
+		var raw_rot: Variant = entry.get("rotation_y", 0.0)
+		if (typeof(raw_rot) != TYPE_FLOAT and typeof(raw_rot) != TYPE_INT) or not is_finite(float(raw_rot)):
+			continue
+
+		# L'identifiant doit exister dans la base ; la catégorie vient de la base
+		# (source de vérité), pas du fichier. Anciennes sauvegardes sans
+		# identifiant : on retombe sur la catégorie enregistrée.
+		var data_id := str(entry.get("data_id", ""))
+		var kind := ""
+		if Database.buildables.has(data_id):
+			kind = str((Database.buildables[data_id] as BuildableData).kind)
+		elif data_id.is_empty():
+			var saved_kind := str(entry.get("kind", ""))
+			for candidate in Database.buildables.values():
+				if (candidate as BuildableData).kind == saved_kind:
+					kind = saved_kind
+					data_id = (candidate as BuildableData).id
+					break
+		if kind.is_empty():
+			push_warning("[Construction] Élément ignoré (identifiant inconnu : %s)" % data_id)
+			continue
+
+		var position := Vector3(float(coords[0]), float(coords[1]), float(coords[2]))
+		var rotation_y := float(raw_rot)
+		# Anti-duplication : une sauvegarde qui contient deux fois la même
+		# empreinte ne recrée qu'un seul élément.
+		if _occupied.has(_key_for_object(kind, position, rotation_y)):
+			push_warning("[Construction] Doublon ignoré à %s" % str(position))
+			continue
+		place_free(kind, data_id, position, rotation_y)
 
 
 func clear_all() -> void:
@@ -465,3 +417,4 @@ func clear_all() -> void:
 			obj.queue_free()
 	_objects.clear()
 	_occupied.clear()
+	GameState.craft_station = ""

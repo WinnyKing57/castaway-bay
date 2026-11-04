@@ -6,6 +6,8 @@ extends Node
 ## évoluer le jeu sans casser les anciennes sauvegardes.
 
 const SAVE_PATH := "user://savegame.json"
+## Quantité maximale d'un objet restaurée depuis une sauvegarde.
+const MAX_STACK := 99999
 
 
 func has_save() -> bool:
@@ -17,14 +19,14 @@ func delete_save() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 
-func save_game(player: Node3D, world: Node = null, construction: Node = null) -> bool:
+func save_game(player: Node3D, construction: Node = null) -> bool:
 	var data := {
 		"version": GameState.SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(),
 		"world_time": GameState.world_time,
 		"world_seed": GameState.world_seed,
-		"stats": _stats_to_plain(GameState.stats),
-		"inventory": _dict_to_plain(GameState.inventory),
+		"stats": GameState.stats.duplicate(),
+		"inventory": GameState.inventory.duplicate(),
 		"player": {
 			"position": [player.global_position.x, player.global_position.y, player.global_position.z],
 			"rotation_y": player.rotation.y,
@@ -32,32 +34,6 @@ func save_game(player: Node3D, world: Node = null, construction: Node = null) ->
 	}
 	if construction != null:
 		data["construction"] = construction.to_save_data()
-	if world != null:
-		var boat := world.get_node_or_null("Boat")
-		if boat != null and boat.has_method("get_save_data"):
-			data["boat"] = boat.call("get_save_data")
-
-	# État des ressources du monde : repousse des récoltables et croissance
-	# des cultures. Sans cela, tout l'île se régénérait à chaque chargement.
-	if world != null:
-		var resources: Array = []
-		for node in world.get_children():
-			if node is Harvestable or node is Crop:
-				var state: String = node.get_save_state()
-				if not state.is_empty():
-					var entry := {
-						"type": "crop" if node is Crop else "harvest",
-						"state": state,
-					}
-					if node is Harvestable:
-						# Clé stable : index d'apparition sur l'ile (reproduit a
-						# lidentique grace a la graine), ou save_key si defini.
-						entry["id"] = str(node.save_key) if not node.save_key.is_empty() \
-							else str(node.get_meta("save_index", -1))
-					else:
-						entry["id"] = str(node.get_meta("crop_index", -1))
-					resources.append(entry)
-		data["world_resources"] = resources
 
 	var tmp_path := SAVE_PATH + ".tmp"
 	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
@@ -76,74 +52,55 @@ func save_game(player: Node3D, world: Node = null, construction: Node = null) ->
 ## Lit la sauvegarde et l'applique à l'état global + au joueur.
 ## Si `world` est fourni et que la graine a changé, l'île est régénérée
 ## avant de replacer le joueur (sinon il tomberait dans le vide).
+## La sauvegarde est entièrement validée (types, valeurs finies, bornes) avant
+## que le moindre état du jeu ne soit modifié.
 func load_game_into(player: Node3D, world: Node = null, construction: Node = null) -> bool:
 	var data := _read_save()
 	if data.is_empty():
 		return false
 
-	GameState.world_time = float(data.get("world_time", GameState.world_time))
+	# Le joueur ne doit pas rester bloqué « à bord » d'un bateau après un chargement.
+	if player.has_method("exit_boat"):
+		player.call("exit_boat")
 
-	var saved_seed := int(data.get("world_seed", 0))
+	GameState.world_time = fposmod(_num(data.get("world_time"), GameState.world_time), GameState.SECONDS_PER_DAY)
+
+	var saved_seed := int(_num(data.get("world_seed"), 0.0))
 	if world != null and saved_seed != 0 and saved_seed != GameState.world_seed:
 		world.regenerate(saved_seed)
 
 	var saved_stats: Dictionary = data.get("stats", {})
 	for key in saved_stats:
 		if GameState.stats.has(key):
-			GameState.stats[key] = float(saved_stats[key])
+			GameState.stats[key] = clampf(_num(saved_stats[key], GameState.stats[key]), 0.0, 100.0)
 
+	# Inventaire : seuls les objets connus, avec une quantité entière positive.
 	GameState.inventory.clear()
 	var saved_inventory: Dictionary = data.get("inventory", {})
 	for key in saved_inventory:
-		GameState.inventory[key] = int(saved_inventory[key])
+		var item_id := str(key)
+		var amount := int(_num(saved_inventory[key], 0.0))
+		if amount <= 0:
+			continue
+		if not Database.items.has(item_id):
+			push_warning("[SaveSystem] Objet inconnu ignoré : %s" % item_id)
+			continue
+		GameState.inventory[item_id] = mini(amount, MAX_STACK)
 	GameState.inventory_changed.emit()
 
 	if construction != null:
 		construction.load_save_data(data.get("construction", []))
 
-	# Le bateau est recréé avec l'île : on restaure sa position, son état de
-	# coque et son carburant. Le contrôle reste désactivé au chargement.
-	if world != null:
-		var boat := world.get_node_or_null("Boat")
-		var saved_boat: Variant = data.get("boat", {})
-		if boat != null and boat.has_method("apply_save_data") and typeof(saved_boat) == TYPE_DICTIONARY:
-			boat.call("apply_save_data", saved_boat)
-	if player.has_method("exit_boat"):
-		player.call("exit_boat")
-
-	# Repopulation des ressources : la graine régénère une île identique,
-	# on y réapplique ensuite l'état sauvegardé (repousse / cultures).
-	if world != null:
-		var saved_resources: Array = data.get("world_resources", [])
-		var by_key := {}
-		var crop_by_index := {}
-		for entry in saved_resources:
-			if typeof(entry) != TYPE_DICTIONARY:
-				continue
-			var key := str(entry.get("id", "-1"))
-			var state := str(entry.get("state", ""))
-			if str(entry.get("type", "")) == "crop":
-				crop_by_index[key] = state
-			else:
-				by_key[key] = state
-		var harvest_idx := 0
-		for node in world.get_children():
-			if node is Harvestable:
-				node.set_meta("save_index", harvest_idx)
-				var hkey := str(node.save_key) if not node.save_key.is_empty() else str(harvest_idx)
-				if by_key.has(hkey):
-					node.apply_save_state(str(by_key[hkey]))
-				harvest_idx += 1
-			elif node is Crop:
-				var ci := int(node.get_meta("crop_index", -1)) if node.has_meta("crop_index") else -1
-				if crop_by_index.has(str(ci)):
-					node.apply_save_state(str(crop_by_index[str(ci)]))
-
 	var saved_player: Dictionary = data.get("player", {})
 	var pos: Array = saved_player.get("position", [])
 	if pos.size() == 3:
 		player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
-	player.rotation.y = float(saved_player.get("rotation_y", 0.0))
+		# Position aberrante (hors du monde) : on replace le joueur sur la plage.
+		var horizontal := Vector2(player.global_position.x, player.global_position.z)
+		if world != null and world.has_method("find_spawn_point") \
+				and (horizontal.length() > 140.0 or player.global_position.y < -20.0 or player.global_position.y > 300.0):
+			player.global_position = world.call("find_spawn_point")
+	player.rotation.y = _num(saved_player.get("rotation_y"), 0.0)
 	if player is CharacterBody3D:
 		(player as CharacterBody3D).velocity = Vector3.ZERO
 
@@ -162,7 +119,7 @@ func _read_save() -> Dictionary:
 
 	var parsed: Variant = JSON.parse_string(text)
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_error("[SaveSystem] Sauvegarde illisible")
+		push_warning("[SaveSystem] Sauvegarde illisible")
 		return {}
 
 	var data: Dictionary = parsed
@@ -174,7 +131,9 @@ func _read_save() -> Dictionary:
 	return data
 
 
-## Valide la structure minimale d'une sauvegarde avant de l'appliquer.
+## Valide une sauvegarde avant de l'appliquer : structure, types et valeurs
+## numériques finies. Toute incohérence rejette la sauvegarde entière (on
+## préfère refuser un fichier douteux que charger un état à moitié valide).
 func _is_valid(data: Dictionary) -> bool:
 	if typeof(data.get("stats")) != TYPE_DICTIONARY:
 		return false
@@ -184,23 +143,47 @@ func _is_valid(data: Dictionary) -> bool:
 		return false
 	if typeof(data.get("construction", [])) != TYPE_ARRAY:
 		return false
-	if typeof(data.get("world_resources", [])) != TYPE_ARRAY:
+	if not _is_number(data.get("version", 0)):
 		return false
-	return int(data.get("version", 0)) <= GameState.SAVE_VERSION
+	if int(data.get("version", 0)) > GameState.SAVE_VERSION:
+		return false
 
+	# Champs scalaires optionnels : s'ils existent, ils doivent être numériques.
+	for key in ["world_time", "world_seed"]:
+		if data.has(key) and not _is_number(data[key]):
+			return false
 
-## JSON n'accepte que des dictionnaires "plain" : les Dictionary de Godot
-## marqués en lecture seule (duplicates profondes de Resource) peuvent sinon
-## faire échouer JSON.stringify. On re-crée donc des dicos neufs.
-func _stats_to_plain(stats: Dictionary) -> Dictionary:
-	var out := {}
+	var stats: Dictionary = data["stats"]
 	for key in stats:
-		out[str(key)] = float(stats[key])
-	return out
+		if not _is_number(stats[key]):
+			return false
+
+	var inventory: Dictionary = data["inventory"]
+	for key in inventory:
+		if typeof(key) != TYPE_STRING:
+			return false
+		if not _is_number(inventory[key]):
+			return false
+
+	var player_data: Dictionary = data["player"]
+	if player_data.has("rotation_y") and not _is_number(player_data["rotation_y"]):
+		return false
+	if player_data.has("position"):
+		var pos: Variant = player_data["position"]
+		if typeof(pos) != TYPE_ARRAY or (pos as Array).size() != 3:
+			return false
+		for value in pos:
+			if not _is_number(value) or absf(float(value)) > 100000.0:
+				return false
+	return true
 
 
-func _dict_to_plain(source: Dictionary) -> Dictionary:
-	var out := {}
-	for key in source:
-		out[str(key)] = int(source[key])
-	return out
+func _is_number(value: Variant) -> bool:
+	return (typeof(value) == TYPE_FLOAT or typeof(value) == TYPE_INT) and is_finite(float(value))
+
+
+## Convertit en float si `value` est un nombre fini, sinon renvoie `fallback`.
+func _num(value: Variant, fallback: float) -> float:
+	if _is_number(value):
+		return float(value)
+	return fallback

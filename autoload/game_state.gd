@@ -15,7 +15,7 @@ const DAY_LENGTH_SECONDS := 600.0
 const SECONDS_PER_DAY := 86400.0
 const SAVE_VERSION := 2
 
-## Objets accessibles depuis la barre rapide (touches 1 à 4).
+## Objets accessibles depuis la barre rapide (touches 1 à 5).
 var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe", "cooked"]
 var hotbar_index := 0
 
@@ -89,6 +89,9 @@ func add_item(item_id: String, amount: int = 1) -> void:
 
 
 func remove_item(item_id: String, amount: int = 1) -> bool:
+	# Une quantité <= 0 est refusée : sinon un retrait négatif créerait des objets.
+	if amount <= 0:
+		return false
 	if get_item_count(item_id) < amount:
 		return false
 	inventory[item_id] = get_item_count(item_id) - amount
@@ -102,7 +105,12 @@ func has_items(costs: Dictionary) -> bool:
 	if Settings.infinite_resources:
 		return true
 	for item_id in costs:
-		if get_item_count(str(item_id)) < int(costs[item_id]):
+		var needed := int(costs[item_id])
+		# Un coût <= 0 est invalide (donnée corrompue) : on refuse plutôt que de
+		# laisser consume_items() fabriquer des objets.
+		if needed <= 0:
+			return false
+		if get_item_count(str(item_id)) < needed:
 			return false
 	return true
 
@@ -207,6 +215,7 @@ func reset() -> void:
 	stats = {"health": 100.0, "hunger": 100.0, "thirst": 100.0, "fatigue": 100.0}
 	world_time = 8.0 * 3600.0
 	hotbar_index = 0
+	craft_station = ""
 	is_dead = false
 	inventory_changed.emit()
 	hotbar_changed.emit()

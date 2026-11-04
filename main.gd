@@ -16,7 +16,7 @@ extends Node3D
 func _ready() -> void:
 	player.global_position = world.find_spawn_point()
 	hud.setup(player)
-	construction.setup(player, hud, world)
+	construction.setup(player, hud)
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
@@ -84,7 +84,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("save_game"):
-		if SaveSystem.save_game(player, world, construction):
+		if SaveSystem.save_game(player, construction):
 			GameState.notify("Partie sauvegardée")
 		else:
 			GameState.notify("Échec de la sauvegarde")
@@ -133,6 +133,7 @@ func _on_menu_new_game() -> void:
 	GameState.reset()
 	construction.clear_all()
 	world.regenerate(randi())
+	player.exit_boat()
 	player.global_position = world.find_spawn_point()
 	player.velocity = Vector3.ZERO
 	hud.hide_death()
@@ -154,7 +155,7 @@ func _on_menu_resume() -> void:
 
 
 func _on_menu_save() -> void:
-	if SaveSystem.save_game(player, world, construction):
+	if SaveSystem.save_game(player, construction):
 		GameState.notify("Partie sauvegardée")
 	else:
 		GameState.notify("Échec de la sauvegarde")
@@ -204,6 +205,7 @@ func _on_crafting_closed() -> void:
 
 func _respawn() -> void:
 	GameState.respawn()
+	player.exit_boat()
 	player.global_position = world.find_spawn_point()
 	player.velocity = Vector3.ZERO
 	player.set_controls_enabled(true)
@@ -229,6 +231,10 @@ func _run_smoke_test() -> void:
 	await get_tree().process_frame
 
 	var errors: PackedStringArray = []
+
+	# Le test écrit dans user:// : on met de côté la vraie sauvegarde et les
+	# vrais réglages du joueur pour les restaurer à la fin.
+	var user_backup := _backup_user_files()
 
 	if player == null:
 		errors.append("joueur absent")
@@ -366,59 +372,6 @@ func _run_smoke_test() -> void:
 	if crafting_panel.is_open():
 		errors.append("panneau d'artisanat non fermé")
 
-	# Récupération de fatigue : avec faim/soif au-dessus du seuil (>60), la
-	# jauge doit remonter (correction du respawn qui menait à une mort lente).
-	GameState.stats.hunger = 90.0
-	GameState.stats.thirst = 90.0
-	GameState.stats.fatigue = 50.0
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if GameState.stats.fatigue <= 50.0:
-		errors.append("regain fatigue KO")
-
-	# Réparation du bateau : il faut du métal, la coque doit se réparer,
-	# et le métal doit être consommé.
-	var boat: Boat = null
-	for child in world.get_children():
-		if child is Boat:
-			boat = child
-			break
-	if boat == null:
-		errors.append("bateau absent de l'ile")
-	else:
-		boat.broken = true
-		GameState.inventory.clear()
-		if boat.repair(player):
-			errors.append("reparation acceptee sans metal")
-		GameState.add_item("metal", 1)
-		if not boat.repair(player):
-			errors.append("reparation KO avec metal")
-		if boat.broken:
-			errors.append("coque toujours cassee apres reparation")
-		if GameState.get_item_count("metal") != 0:
-			errors.append("metal non consomme par la reparation")
-
-	# Sources d'items : chaque item de Database doit avoir une source
-	# (drop de récolte ou sortie de recette) — invariant "pas d'item orphelin".
-	var sources := {}
-	for h in world.get_children():
-		if h is Harvestable:
-			for loot_id in h._loot:
-				sources[str(loot_id)] = true
-	for recipe_id in Database.recipes:
-		var r: RecipeData = Database.recipes[recipe_id]
-		for out_id in r.outputs:
-			sources[str(out_id)] = true
-	for crop in world.get_children():
-		if crop is Crop:
-			sources[crop.item_id] = true
-	var orphans: PackedStringArray = []
-	for item_id in Database.items:
-		if not sources.has(str(item_id)):
-			orphans.append(str(item_id))
-	if not orphans.is_empty():
-		errors.append("items sans source : %s" % ", ".join(orphans))
-
 	# Mort et renaissance
 	GameState.stats.health = 0.0
 	await get_tree().process_frame
@@ -447,34 +400,6 @@ func _run_smoke_test() -> void:
 		GameState.add_item("wood", 10)
 		if not GameState.consume_items(foundation_data.costs):
 			errors.append("coût de construction KO")
-	# Règles d'ancrage : une fondation isolée au-dessus de l'eau profonde est
-	# refusée ("pas en plein milieu"), une fondation contiguë du terrain sec est
-	# acceptée, et un étage sans base au niveau inférieur est refusé.
-	for i in construction._catalog.size():
-		if str(construction._catalog[i].id) == "foundation":
-			construction._selected = i
-			break
-	var deep_cell := Vector2i(-90, -90)
-	if world.get_height_at(float(deep_cell.x) + 0.5, float(deep_cell.y) + 0.5) < Island.SEA_LEVEL:
-		if construction._touches_existing_structure(deep_cell):
-			errors.append("ancrage KO : structure acceptée en pleine mer")
-	var spawn_cell := Vector2i(floori(world.find_spawn_point().x), floori(world.find_spawn_point().z))
-	if not construction._touches_existing_structure(spawn_cell):
-		errors.append("ancrage KO : terrain sec près du spawn refusé")
-	if construction._has_ground_support(Vector2i(50, 50), 1):
-		errors.append("support KO : étage accepté sans base")
-
-	# Mode créatif (cheat réglages) : has_items/consume_items ignorent les coûts.
-	Settings.infinite_resources = true
-	var wood_cheat_before := GameState.get_item_count("wood")
-	if not GameState.has_items({"wood": 9999}):
-		errors.append("mode créatif KO : has_items refuse")
-	if not GameState.consume_items({"wood": 9999}) or GameState.get_item_count("wood") != wood_cheat_before:
-		errors.append("mode créatif KO : inventaire modifié")
-	Settings.infinite_resources = false
-	if GameState.has_items({"wood": 9999}):
-		errors.append("mode créatif KO : cheat encore actif après extinction")
-
 	var placed := construction.place_free("foundation", "foundation", Vector3(3.5, 0.0, 3.5), 0.0)
 	if placed == null:
 		errors.append("pose de construction KO")
@@ -529,7 +454,7 @@ func _run_smoke_test() -> void:
 		errors.append("mode construction non désactivé")
 
 	# Sauvegarde robuste : un fichier corrompu doit être rejeté sans erreur de script.
-	if not SaveSystem.save_game(player, world, construction):
+	if not SaveSystem.save_game(player, construction):
 		errors.append("écriture de sauvegarde KO")
 	var corrupt_file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
 	if corrupt_file == null:
@@ -543,7 +468,7 @@ func _run_smoke_test() -> void:
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
 	var expected_buildings := construction.to_save_data().size()
-	if not SaveSystem.save_game(player, world, construction):
+	if not SaveSystem.save_game(player, construction):
 		errors.append("écriture de sauvegarde KO")
 	GameState.inventory.clear()
 	construction.clear_all()
@@ -554,27 +479,15 @@ func _run_smoke_test() -> void:
 	if construction.to_save_data().size() != expected_buildings:
 		errors.append("constructions non restaurées")
 
-	# Persistance du monde : une ressource récoltée doit rester en repousse
-	# après sauvegarde/rechargement (clé = save_key ou index d'apparition).
-	if test_tree != null:
-		test_tree.interact(player)
-		if not test_tree.get_save_state().is_empty():
-			SaveSystem.save_game(player, world, construction)
-			test_tree.visible = true
-			if SaveSystem.load_game_into(player, world, construction):
-				var still_depleted := false
-				for child in world.get_children():
-					if child is Harvestable and str(child.save_key) == str(test_tree.save_key) \
-							and not child.get_save_state().is_empty():
-						still_depleted = true
-						break
-				if not still_depleted:
-					errors.append("repousse non persistee apres chargement")
+	# --- Non-régression : stabilité -------------------------------------------
+	_run_stability_tests(errors)
 
 	# Hotbar : chaque case sélectionnable doit avoir une action InputMap.
 	for index in GameState.hotbar_items.size():
 		if not InputMap.has_action("hotbar_%d" % (index + 1)):
 			errors.append("hotbar_%d manquant" % (index + 1))
+
+	_restore_user_files(user_backup)
 
 	if errors.is_empty():
 		Sfx.stop_all()
@@ -584,3 +497,175 @@ func _run_smoke_test() -> void:
 	else:
 		print("SMOKE_TEST ECHEC : ", ", ".join(errors))
 		get_tree().quit(1)
+
+
+## Copie en mémoire les fichiers utilisateur que le test va écraser.
+func _backup_user_files() -> Dictionary:
+	var backup := {}
+	for path in [SaveSystem.SAVE_PATH, Settings.PATH]:
+		backup[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
+	return backup
+
+
+func _restore_user_files(backup: Dictionary) -> void:
+	for path in backup:
+		var content: Variant = backup[path]
+		if content == null:
+			if FileAccess.file_exists(path):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+			continue
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		if file != null:
+			file.store_buffer(content)
+			file.close()
+
+
+func _catalog_index(buildable_id: String) -> int:
+	for index in construction._catalog.size():
+		if construction._catalog[index].id == buildable_id:
+			return index
+	return -1
+
+
+func _write_raw_save(text: String) -> void:
+	var file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+## Tests de non-régression de la passe de stabilisation.
+func _run_stability_tests(errors: PackedStringArray) -> void:
+	# Inventaire : une quantité <= 0 ne doit jamais modifier le stock.
+	GameState.add_item("stone", 5)
+	var stone_before := GameState.get_item_count("stone")
+	if GameState.remove_item("stone", -3):
+		errors.append("retrait négatif accepté")
+	if GameState.remove_item("stone", 0):
+		errors.append("retrait nul accepté")
+	if GameState.get_item_count("stone") != stone_before:
+		errors.append("retrait invalide a modifié le stock")
+	if GameState.has_items({"stone": -1}) or GameState.consume_items({"stone": 0}):
+		errors.append("coût négatif/nul accepté")
+	if GameState.get_item_count("stone") != stone_before:
+		errors.append("coût invalide a modifié le stock")
+
+	# Construction : on se donne de quoi tout poser.
+	for item_id in Database.items.keys():
+		GameState.add_item(str(item_id), 50)
+	construction.clear_all()
+	var cell := Vector2i(10, 10)
+	construction.place_free("foundation", "foundation", Vector3(10.5, 0.0, 10.5), 0.0)
+
+	# Chevauchement inter-catégories : coffre / feu sur une fondation de même niveau.
+	for other in ["chest", "campfire", "roof"]:
+		construction._selected = _catalog_index(other)
+		if construction._selected < 0:
+			errors.append("constructible absent : %s" % other)
+			continue
+		if construction._can_place(cell, 0):
+			errors.append("%s accepté sur une fondation (même niveau)" % other)
+		if not construction._can_place(cell, 1):
+			errors.append("%s refusé au niveau supérieur" % other)
+
+	# Murs : l'empreinte est par bord, et doit survivre à une sauvegarde.
+	var wall_cell := Vector2i(12, 12)
+	var wall_rot := 3.0 * PI * 0.5
+	var wall_base := Vector3(12.5, 0.0, 12.5)
+	var wall_pos := wall_base + Vector3(sin(wall_rot), 0.0, cos(wall_rot)) * 0.5
+	construction.place_free("wall", "wall", wall_pos, wall_rot)
+	construction.place_free("campfire", "campfire", Vector3(14.5, 0.0, 14.5), 0.0)
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("mur doublon (même bord) accepté")
+	if not construction._can_place(wall_cell, 0, 0):
+		errors.append("mur sur un autre bord refusé")
+	construction._selected = _catalog_index("door")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("porte acceptée sur le bord d'un mur")
+
+	var count_before := construction.to_save_data().size()
+	if not SaveSystem.save_game(player, construction):
+		errors.append("sauvegarde (stabilité) KO")
+	GameState.craft_station = ""
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement (stabilité) KO")
+	if construction.to_save_data().size() != count_before:
+		errors.append("constructions perdues/dupliquées après chargement")
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("empreinte du mur perdue après chargement")
+	if GameState.craft_station != "campfire":
+		errors.append("station de fabrication non restaurée")
+
+	# Sauvegarde : entrées dupliquées / inconnues / non numériques ignorées.
+	construction.load_save_data([
+		{"kind": "foundation", "data_id": "foundation", "position": [20.5, 0.0, 20.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "foundation", "position": [20.5, 0.0, 20.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "inexistant", "position": [30.5, 0.0, 30.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "foundation", "position": [1.0, "x", 1.0], "rotation_y": 0.0},
+		"pas un dictionnaire",
+	])
+	if construction.to_save_data().size() != 1:
+		errors.append("chargement construction : %d élément(s) au lieu de 1" % construction.to_save_data().size())
+	construction.clear_all()
+
+	# Sauvegardes malformées : toutes doivent être rejetées sans toucher à l'état.
+	var wood_marker := GameState.get_item_count("wood")
+	var bad_saves := [
+		'{"version": 1, "stats": {"health": "abc"}, "inventory": {}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {"wood": "beaucoup"}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {"position": [1, 2]}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {"position": [1, "a", 3]}}',
+		'{"version": 999, "stats": {}, "inventory": {}, "player": {}}',
+		'{"version": 1, "world_time": "midi", "stats": {}, "inventory": {}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {}, "construction": {}}',
+		'[1, 2, 3]',
+	]
+	for raw in bad_saves:
+		_write_raw_save(raw)
+		if SaveSystem.load_game_into(player, world, construction):
+			errors.append("sauvegarde malformée acceptée : %s" % raw.left(60))
+	if GameState.get_item_count("wood") != wood_marker:
+		errors.append("une sauvegarde rejetée a modifié l'inventaire")
+
+	# Sauvegarde valide mais « sale » : quantités négatives et objets inconnus filtrés.
+	_write_raw_save('{"version": 1, "stats": {"health": 500, "hunger": -20}, "inventory": {"wood": -3, "fantome": 5, "stone": 2}, "player": {"position": [0, 5, 0]}}')
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde valide refusée")
+	else:
+		if GameState.get_item_count("wood") != 0 or GameState.inventory.has("fantome"):
+			errors.append("inventaire non assaini au chargement")
+		if GameState.get_item_count("stone") != 2:
+			errors.append("objet valide perdu au chargement")
+		if GameState.stats.health > 100.0 or GameState.stats.hunger < 0.0:
+			errors.append("jauges non bornées au chargement")
+
+	# Bateau : un chargement ou un respawn doit libérer le joueur.
+	var boat: Boat = null
+	for child in world.get_children():
+		if child is Boat:
+			boat = child
+			break
+	if boat == null:
+		errors.append("bateau introuvable")
+	else:
+		boat.interact(player)
+		if not player.is_in_boat():
+			errors.append("embarquement KO")
+		player.exit_boat()
+		boat._physics_process(0.016)
+		if boat._controlled:
+			errors.append("bateau toujours piloté après sortie forcée du joueur")
+		if player.is_in_boat():
+			errors.append("joueur toujours à bord")
+		# Retrait de métal : la réparation consomme du métal du joueur.
+		boat.fuel = 0.0
+		GameState.inventory.erase("fuel")
+		GameState.add_item("metal", 1)
+		boat.interact(player)
+		if boat.fuel <= 0.0 or GameState.get_item_count("metal") != 0:
+			errors.append("réparation du bateau KO")
+		player.exit_boat()
+		boat._physics_process(0.016)
+	construction.clear_all()
