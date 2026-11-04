@@ -189,6 +189,7 @@ func _spawn_carcass(rng: RandomNumberGenerator) -> void:
 	var prop := Harvestable.new()
 	prop.kind = "carcasse"
 	prop.save_key = str(prop_index)
+	prop_index += 1
 	prop.position = Vector3(fallback.x + 6.0, get_height_at(fallback.x + 6.0, fallback.z + 6.0), fallback.z + 6.0)
 	add_child(prop)
 
