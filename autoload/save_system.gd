@@ -32,6 +32,10 @@ func save_game(player: Node3D, world: Node = null, construction: Node = null) ->
 	}
 	if construction != null:
 		data["construction"] = construction.to_save_data()
+	if world != null:
+		var boat := world.get_node_or_null("Boat")
+		if boat != null and boat.has_method("get_save_data"):
+			data["boat"] = boat.call("get_save_data")
 
 	# État des ressources du monde : repousse des récoltables et croissance
 	# des cultures. Sans cela, tout l'île se régénérait à chaque chargement.
@@ -96,6 +100,16 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 
 	if construction != null:
 		construction.load_save_data(data.get("construction", []))
+
+	# Le bateau est recréé avec l'île : on restaure sa position, son état de
+	# coque et son carburant. Le contrôle reste désactivé au chargement.
+	if world != null:
+		var boat := world.get_node_or_null("Boat")
+		var saved_boat: Variant = data.get("boat", {})
+		if boat != null and boat.has_method("apply_save_data") and typeof(saved_boat) == TYPE_DICTIONARY:
+			boat.call("apply_save_data", saved_boat)
+	if player.has_method("exit_boat"):
+		player.call("exit_boat")
 
 	# Repopulation des ressources : la graine régénère une île identique,
 	# on y réapplique ensuite l'état sauvegardé (repousse / cultures).
