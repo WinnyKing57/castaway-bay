@@ -159,11 +159,11 @@ func _normal_at(x: float, z: float, step: float) -> Vector3:
 
 func _color_for_height(height: float) -> Color:
 	if height < 0.6:
-		return Color(0.72, 0.68, 0.52)
+		return Color(0.30, 0.46, 0.20)
 	if height < 2.2:
-		return Color(0.87, 0.80, 0.58)
+		return Color(0.36, 0.52, 0.22)
 	if height < 9.0:
-		return Color(0.28, 0.48, 0.22)
+		return Color(0.22, 0.40, 0.17)
 	if height < 14.0:
 		return Color(0.42, 0.40, 0.34)
 	return Color(0.82, 0.83, 0.86)
@@ -201,7 +201,7 @@ func _spawn_props() -> void:
 			prop.kind = "fer" if rng.randf() < 0.5 else "cristal"
 		elif height > 9.0:
 			prop.kind = "rocher"
-		elif rng.randf() < 0.55:
+		elif rng.randf() < 0.8:
 			prop.kind = "arbre"
 		else:
 			prop.kind = "buisson"
