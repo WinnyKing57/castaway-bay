@@ -37,6 +37,7 @@ func generate(seed_value: int = 0) -> void:
 	_build_terrain()
 	_spawn_props()
 	_spawn_boat()
+	_spawn_quad()
 	_spawn_crops()
 
 
@@ -222,6 +223,13 @@ func _spawn_boat() -> void:
 	add_child(boat)
 
 
+func _spawn_quad() -> void:
+	var quad := Quad.new()
+	quad.name = "Quad"
+	quad.position = Vector3(40.0, get_height_at(40.0, 40.0), 40.0)
+	add_child(quad)
+
+
 func _spawn_crops() -> void:
 	var count := 6
 	var rng := RandomNumberGenerator.new()
@@ -253,6 +261,7 @@ func to_save_data() -> Dictionary:
 	var harvested: Array = []
 	var crops: Array = []
 	var boat_state := {}
+	var quad_state := {}
 	for child in get_children():
 		if child is Harvestable and child.save_id >= 0 and child.is_depleted():
 			harvested.append(child.get_save_state())
@@ -260,7 +269,9 @@ func to_save_data() -> Dictionary:
 			crops.append(child.get_save_state())
 		elif child is Boat:
 			boat_state = child.get_save_state()
-	return {"harvestables": harvested, "crops": crops, "boat": boat_state}
+		elif child is Quad:
+			quad_state = child.get_save_state()
+	return {"harvestables": harvested, "crops": crops, "boat": boat_state, "quad": quad_state}
 
 
 ## Applique l'état sauvegardé. Les entrées invalides sont ignorées ; tout ce qui
@@ -291,11 +302,22 @@ func apply_save_data(data: Dictionary) -> void:
 			var boat_state: Variant = data.get("boat", {})
 			if typeof(boat_state) == TYPE_DICTIONARY and not (boat_state as Dictionary).is_empty():
 				child.apply_save_state(boat_state)
+		elif child is Quad:
+			var quad_state: Variant = data.get("quad", {})
+			if typeof(quad_state) == TYPE_DICTIONARY and not (quad_state as Dictionary).is_empty():
+				child.apply_save_state(quad_state)
 
 
 func get_boat() -> Boat:
 	for child in get_children():
 		if child is Boat:
+			return child
+	return null
+
+
+func get_quad() -> Quad:
+	for child in get_children():
+		if child is Quad:
 			return child
 	return null
 

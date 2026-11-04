@@ -157,7 +157,7 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 - [ ] Dialogues et livre de bord / journal d'aventure
 
 ### 4. Véhicules et exploration lointaine (M5 suite)
-- [ ] Véhicule terrestre (buggy / quad tout-terrain pour parcourir les reliefs)
+- [x] Véhicule terrestre (buggy / quad tout-terrain pour parcourir les reliefs) : `world/quad.gd` (CharacterBody3D, pilotage, emboard/exit, sauvegarde) + spawn/island/save + interaction E
 - [ ] Îlots secondaires accessibles en bateau avec ressources uniques
 - [ ] Cartographie / boussole artisanale
 
