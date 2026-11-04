@@ -149,8 +149,11 @@ func _cycle(direction: int) -> void:
 ## test et les outils de debug). `ignore_costs` court-circuite l'inventaire
 ## pour ne tester que les collisions/doublons.
 func can_place_at(cell: Vector2i, level: int = 0, rotation: int = 0, ignore_costs: bool = false) -> bool:
+	var data := _selected_data()
+	if data == null:
+		return false
 	if ignore_costs:
-		return not _occupied.has(_cell_key(_selected_kind(), cell, level, rotation))
+		return _footprint_is_free(data, cell, level, rotation)
 	return _can_place(cell, level, rotation)
 
 
@@ -165,7 +168,36 @@ func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 		return false
 	if not GameState.has_items(data.costs):
 		return false
-	return not _occupied.has(_cell_key(data.kind, cell, level, rotation))
+	return _footprint_is_free(data, cell, level, rotation)
+
+
+## Vérifie toutes les cases occupées par l'empreinte du bâtiment. La taille
+## déclarée dans BuildableData est ainsi réellement prise en compte ; une
+## rotation à 90° inverse largeur/profondeur pour les empreintes rectangulaires.
+func _footprint_is_free(data: BuildableData, origin: Vector2i, level: int, rotation: int) -> bool:
+	var width := maxi(1, data.grid_size)
+	var depth := maxi(1, data.grid_size)
+	if posmod(rotation, 2) == 1:
+		var swap := width
+		width = depth
+		depth = swap
+	for x in width:
+		for z in depth:
+			if _occupied.has(_cell_key(data.kind, origin + Vector2i(x, z), level)):
+				return false
+	return true
+
+
+func _mark_footprint(data: BuildableData, origin: Vector2i, level: int, rotation: int) -> void:
+	var width := maxi(1, data.grid_size)
+	var depth := maxi(1, data.grid_size)
+	if posmod(rotation, 2) == 1:
+		var swap := width
+		width = depth
+		depth = swap
+	for x in width:
+		for z in depth:
+			_occupied[_cell_key(data.kind, origin + Vector2i(x, z), level)] = true
 
 
 ## Logique de construction : un élément posé en hauteur doit s'appuyer sur
@@ -248,14 +280,8 @@ func _place() -> void:
 	var position := _ghost.global_position
 	var cell := Vector2i(floori(position.x), floori(position.z))
 	var level := int(round(position.y / LEVEL_STEP))
-	var rotation := _rotation_steps * PI * 0.5
-	if data.kind == "wall":
-		# Les murs s'ancrent sur le bord de la case (arête), pas en plein
-		# milieu : décalage d'une demi-cellule le long de la normale.
-		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
-		cell = Vector2i(floori(position.x), floori(position.z))
 	_spawn(data.kind, data.id, position, _ghost.rotation.y)
-	_occupied[_cell_key(data.kind, cell, level, _rotation_steps)] = true
+	_mark_footprint(data, cell, level, _rotation_steps)
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
@@ -266,7 +292,11 @@ func place_free(kind: String, data_id: String, position: Vector3, rotation_y: fl
 	var node := _spawn(kind, data_id, position, rotation_y)
 	var cell := Vector2i(floori(position.x), floori(position.z))
 	var level := int(round(position.y / LEVEL_STEP))
-	_occupied[_cell_key(node.kind, cell, level, 0)] = true
+	var data := Database.get_buildable(data_id) as BuildableData
+	if data != null:
+		_mark_footprint(data, cell, level, roundi(rotation_y / (PI * 0.5)))
+	else:
+		_occupied[_cell_key(node.kind, cell, level)] = true
 	return node
 
 
@@ -326,8 +356,10 @@ func _raycast() -> Dictionary:
 	return get_world_3d().direct_space_state.intersect_ray(params)
 
 
-func _cell_key(kind: String, cell: Vector2i, level: int = 0, rotation: int = 0) -> String:
-	return "%s:%d:%d:%d:%d" % [kind, cell.x, cell.y, level, rotation]
+## La rotation ne fait pas partie de l'identité d'une case : tourner une
+## pièce ne doit jamais permettre de la dupliquer exactement au même endroit.
+func _cell_key(kind: String, cell: Vector2i, level: int = 0, _rotation: int = 0) -> String:
+	return "%s:%d:%d:%d" % [kind, cell.x, cell.y, level]
 
 
 ## Calcule le y du fantome : fondation alignee sur une voisine, puis decalage
