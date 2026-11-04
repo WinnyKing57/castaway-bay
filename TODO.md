@@ -164,3 +164,53 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### 5. Finition et distribution (M7 suite)
 - [ ] Intégration de musiques d'ambiance dynamiques
 - [ ] Page de distribution itch.io, packaging et builds multi-plateformes
+
+---
+
+## Feuille de route — toutes les prochaines étapes (développement complet)
+
+> TODO volontairement exhaustif : chaque lot à implémenter doit finir par des tests
+> de non-régression (`./run.sh --test` → `SMOKE_TEST OK`) et, quand le lot le permet,
+> des tests headless ciblés.
+
+### A. Grottes et biomes souterrains (M1 suite) — livré partiel
+- [x] Minerais spécifiques et rares dans les profondeurs (cristal) — `world/harvestable.gd`, `data/items/crystal.tres`
+- [x] Éclairage sombre nécessitant la torche — constructible `torch` + `OmniLight` (`world/buildable.gd`, `data/buildables/torch.tres`)
+- [x] Ambiance sonore grottes — stream `cave` (`autoload/sfx.gd`)
+- [ ] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux
+- [ ] Ambiance d'éclairage sombre (profondeur, portée de la torche) — `torch` + `OmniLight`
+- [ ] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs
+
+### B. PNJ, campements et commerce insulaire (M6)
+- [x] Automate de troc (marchand itinérant) — `world/trader.gd`, spawn/save island
+- [ ] Épave de navire marchand avec survivants
+- [ ] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées)
+- [ ] Monnaie locale ou troc direct d'objets rares
+- [ ] Dialogues et livre de bord / journal d'aventure
+
+### C. Véhicules et exploration lointaine (M5 suite)
+- [x] Véhicule terrestre (buggy) — `world/quad.gd`
+- [ ] Îlots secondaires accessibles en bateau avec ressources uniques
+- [ ] Cartographie / boussole artisanale
+
+### D. Finition et distribution (M7)
+- [ ] Intégration de musiques d'ambiance dynamiques (réelles) + transitions
+- [ ] Page de distribution itch.io, packaging et builds multi-plateformes
+
+### E. Gameplay et survie complémentaire
+- [ ] Système d'arrosage, variétés de cultures, pièges, compostage (agriculture)
+- [ ] Pêche à la ligne, noyade/apnée, naufrage, tempêtes
+- [ ] Élevage, durabilité des outils, sommeil (lit)
+
+### F. Technique et architecture
+- [ ] Streaming des zones, LOD, MultiMesh, mode manette, Steam Deck, traductions
+- [ ] Tests headless ciblés par lot : torche, musique, cave, trader, cristal, carte
+
+## Prochaines étapes prioritaires (feuille de route)
+
+1. **Grotte complète** (cavités + torche + ambiance) — lot A.
+2. **PNJ/commerce complet** (réputation/quêtes/dialogues) — lot B.
+3. **Îlots secondaires + cartographie** (M5) — lot C.
+4. **Finition M7** — lot D.
+5. **Gameplay complémentaire** — lot E.
+6. **Technique/LOD/manette/traductions** — lot F.

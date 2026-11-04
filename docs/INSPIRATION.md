@@ -43,3 +43,10 @@ git clone --depth 1 https://github.com/tomlooman/EpicSurvivalGame.git ~/autre/gi
   (buggy) — commit `feat(vehicle): quad tout-terrain`.
 - **Minerais rares / grottes** (inspiré d'`EpicSurvivalGame`) : kind `cristal`.
 - **Jour constant** : option `always_day` (settings + `GameState.world_time`).
+- **Musique d'ambiance dynamique** : streams synthétisés `day` / `dusk` / `night` +
+  `AudioStreamPlayer` piloté par `GameState.world_time` — commit `feat(audio): musique`.
+- **Automate de troc (PNJ)** : `Trader` (stock, prompt, échange) + spawn/save island —
+  commit `feat(npc): automate de troc`.
+- **Grotte / éclairage** : constructible `torch` (bâti + flamme + `OmniLight`) et ambiante
+  cave (`Sfx`) — commit `feat(cave): torche + ambiance grotte`.
+- **Carte** : variation de relief (2ᵉ bruit) + herbe / forêt / terrain plat — commit `feat(world): amelioration carte`.
