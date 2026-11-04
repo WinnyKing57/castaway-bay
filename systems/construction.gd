@@ -101,6 +101,9 @@ func _process(_delta: float) -> void:
 	_ghost_y = ghost_y
 	_valid = _placement_ok(hit, cell, ghost_y)
 	_ghost.set_ghost_valid(_valid)
+	if _valid and _ghost != null and _is_roof_kind(_ghost.kind):
+		if _can_assemble_roof(cell, ghost_y, _rotation_steps * PI * 0.5, _ghost.kind):
+			_ghost.set_ghost_assembly_visual(true)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -183,6 +186,27 @@ func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 	if not _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps):
 		return false
 	return not _ghost_blocked_by_player()
+
+
+func _is_roof_kind(kind: String) -> bool:
+	return kind == "roof" or kind == "roof_slope" or kind == "roof_ridge" or kind == "roof_corner_out" or kind == "roof_corner_in"
+
+
+func _can_assemble_roof(cell: Vector2i, ghost_y: float, rot_y: float, kind: String) -> bool:
+	var roof_kinds := ["roof", "roof_slope", "roof_ridge", "roof_corner_out", "roof_corner_in"]
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		if not roof_kinds.has(obj.kind):
+			continue
+		if absf(obj.position.y - ghost_y) > 0.3:
+			continue
+		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
+		var dx := absi(obj_cell.x - cell.x)
+		var dz := absi(obj_cell.y - cell.y)
+		if dx <= 1 and dz <= 1 and (dx + dz) >= 1 and not (dx == 0 and dz == 0):
+			return true
+	return false
 
 
 ## Vrai si le fantôme recouvrirait le joueur (on ne se mure pas dans un bloc).
@@ -473,9 +497,17 @@ func _update_build_info() -> void:
 	var level_text := "Niveau +" + str("%.1f" % level_height) + " m"
 	if _level_locked:
 		level_text += " [verrouillé]"
+	var dims_text := ""
+	if EDGE_KINDS.has(data.kind):
+		dims_text = "1×1 [bord]"
+	elif data.grid_size > 1:
+		dims_text = "%dx%d" % [data.grid_size, data.grid_size]
+	else:
+		dims_text = "1×1"
+
 	_hud.set_build_info(
-		"%s · Construction : %s (%d/%d) — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
-		% [level_text, data.display_name, _selected + 1, _catalog.size(), ", ".join(costs)]
+		"%s · Construction : %s (%d/%d) [%s] — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
+		% [level_text, data.display_name, _selected + 1, _catalog.size(), dims_text, ", ".join(costs)]
 	)
 
 

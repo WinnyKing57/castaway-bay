@@ -88,18 +88,53 @@
 - [x] **Bug `_aligned_neighbor_y` corrigé** : `best_diff` initialisé à `INF` (était `0.0`),
       la fondation la plus proche était parfois ignorée
 
+## Fait — améliorations construction (batch 4)
+- [x] **Détection d'assemblage** : halo vert-cyan sur le fantôme quand un toit est posé
+      contre un autre toit compatible (même niveau, voisinage 1 case) — `_can_assemble_roof`
+      + `_set_ghost_assembly_visual` sur `Buildable`
+- [x] **Escalier 2 cases de large** (`grid_size = 2`) : `stairs.tres` passe à 2 × 2 et
+      `_build_stairs` agrandit marches/limons/rambarde/ramp pour la largeur 1.84 m
+- [x] **Aperçu des dimensions** : le HUD de construction affiche la taille (ex. `2x2`, `1×1 [bord]`)
+
 ## À faire — corrections prioritaires (bugs actifs)
 - [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique
       complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau)
 
 ## À faire — améliorations construction (suite)
-- [ ] Détection d'assemblage : indicateur visuel (contour vert sur l'arête) quand un toit
-      est posé contre un autre toit compatible
-- [ ] Escalier 2 cases de large (`grid_size = 2`) pour les constructions plus grandes
+_(tous les items du batch 4 sont faits — voir « Fait — améliorations construction (batch 4) »)_
 
 ## À faire — interface de construction
-- [ ] Afficher un aperçu des dimensions de l'élément sélectionné dans le HUD (largeur × profondeur)
-- [ ] Indicateur visuel quand le toit peut s'assembler avec un toit voisin (contour de liaison en vert)
+_(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait — améliorations construction (batch 4) »)_
+
+## Idées issues des repos de référence
+(Sources d'inspiration : `tomlooman/ActionRoguelike`, `tomlooman/EpicSurvivalGame` — voir `docs/INSPIRATION.md`)
+
+### Gameplay / systèmes gameplay
+- ActionRoguelike : architecture de systèmes d'actions paramétrables (input action → effets),
+      feedback de damage (dégâts popups), significance manager / streaming monde,
+      save roguelike par événements — à adapter en GDScript (InputMap, signals, autoloads)
+- EpicSurvivalGame : composant inventaire persistant (pickup/weapon/flashlight),
+      gestion faim/soif/health avec timers et seuils critiques,
+      durability des armes — à transposer vers notre `GameState`/hotbar
+
+### Construction / habitation
+- EpicSurvivalGame : kits de maisons (House_Basic_01_SM, portes Basic, fenêtres Basic,
+      murs/coins) — à s'inspirer pour des maisons pré-faits / kits modulaires plus riches
+      que les bâtis primitifs en code (bardeaux, toits, fondations)
+- ActionRoguelike : patterns de construction modulaire / placement — déjà alignés avec notre
+      grille 1m ; noter les patterns de snap/rotation
+
+### Visuel / graphisme
+- EpicSurvivalGame : kits de maisons, matériaux (murs, sols, toits), éclairage — pistes de
+      matcaps/low-poly plus riches (poutres visibles, bardeaux)
+- ActionRoguelike : effets visuels d'action (dash, blackhole, projectile) — pistes de VFX
+      procéduraux pour feux, éclats, dégâts
+
+### Technique
+- ActionRoguelike : significance / streaming — pistes pour le monde (islands, biomes)
+- EpicSurvivalGame : persistence inventory — pistes pour sauvegarde plus riche
+
+---
 
 ## À faire (par ordre de priorité)
 

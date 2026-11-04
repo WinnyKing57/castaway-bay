@@ -131,6 +131,14 @@ func set_ghost_valid(valid: bool) -> void:
 	)
 
 
+func set_ghost_assembly_visual(assembly: bool) -> void:
+	if _ghost_material == null:
+		return
+	_ghost_material.albedo_color = (
+		Color(0.35, 1.0, 0.8, 0.6) if assembly else Color(0.35, 1.0, 0.45, 0.45)
+	)
+
+
 func _apply_ghost_material() -> void:
 	for child in find_children("*", "MeshInstance3D"):
 		if child is MeshInstance3D:
@@ -539,14 +547,17 @@ func _build_door() -> void:
 
 # ── Escalier ──────────────────────────────────────────────────────────────────
 ## 5 marches montant sur 1.0 m (5 × LEVEL_STEP = 1.0 m), collision en rampe
-## inclinée à ~22° pour une montée fluide.
+## inclinée à ~22° pour une montée fluide. Peut être en 1x1 ou 2x2 (grid_size).
 
 func _build_stairs() -> void:
 	const STEP_COUNT := 5
 	const STEP_HEIGHT := 0.2    # = LEVEL_STEP → sommet à exactement 1.0 m
 	const STEP_DEPTH := 0.18
-	# Les marches occupent 5 × 0.18 = 0.90 m de profondeur sur 1.0 m → ok.
-
+	var stair_width := 0.84
+	# Escalier 2x2 si data_id est stairs
+	if data_id == "stairs":
+		stair_width = 1.84
+	
 	var color_step := Color(0.54, 0.40, 0.26)   # marches plus claires
 	var color_struc := Color(0.36, 0.26, 0.15)  # structure plus foncée
 
@@ -557,29 +568,30 @@ func _build_stairs() -> void:
 		# Contremarche (structure portante, foncée).
 		var riser := MeshInstance3D.new()
 		var rm := BoxMesh.new()
-		rm.size = Vector3(0.84, h, STEP_DEPTH)
+		rm.size = Vector3(stair_width, h, STEP_DEPTH)
 		riser.mesh = rm
 		riser.position = Vector3(0.0, y, z)
 		riser.material_override = _make_material(color_struc)
 		add_child(riser)
 		var rc := CollisionShape3D.new()
 		var rb := BoxShape3D.new()
-		rb.size = Vector3(0.84, h, STEP_DEPTH)
+		rb.size = Vector3(stair_width, h, STEP_DEPTH)
 		rc.shape = rb
 		rc.position = Vector3(0.0, y, z)
 		add_child(rc)
 		# Surface de marche (claire, légèrement en saillie).
 		var tread := MeshInstance3D.new()
 		var tm := BoxMesh.new()
-		tm.size = Vector3(0.90, 0.04, STEP_DEPTH + 0.04)
+		tm.size = Vector3(stair_width + 0.06, 0.04, STEP_DEPTH + 0.04)
 		tread.mesh = tm
 		tread.position = Vector3(0.0, h + 0.01, z)
 		tread.material_override = _make_material(color_step)
 		add_child(tread)
 
 	# Limons latéraux (structure inclinée).
-	_add_box(Vector3(0.08, 0.96, 1.0), Vector3(-0.46, 0.5, 0.0), color_struc)
-	_add_box(Vector3(0.08, 0.96, 1.0), Vector3(0.46, 0.5, 0.0), color_struc)
+	var side_offset := stair_width * 0.5 + 0.04
+	_add_box(Vector3(0.08, 0.96, 1.0), Vector3(-side_offset, 0.5, 0.0), color_struc)
+	_add_box(Vector3(0.08, 0.96, 1.0), Vector3(side_offset, 0.5, 0.0), color_struc)
 
 	# Rambardes (barres fines au-dessus des limons).
 	for side in [-1, 1]:
@@ -587,14 +599,14 @@ func _build_stairs() -> void:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(0.06, 0.06, 1.0)
 		bar.mesh = bm
-		bar.position = Vector3(side * 0.46, 1.05, 0.0)
+		bar.position = Vector3(side * side_offset, 1.05, 0.0)
 		bar.material_override = _make_material(Color(0.42, 0.30, 0.18))
 		add_child(bar)
 
 	# Collision en rampe inclinée à ~22° (doux, compatible capsule joueur).
 	var ramp := CollisionShape3D.new()
 	var rb2 := BoxShape3D.new()
-	rb2.size = Vector3(0.88, 0.12, 1.10)
+	rb2.size = Vector3(stair_width + 0.04, 0.12, 1.10)
 	ramp.shape = rb2
 	ramp.position = Vector3(0.0, 0.50, 0.0)
 	ramp.rotation.x = deg_to_rad(-22.0)

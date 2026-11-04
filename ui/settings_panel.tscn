@@ -106,6 +106,18 @@ text = "Matériaux infinis (cheat)"
 [node name="Check" type="CheckButton" parent="Center/Panel/Margin/VBox/InfiniteRow"]
 layout_mode = 2
 
+[node name="AlwaysDayRow" type="HBoxContainer" parent="Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Label" type="Label" parent="Center/Panel/Margin/VBox/AlwaysDayRow"]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+text = "Jour constant (midi)"
+
+[node name="Check" type="CheckButton" parent="Center/Panel/Margin/VBox/AlwaysDayRow"]
+layout_mode = 2
+
 [node name="Hint" type="Label" parent="Center/Panel/Margin/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.8, 0.76, 1)

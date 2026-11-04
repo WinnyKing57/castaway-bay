@@ -14,5 +14,5 @@ costs = {
 "fiber": 2,
 "wood": 6
 }
-grid_size = 1
+grid_size = 2
 visual_tag = "stairs"

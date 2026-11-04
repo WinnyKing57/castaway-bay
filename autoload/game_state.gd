@@ -49,7 +49,10 @@ var current_craft: Dictionary = {}
 
 
 func _process(delta: float) -> void:
-	world_time = fmod(world_time + delta * (SECONDS_PER_DAY / DAY_LENGTH_SECONDS), SECONDS_PER_DAY)
+	if Settings.always_day:
+		world_time = 12.0 * 3600.0  # Midi fixe
+	else:
+		world_time = fmod(world_time + delta * (SECONDS_PER_DAY / DAY_LENGTH_SECONDS), SECONDS_PER_DAY)
 	_advance_craft(delta)
 
 	if is_dead:
