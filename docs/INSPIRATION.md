@@ -34,3 +34,12 @@ git clone --depth 1 https://github.com/tomlooman/EpicSurvivalGame.git ~/autre/gi
 - Ces projets sont en Unreal Engine C++. L'objectif est l'inspiration conceptuelle/architecturale, pas un portage direct.
 - Ne jamais committer ces références dans le repo git de Castaway Bay.
 - Garder les chemins dans ce fichier pour référence rapide.
+
+## Lots intégrés (suivi)
+
+- **Kit de maison** (inspiré d'`EpicSurvivalGame`) : constructible `house`
+  (fondation + murs + toit plat) — commit `feat(building): kit maison complete (house)`.
+- **Véhicule terrestre** (inspiré de la locomotion du bateau / survie) : `Quad`
+  (buggy) — commit `feat(vehicle): quad tout-terrain`.
+- **Minerais rares / grottes** (inspiré d'`EpicSurvivalGame`) : kind `cristal`.
+- **Jour constant** : option `always_day` (settings + `GameState.world_time`).

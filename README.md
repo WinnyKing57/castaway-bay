@@ -166,6 +166,21 @@ Accessible depuis le menu pause ou l'écran principal (**Échap ▸ Réglages**)
 
 ---
 
+## Sources d'inspiration
+
+Le design et l'architecture du jeu s'appuient sur deux projets externes
+(non inclus dans ce dépôt) :
+
+- [tomlooman/ActionRoguelike](https://github.com/tomlooman/ActionRoguelike) — gameplay
+  action, systèmes de capacités, feedback et architecture de jeu.
+- [tomlooman/EpicSurvivalGame](https://github.com/tomlooman/EpicSurvivalGame) — survie,
+  habitation, inventaire, ressources.
+
+Détails, conventions d'intégration et lots inspirés : voir
+[`docs/INSPIRATION.md`](docs/INSPIRATION.md).
+
+---
+
 ## Structure du projet
 
 ```
