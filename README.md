@@ -17,7 +17,7 @@ ni code d'un jeu commercial n'est utilisé).
    (pierre), buissons (fibres, baies), affleurements de fer (métal), gisements côtiers
    (argile), parcelles sauvages (graines) et épaves échouées (viande + tissu).
 2. **Survivre & Cultiver** : la faim, la soif et la fatigue évoluent constamment. Mangez
-   et buvez avec la barre rapide (**1-4** puis **F**). Maintenez vos jauges au-dessus
+   et buvez avec la barre rapide (**1-5** puis **F**). Maintenez vos jauges au-dessus
    de 60 pour régénérer la fatigue. Plantez des graines sur les parcelles agricoles pour
    produire de la nourriture (la culture grandit, vire au rouge à maturité et produit à la
    fois 2 récoltes et 1 graine pour pérenniser vos plantations).
@@ -30,7 +30,7 @@ ni code d'un jeu commercial n'est utilisé).
 5. **Naviguer** : repérez le bateau échoué au large, réparez sa coque avec du métal, faites le plein
    de carburant et naviguez pour explorer les pourtours de l'océan.
 6. **Sauvegarder & Reprendre** : **F9** / **F10** ou via le menu pause. La graine de l'île,
-   l'inventaire, les constructions et l'état de repousse des ressources sont intégralement conservés.
+   l'inventaire, les constructions, le bateau (position, coque, carburant) et l'état des ressources sont conservés.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
@@ -83,7 +83,7 @@ Puis **F5** dans l'éditeur pour lancer le jeu.
 | Maj | courir |
 | Espace | sauter |
 | E | interagir / récolter |
-| 1 à 4 | sélectionner un objet de la barre rapide |
+| 1 à 5 | sélectionner un objet de la barre rapide |
 | F | utiliser l'objet sélectionné (manger, boire) |
 | C | ouvrir / fermer l'artisanat |
 | B | activer / quitter le mode construction |
