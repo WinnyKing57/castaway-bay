@@ -58,6 +58,8 @@ func _ready() -> void:
 ## État sérialisable : vide si la ressource est pleine, sinon le temps
 ## restant en secondes-monde. Utilisé par SaveSystem pour persister l'île.
 func get_save_state() -> String:
+	if kind == "carcasse" and _depleted:
+		return "permanent"
 	if not _depleted:
 		return ""
 	return str(_regrow_left)
@@ -65,6 +67,12 @@ func get_save_state() -> String:
 
 func apply_save_state(state: String) -> void:
 	if state.is_empty():
+		return
+	if state == "permanent" and kind == "carcasse":
+		_depleted = true
+		_regrow_left = 0.0
+		visible = false
+		collision_layer = 0
 		return
 	var left := float(state)
 	if left <= 0.0:
@@ -107,6 +115,8 @@ func interact(_player: Node) -> void:
 	if kind != "carcasse":
 		_start_regrow()
 	else:
+		_depleted = true
+		_regrow_left = 0.0
 		visible = false
 		collision_layer = 0
 
@@ -114,12 +124,10 @@ func interact(_player: Node) -> void:
 func _process(delta: float) -> void:
 	if not _depleted:
 		return
-	# La repousse suit l'horloge du jeu : GameState._process tourne même quand
-	# la partie est en pause (menus) ou après la mort, contrairement aux
-	# nodes du monde. On avance donc la repousse depuis le meme rythme que
-	# world_time, et on peut la persister en secondes-monde.
-	var elapsed := delta * (GameState.SECONDS_PER_DAY / GameState.DAY_LENGTH_SECONDS)
-	_regrow_left -= elapsed
+	# Les délais de repousse sont exprimés en secondes réelles, comme la
+	# croissance des cultures. Le compteur est gelé lorsque le SceneTree est
+	# en pause, ce qui évite une repousse pendant les menus.
+	_regrow_left -= delta
 	if _regrow_left <= 0.0:
 		_regrow()
 
