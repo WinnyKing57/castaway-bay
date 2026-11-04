@@ -40,6 +40,7 @@ func _process(delta: float) -> void:
 		return
 	var finished := _craft_recipe
 	_craft_recipe = null
+	_craft_inputs_consumed = false
 	for item_id in finished.outputs:
 		GameState.add_item(str(item_id), int(finished.outputs[item_id]))
 	Sfx.play_ui("craft")
