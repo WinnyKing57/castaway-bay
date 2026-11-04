@@ -157,8 +157,13 @@ func _update_craft_station() -> void:
 		if dist <= nearest_dist:
 			nearest_dist = dist
 			nearest_id = str(node.get("kind"))
-	if GameState.craft_station != nearest_id:
-		GameState.craft_station = nearest_id
+	if nearest_id.is_empty():
+		if GameState.craft_stations.size() > 0:
+			GameState.clear_stations()
+	else:
+		if not GameState.has_station(nearest_id) or GameState.craft_stations.size() != 1 or not GameState.craft_stations.has(nearest_id):
+			GameState.clear_stations()
+			GameState.register_station(nearest_id)
 
 
 ## Monte à bord du bateau (le joueur y est "parenté" de fait : le bateau le
@@ -183,6 +188,19 @@ func exit_boat() -> void:
 
 func is_in_boat() -> bool:
 	return _in_boat
+
+
+func are_controls_enabled() -> bool:
+	return _controls_enabled
+
+
+## Inclinaison de la tête (regard haut/bas), sauvegardée avec la position.
+func get_pitch() -> float:
+	return head.rotation.x
+
+
+func set_pitch(value: float) -> void:
+	head.rotation.x = clampf(value, -PITCH_LIMIT, PITCH_LIMIT)
 
 
 func is_swimming() -> bool:

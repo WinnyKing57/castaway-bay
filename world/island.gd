@@ -15,11 +15,6 @@ var _noise: FastNoiseLite
 var _mesh_instance: MeshInstance3D
 var _generated := false
 
-## Compteurs d'apparition : servent de clés stables pour la sauvegarde de
-## l'état des ressources (repousse, cultures). Réinitialisés à chaque generate().
-var prop_index := 0
-var crop_index := 0
-
 
 func _ready() -> void:
 	generate()
@@ -164,36 +159,6 @@ func _color_for_height(height: float) -> Color:
 
 # --- Végétation --------------------------------------------------------------
 
-## Positionne une carcasse d'animal échoué près de la plage : c'est la seule
-## source de viande (et de tissu) du jeu, donc elle doit exister sur toutes
-## les graines. En dernier recours, on force un point haut pour qu'elle ne
-## trempe pas dans l'eau.
-func _spawn_carcass(rng: RandomNumberGenerator) -> void:
-	var candidates: Array[float] = [1.8, 2.2, 2.6, 3.0, 4.0, 5.0, 6.0, 8.0]
-	for radius in candidates:
-		for step in 12:
-			var angle := step * TAU / 12.0 + rng.randf() * 0.4
-			var x: float = cos(angle) * radius * 8.0
-			var z: float = sin(angle) * radius * 8.0
-			var height := get_height_at(x, z)
-			if height >= 0.8 and height < 2.6:
-				var prop := Harvestable.new()
-				prop.kind = "carcasse"
-				prop.save_key = str(prop_index)
-				prop_index += 1
-				prop.position = Vector3(x, height, z)
-				prop.rotation.y = rng.randf() * TAU
-				add_child(prop)
-				return
-	var fallback := find_spawn_point()
-	var prop := Harvestable.new()
-	prop.kind = "carcasse"
-	prop.save_key = str(prop_index)
-	prop_index += 1
-	prop.position = Vector3(fallback.x + 6.0, get_height_at(fallback.x + 6.0, fallback.z + 6.0), fallback.z + 6.0)
-	add_child(prop)
-
-
 func _spawn_props() -> void:
 	var scene: PackedScene = load("res://world/harvestable.tscn")
 	if scene == null:
@@ -202,11 +167,6 @@ func _spawn_props() -> void:
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1234567
-
-	# Index d'apparition = clé de sauvegarde stable (l'ordre de génération ne
-	# dépend que de la graine, il est identique après un regenerate()).
-	prop_index = 0
-	_spawn_carcass(rng)
 
 	var placed := 0
 	var attempts := 0
@@ -221,23 +181,22 @@ func _spawn_props() -> void:
 			continue
 
 		var prop: Harvestable = scene.instantiate()
-		if height < 2.0 and rng.randf() < 0.35:
+		if height < 1.5:
 			prop.kind = "argile"
 		elif height < 4.0:
-			prop.kind = "palmier" if rng.randf() < 0.50 else ("seed" if rng.randf() < 0.35 else "buisson")
-		elif height > 10.0:
-			prop.kind = "fer" if rng.randf() < 0.60 else "rocher"
-		elif height > 8.0:
+			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
+		elif height > 12.0:
+			prop.kind = "fer"
+		elif height > 9.0:
 			prop.kind = "rocher"
-		elif rng.randf() < 0.50:
+		elif rng.randf() < 0.55:
 			prop.kind = "arbre"
 		else:
 			prop.kind = "buisson"
 
 		prop.position = Vector3(x, height, z)
 		prop.rotation.y = rng.randf() * TAU
-		prop.save_key = str(prop_index)
-		prop_index += 1
+		prop.save_id = placed
 		add_child(prop)
 		placed += 1
 
@@ -247,24 +206,12 @@ func _spawn_boat() -> void:
 	boat.name = "Boat"
 	boat.position = Vector3(0.0, -2.0, 0.0)
 	add_child(boat)
-	# Le relief est procédural : (0, 0) n'est pas forcément de l'eau. On place
-	# le bateau au premier point sous le niveau marin trouvé en sondant des
-	# anneaux concentriques, sinon il resterait échoué sur la plage.
-	for radius in [40.0, 50.0, 60.0, 70.0, 80.0, 95.0]:
-		for step in 16:
-			var angle := step * TAU / 16.0
-			var x: float = cos(angle) * radius
-			var z: float = sin(angle) * radius
-			if get_height_at(x, z) < SEA_LEVEL - 1.0:
-				boat.global_position = Vector3(x, SEA_LEVEL - 0.8, z)
-				return
 
 
 func _spawn_crops() -> void:
 	var count := 6
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 9876543
-	crop_index = 0
 	var placed := 0
 	var attempts := 0
 	while placed < count and attempts < 2000:
@@ -279,7 +226,65 @@ func _spawn_crops() -> void:
 		var crop := Crop.new()
 		crop.item_id = "berry"
 		crop.position = Vector3(x, height, z)
-		crop.set_meta("crop_index", crop_index)
-		crop_index += 1
+		crop.save_id = placed
 		add_child(crop)
 		placed += 1
+
+
+# --- Sauvegarde de l'état du monde ------------------------------------------
+
+## Ressources épuisées, cultures plantées et bateau. Les ressources intactes ne
+## sont pas listées : tout ce qui n'est pas dans la sauvegarde est « neuf ».
+func to_save_data() -> Dictionary:
+	var harvested: Array = []
+	var crops: Array = []
+	var boat_state := {}
+	for child in get_children():
+		if child is Harvestable and child.save_id >= 0 and child.is_depleted():
+			harvested.append(child.get_save_state())
+		elif child is Crop and child.save_id >= 0 and child.is_planted():
+			crops.append(child.get_save_state())
+		elif child is Boat:
+			boat_state = child.get_save_state()
+	return {"harvestables": harvested, "crops": crops, "boat": boat_state}
+
+
+## Applique l'état sauvegardé. Les entrées invalides sont ignorées ; tout ce qui
+## n'est pas listé est remis à neuf (le monde a pu changer depuis la sauvegarde).
+func apply_save_data(data: Dictionary) -> void:
+	var harvested := {}
+	var raw_harvested: Variant = data.get("harvestables", [])
+	if typeof(raw_harvested) == TYPE_ARRAY:
+		for entry in raw_harvested:
+			if typeof(entry) == TYPE_DICTIONARY and _is_num(entry.get("id")):
+				harvested[int(entry["id"])] = float(entry["regrow_left"]) if _is_num(entry.get("regrow_left")) else 0.0
+
+	var planted := {}
+	var raw_crops: Variant = data.get("crops", [])
+	if typeof(raw_crops) == TYPE_ARRAY:
+		for entry in raw_crops:
+			if typeof(entry) == TYPE_DICTIONARY and _is_num(entry.get("id")):
+				planted[int(entry["id"])] = float(entry["progress"]) if _is_num(entry.get("progress")) else 0.0
+
+	for child in get_children():
+		if child is Harvestable and child.save_id >= 0:
+			var is_gone: bool = harvested.has(child.save_id)
+			child.apply_save_state(is_gone, float(harvested.get(child.save_id, 0.0)))
+		elif child is Crop and child.save_id >= 0:
+			var is_planted: bool = planted.has(child.save_id)
+			child.apply_save_state(is_planted, float(planted.get(child.save_id, 0.0)))
+		elif child is Boat:
+			var boat_state: Variant = data.get("boat", {})
+			if typeof(boat_state) == TYPE_DICTIONARY and not (boat_state as Dictionary).is_empty():
+				child.apply_save_state(boat_state)
+
+
+func get_boat() -> Boat:
+	for child in get_children():
+		if child is Boat:
+			return child
+	return null
+
+
+func _is_num(value: Variant) -> bool:
+	return (typeof(value) == TYPE_FLOAT or typeof(value) == TYPE_INT) and is_finite(float(value))

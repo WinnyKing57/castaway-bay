@@ -12,4 +12,4 @@ costs = {
 "wood": 8,
 "fiber": 4
 }
-grid_size = 1
+grid_size = 2

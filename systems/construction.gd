@@ -82,7 +82,8 @@ func _process(_delta: float) -> void:
 	var cell := Vector2i(floori(position.x), floori(position.z))
 	var ghost_y := _compute_ghost_y(position.y, cell, _ghost.kind)
 	_ghost.visible = true
-	_ghost.global_position = Vector3(cell.x + 0.5, ghost_y, cell.y + 0.5)
+	var shift := (maxi(1, _selected_data().grid_size) - 1) * 0.5
+	_ghost.global_position = Vector3(cell.x + 0.5 + shift, ghost_y, cell.y + 0.5 + shift)
 	_ghost.rotation.y = _rotation_steps * PI * 0.5
 	_ghost_y = ghost_y
 	_valid = _placement_ok(hit, cell, ghost_y)
@@ -140,7 +141,10 @@ func _can_place(cell: Vector2i, level: int = 0, rotation: int = 0) -> bool:
 		return false
 	if not GameState.has_items(data.costs):
 		return false
-	return not _occupied.has(_cell_key(data.kind, cell, level, rotation))
+	for key in _keys_for(data.kind, cell, level, rotation, data.grid_size):
+		if _occupied.has(key):
+			return false
+	return true
 
 
 ## Valide la pose fantôme : on refuse les supports inexploitables (ressource
@@ -154,12 +158,42 @@ func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 		return false
 	if ghost_y < Island.SEA_LEVEL + 0.3:
 		return false
-	if collider is Buildable:
-		return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
-	var normal: Vector3 = hit["normal"]
-	if normal.y < 0.8:
+	if not collider is Buildable:
+		var normal: Vector3 = hit["normal"]
+		if normal.y < 0.8:
+			return false
+	if not _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps):
 		return false
-	return _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps)
+	return not _ghost_blocked_by_player()
+
+
+## Vrai si le fantôme recouvrirait le joueur (on ne se mure pas dans un bloc).
+func _ghost_blocked_by_player() -> bool:
+	var data := _selected_data()
+	if data == null or _ghost == null:
+		return false
+	var center := _ghost.global_position
+	if data.kind == "wall":
+		var rot := _rotation_steps * PI * 0.5
+		center += Vector3(sin(rot), 0.0, cos(rot)) * 0.5
+	return _blocked_by_player(center, _rotation_steps * PI * 0.5, data.kind, data.grid_size)
+
+
+## Test géométrique simple (boîte) entre un élément et la capsule du joueur
+## (origine aux pieds, rayon 0,35 m, hauteur 1,8 m).
+func _blocked_by_player(center: Vector3, rot_y: float, kind: String, size: int) -> bool:
+	if _player == null or kind == "foundation":
+		return false
+	var is_edge := EDGE_KINDS.has(kind)
+	var height := 2.4 if (is_edge or kind == "roof") else 1.0
+	var p := _player.global_position
+	if center.y >= p.y + 1.8 or center.y + height <= p.y:
+		return false
+	var local := Vector3(p.x - center.x, 0.0, p.z - center.z).rotated(Vector3.UP, -rot_y)
+	var half := maxi(1, size) * 0.5 + 0.35
+	var half_x := 0.5 + 0.35 if is_edge else half
+	var half_z := 0.08 + 0.35 if is_edge else half
+	return absf(local.x) < half_x and absf(local.z) < half_z
 
 
 func _place() -> void:
@@ -198,22 +232,47 @@ func place_free(kind: String, data_id: String, position: Vector3, rotation_y: fl
 ## la position/rotation réelles du nœud, donc identique avant et après une
 ## sauvegarde.
 func _register_object(node: Buildable) -> void:
-	_occupied[_key_for_object(node.kind, node.position, node.rotation.y)] = true
+	for key in _key_for_object(node.kind, node.position, node.rotation.y, _grid_size_of(node.data_id)):
+		_occupied[key] = true
 	if node.kind == "campfire" or node.kind == "furnace":
-		GameState.craft_station = node.kind
+		GameState.register_station(node.kind)
 
 
-## Clé d'occupation d'un élément déjà posé (position réelle du nœud).
+func _grid_size_of(data_id: String) -> int:
+	var data: Variant = Database.buildables.get(data_id)
+	if data is BuildableData:
+		return maxi(1, (data as BuildableData).grid_size)
+	return 1
+
+
+## Clés d'occupation d'un élément déjà posé (position réelle du nœud).
 ## Les murs sont décalés d'un demi-mètre vers leur bord : on retire ce décalage
-## pour retrouver la case d'origine, comme au moment de la pose.
-func _key_for_object(kind: String, position: Vector3, rotation_y: float) -> String:
+## pour retrouver la case d'origine, comme au moment de la pose. Un élément
+## de grid_size n est centré sur son empreinte n x n : on retire aussi ce décalage.
+func _key_for_object(kind: String, position: Vector3, rotation_y: float, size: int = 1) -> Array[String]:
 	var base := position
 	if kind == "wall":
 		base = position - Vector3(sin(rotation_y), 0.0, cos(rotation_y)) * 0.5
+	elif size > 1 and not EDGE_KINDS.has(kind):
+		var shift := (size - 1) * 0.5
+		base = position - Vector3(shift, 0.0, shift)
 	var cell := Vector2i(floori(base.x), floori(base.z))
 	var level := int(round(position.y / LEVEL_STEP))
 	var steps := wrapi(int(round(rotation_y / (PI * 0.5))), 0, 4)
-	return _cell_key(kind, cell, level, steps)
+	return _keys_for(kind, cell, level, steps, size)
+
+
+## Toutes les clés occupées par un élément : une seule pour un bord ou une
+## empreinte 1 x 1, n x n sinon.
+func _keys_for(kind: String, cell: Vector2i, level: int, rotation: int, size: int) -> Array[String]:
+	var keys: Array[String] = []
+	if EDGE_KINDS.has(kind) or size <= 1:
+		keys.append(_cell_key(kind, cell, level, rotation))
+		return keys
+	for dx in size:
+		for dz in size:
+			keys.append(_cell_key(kind, Vector2i(cell.x + dx, cell.y + dz), level, rotation))
+	return keys
 
 
 func _spawn(kind: String, data_id: String, position: Vector3, rotation_y: float) -> Buildable:
@@ -405,7 +464,11 @@ func load_save_data(entries: Variant) -> void:
 		var rotation_y := float(raw_rot)
 		# Anti-duplication : une sauvegarde qui contient deux fois la même
 		# empreinte ne recrée qu'un seul élément.
-		if _occupied.has(_key_for_object(kind, position, rotation_y)):
+		var duplicate := false
+		for key in _key_for_object(kind, position, rotation_y, _grid_size_of(data_id)):
+			if _occupied.has(key):
+				duplicate = true
+		if duplicate:
 			push_warning("[Construction] Doublon ignoré à %s" % str(position))
 			continue
 		place_free(kind, data_id, position, rotation_y)
@@ -417,4 +480,4 @@ func clear_all() -> void:
 			obj.queue_free()
 	_objects.clear()
 	_occupied.clear()
-	GameState.craft_station = ""
+	GameState.clear_stations()

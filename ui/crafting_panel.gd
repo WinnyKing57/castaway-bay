@@ -13,40 +13,12 @@ signal closed
 @onready var status_label: Label = $Panel/Margin/VBox/Status
 @onready var close_button: Button = $Panel/Margin/VBox/Close
 
-## Fabrication en cours (recette, temps restant) : le craft_time des
-## recettes est honoré ici, les ressources sont consommées au départ.
-var _craft_recipe: RecipeData = null
-var _craft_left := 0.0
-var _craft_inputs_consumed := false
-
 
 func _ready() -> void:
 	visible = false
 	close_button.pressed.connect(close)
 	GameState.inventory_changed.connect(_on_inventory_changed)
-
-
-func _process(delta: float) -> void:
-	if _craft_recipe == null:
-		return
-	# Un craft ne se poursuit ni pendant la pause, ni après la mort du joueur :
-	# les ressources déjà consommées sont perdues si le panneau est fermé
-	# (close()) — mais jamais fabriquées "dans l'autre monde".
-	if get_tree().paused or GameState.is_dead:
-		return
-	_craft_left -= delta
-	if _craft_left > 0.0:
-		status_label.text = "Fabrication de %s… %.1f s" % [_craft_recipe.display_name, _craft_left]
-		return
-	var finished := _craft_recipe
-	_craft_recipe = null
-	_craft_inputs_consumed = false
-	for item_id in finished.outputs:
-		GameState.add_item(str(item_id), int(finished.outputs[item_id]))
-	Sfx.play_ui("craft")
-	GameState.notify("Fabriqué : %s" % finished.display_name)
-	status_label.text = "Fabriqué : %s" % finished.display_name
-	_rebuild()
+	GameState.craft_changed.connect(_on_craft_changed)
 
 
 func is_open() -> bool:
@@ -63,15 +35,6 @@ func open() -> void:
 func close() -> void:
 	if not visible:
 		return
-	# Une fabrication interrompue par la fermeture du panneau rembourse les
-	# ressources consommées au départ (pas de perte punitive).
-	if _craft_recipe != null and _craft_left > 0.0 and _craft_inputs_consumed:
-		for item_id in _craft_recipe.inputs:
-			GameState.add_item(str(item_id), int(_craft_recipe.inputs[item_id]))
-		GameState.notify("Fabrication annulée — ressources rendues")
-	_craft_recipe = null
-	_craft_left = 0.0
-	_craft_inputs_consumed = false
 	visible = false
 	closed.emit()
 
@@ -88,9 +51,31 @@ func _on_inventory_changed() -> void:
 		_rebuild()
 
 
+func _on_craft_changed() -> void:
+	if visible:
+		_rebuild()
+		if not GameState.is_crafting():
+			status_label.text = "Choisis une recette."
+
+
+## Pendant une fabrication chronométrée, le panneau affiche la progression.
+## Fermer le panneau ne l'interrompt pas : elle continue en arrière-plan.
+func _process(_delta: float) -> void:
+	if visible and GameState.is_crafting():
+		var recipe: RecipeData = GameState.current_craft["recipe"]
+		status_label.text = "Fabrication : %s — %d %%" % [recipe.display_name, int(GameState.craft_progress() * 100.0)]
+
+
 func _rebuild() -> void:
 	for child in recipes_box.get_children():
 		child.queue_free()
+
+	if GameState.is_crafting():
+		var cancel := Button.new()
+		cancel.custom_minimum_size = Vector2(0, 46)
+		cancel.text = "Annuler la fabrication (ingrédients rendus)"
+		cancel.pressed.connect(func() -> void: GameState.cancel_craft())
+		recipes_box.add_child(cancel)
 
 	var ids := Database.recipes.keys()
 	ids.sort()
@@ -120,28 +105,11 @@ func _row_text(recipe: RecipeData) -> String:
 
 
 func _on_craft_pressed(recipe: RecipeData) -> void:
-	if _craft_recipe != null:
-		status_label.text = "Fabrication en cours…"
-		return
-	if not GameState.can_craft(recipe):
-		if not recipe.required_station.is_empty():
-			status_label.text = "Nécessite un établi : %s à proximité." % recipe.required_station
-		else:
-			status_label.text = "Ressources insuffisantes."
-		return
-	if not GameState.consume_items(recipe.inputs):
-		status_label.text = "Ressources insuffisantes."
-		_rebuild()
-		return
-	if recipe.craft_time > 0.0:
-		_craft_recipe = recipe
-		_craft_inputs_consumed = not Settings.infinite_resources
-		_craft_left = recipe.craft_time
-		status_label.text = "Fabrication de %s…" % recipe.display_name
+	if GameState.craft(recipe):
+		status_label.text = (
+			"Fabrication : %s…" % recipe.display_name if GameState.is_crafting()
+			else "Fabriqué : %s" % recipe.display_name
+		)
 	else:
-		for item_id in recipe.outputs:
-			GameState.add_item(str(item_id), int(recipe.outputs[item_id]))
-		Sfx.play_ui("craft")
-		GameState.notify("Fabriqué : %s" % recipe.display_name)
-		status_label.text = "Fabriqué : %s" % recipe.display_name
+		status_label.text = "Ressources insuffisantes."
 	_rebuild()

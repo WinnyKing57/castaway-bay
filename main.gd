@@ -12,6 +12,12 @@ extends Node3D
 @onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
 
+## Intervalle de la sauvegarde automatique (secondes de jeu).
+const AUTOSAVE_SECONDS := 120.0
+
+## Vrai uniquement pendant une vraie partie (pas au menu, pas en test/outils).
+var _in_game := false
+
 
 func _ready() -> void:
 	player.global_position = world.find_spawn_point()
@@ -28,6 +34,12 @@ func _ready() -> void:
 	menu.main_menu_requested.connect(_on_menu_main_menu)
 	settings_panel.closed.connect(_on_settings_closed)
 	menu.quit_requested.connect(_on_menu_quit)
+
+	var autosave_timer := Timer.new()
+	autosave_timer.wait_time = AUTOSAVE_SECONDS
+	autosave_timer.timeout.connect(_autosave.bind(false))
+	add_child(autosave_timer)
+	autosave_timer.start()
 
 	if _is_dev_run():
 		GameState.notify("Bienvenue — approche un arbre et appuie sur E")
@@ -84,7 +96,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("save_game"):
-		if SaveSystem.save_game(player, construction):
+		if SaveSystem.save_game(player, construction, world):
 			GameState.notify("Partie sauvegardée")
 		else:
 			GameState.notify("Échec de la sauvegarde")
@@ -107,6 +119,7 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- Menus -------------------------------------------------------------------
 
 func _show_start_menu() -> void:
+	_in_game = false
 	menu.open_start()
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -123,6 +136,7 @@ func _open_pause_menu() -> void:
 
 
 func _resume_game() -> void:
+	_in_game = true
 	get_tree().paused = false
 	menu.close()
 	player.set_controls_enabled(true)
@@ -155,7 +169,7 @@ func _on_menu_resume() -> void:
 
 
 func _on_menu_save() -> void:
-	if SaveSystem.save_game(player, construction):
+	if SaveSystem.save_game(player, construction, world):
 		GameState.notify("Partie sauvegardée")
 	else:
 		GameState.notify("Échec de la sauvegarde")
@@ -172,11 +186,32 @@ func _on_menu_settings() -> void:
 
 
 func _on_menu_main_menu() -> void:
+	_autosave(true)
 	_show_start_menu()
 
 
 func _on_menu_quit() -> void:
+	_autosave(true)
 	get_tree().quit()
+
+
+## Sauvegarde automatique : périodique, à la sortie vers le menu, à la fermeture
+## de la fenêtre et quand l'application passe en arrière-plan. Jamais au menu
+## principal, pendant la mort ni en test : on ne remplace pas une bonne partie
+## par un état invalide. L'ancienne sauvegarde reste en `.bak`.
+func _autosave(silent: bool) -> void:
+	if not _in_game or GameState.is_dead or _is_dev_run():
+		return
+	if SaveSystem.save_game(player, construction, world):
+		if not silent:
+			GameState.notify("Sauvegarde automatique")
+	else:
+		push_warning("[Main] Échec de la sauvegarde automatique")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+		_autosave(true)
 
 
 func _on_player_died() -> void:
@@ -454,8 +489,9 @@ func _run_smoke_test() -> void:
 		errors.append("mode construction non désactivé")
 
 	# Sauvegarde robuste : un fichier corrompu doit être rejeté sans erreur de script.
-	if not SaveSystem.save_game(player, construction):
+	if not SaveSystem.save_game(player, construction, world):
 		errors.append("écriture de sauvegarde KO")
+	SaveSystem.delete_backup()
 	var corrupt_file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
 	if corrupt_file == null:
 		errors.append("écriture sauvegarde corrompue KO")
@@ -468,7 +504,7 @@ func _run_smoke_test() -> void:
 	# Sauvegarde / chargement
 	var expected := GameState.get_item_count("wood")
 	var expected_buildings := construction.to_save_data().size()
-	if not SaveSystem.save_game(player, construction):
+	if not SaveSystem.save_game(player, construction, world):
 		errors.append("écriture de sauvegarde KO")
 	GameState.inventory.clear()
 	construction.clear_all()
@@ -481,6 +517,7 @@ func _run_smoke_test() -> void:
 
 	# --- Non-régression : stabilité -------------------------------------------
 	_run_stability_tests(errors)
+	_run_persistence_tests(errors)
 
 	# Hotbar : chaque case sélectionnable doit avoir une action InputMap.
 	for index in GameState.hotbar_items.size():
@@ -502,7 +539,7 @@ func _run_smoke_test() -> void:
 ## Copie en mémoire les fichiers utilisateur que le test va écraser.
 func _backup_user_files() -> Dictionary:
 	var backup := {}
-	for path in [SaveSystem.SAVE_PATH, Settings.PATH]:
+	for path in [SaveSystem.SAVE_PATH, SaveSystem.BACKUP_PATH, Settings.PATH]:
 		backup[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
 	return backup
 
@@ -528,6 +565,7 @@ func _catalog_index(buildable_id: String) -> int:
 
 
 func _write_raw_save(text: String) -> void:
+	SaveSystem.delete_backup()
 	var file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
 	file.store_string(text)
 	file.close()
@@ -584,9 +622,9 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 		errors.append("porte acceptée sur le bord d'un mur")
 
 	var count_before := construction.to_save_data().size()
-	if not SaveSystem.save_game(player, construction):
+	if not SaveSystem.save_game(player, construction, world):
 		errors.append("sauvegarde (stabilité) KO")
-	GameState.craft_station = ""
+	GameState.clear_stations()
 	construction.clear_all()
 	if not SaveSystem.load_game_into(player, world, construction):
 		errors.append("chargement (stabilité) KO")
@@ -595,7 +633,7 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 	construction._selected = _catalog_index("wall")
 	if construction._can_place(wall_cell, 0, 3):
 		errors.append("empreinte du mur perdue après chargement")
-	if GameState.craft_station != "campfire":
+	if not GameState.has_station("campfire"):
 		errors.append("station de fabrication non restaurée")
 
 	# Sauvegarde : entrées dupliquées / inconnues / non numériques ignorées.
@@ -668,4 +706,178 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 			errors.append("réparation du bateau KO")
 		player.exit_boat()
 		boat._physics_process(0.016)
+	construction.clear_all()
+
+
+## Tests de persistance : « rien de ce que fait le joueur ne doit se perdre ».
+func _run_persistence_tests(errors: PackedStringArray) -> void:
+	for item_id in Database.items.keys():
+		GameState.add_item(str(item_id), 20)
+	construction.clear_all()
+	GameState.clear_craft()
+
+	# Ressources : deux arbres/rochers (un récolté, un intact) + une culture plantée.
+	var props: Array[Harvestable] = []
+	for child in world.get_children():
+		if child is Harvestable and child.save_id >= 0:
+			props.append(child)
+			if props.size() == 2:
+				break
+	var crop: Crop = null
+	for child in world.get_children():
+		if child is Crop and child.save_id >= 0:
+			crop = child
+			break
+	var boat: Boat = world.get_boat()
+	if props.size() < 2 or crop == null or boat == null:
+		errors.append("monde incomplet pour le test de persistance")
+		return
+	props[0].apply_save_state(false, 0.0)
+	props[1].apply_save_state(false, 0.0)
+	props[0].interact(player)
+	props[0]._regrow_left = 77.0
+	crop.apply_save_state(false, 0.0)
+	crop.interact(player)
+	crop.progress = 40.0
+
+	# Bateau déplacé, carburant entamé.
+	boat.apply_save_state({"position": [10.0, -2.0, 15.0], "rotation_y": 0.7, "fuel": 12.0})
+
+	# Joueur : position, cap, regard, barre rapide.
+	var spawn := world.find_spawn_point()
+	player.global_position = spawn
+	player.rotation.y = 1.2
+	player.set_pitch(-0.4)
+	GameState.select_hotbar(2)
+
+	# Fabrication chronométrée en cours (hache : 1,5 s).
+	var axe: RecipeData = Database.get_recipe("stone_axe")
+	var axes_before := GameState.get_item_count("stone_axe")
+	if not GameState.craft(axe) or not GameState.is_crafting():
+		errors.append("fabrication chronométrée non lancée")
+	GameState._advance_craft(0.5)
+
+	# Constructions, dont un élément 2 x 2 et deux stations différentes.
+	construction.place_free("foundation", "foundation", Vector3(40.5, 0.0, 40.5), 0.0)
+	construction.place_free("campfire", "campfire", Vector3(44.5, 0.0, 44.5), 0.0)
+	construction.place_free("furnace", "furnace", Vector3(46.5, 0.0, 46.5), 0.0)
+	if not (GameState.has_station("campfire") and GameState.has_station("furnace")):
+		errors.append("deux stations ne coexistent pas")
+	var buildings := construction.to_save_data().size()
+
+	if not SaveSystem.save_game(player, construction, world):
+		errors.append("sauvegarde complète KO")
+
+	# On casse tout, comme si le joueur quittait puis relançait le jeu.
+	player.global_position = spawn + Vector3(5.0, 0.0, 5.0)
+	player.rotation.y = 0.0
+	player.set_pitch(0.3)
+	GameState.select_hotbar(0)
+	props[0].apply_save_state(false, 0.0)
+	crop.apply_save_state(false, 0.0)
+	boat.apply_save_state({"position": [-30.0, -2.0, -30.0], "rotation_y": 0.0, "fuel": 30.0})
+	GameState.clear_craft()
+	GameState.inventory.clear()
+	GameState.clear_stations()
+	construction.clear_all()
+
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement complet KO")
+	else:
+		if player.global_position.distance_to(spawn) > 0.05:
+			errors.append("position du joueur non restaurée")
+		if absf(player.rotation.y - 1.2) > 0.01 or absf(player.get_pitch() + 0.4) > 0.01:
+			errors.append("orientation du joueur non restaurée")
+		if GameState.hotbar_index != 2:
+			errors.append("barre rapide non restaurée")
+		if not props[0].is_depleted() or absf(props[0]._regrow_left - 77.0) > 1.0:
+			errors.append("ressource récoltée non restaurée")
+		if props[1].is_depleted():
+			errors.append("ressource intacte marquée épuisée")
+		if not crop.is_planted() or absf(crop.progress - 40.0) > 1.0:
+			errors.append("culture non restaurée")
+		if boat.global_position.distance_to(Vector3(10.0, -2.0, 15.0)) > 0.05 or absf(boat.fuel - 12.0) > 0.01:
+			errors.append("bateau non restauré")
+		if not GameState.is_crafting() or GameState.current_craft["recipe"].id != axe.id:
+			errors.append("fabrication en cours non restaurée")
+		if construction.to_save_data().size() != buildings:
+			errors.append("constructions non restaurées (persistance)")
+		if not (GameState.has_station("campfire") and GameState.has_station("furnace")):
+			errors.append("stations non restaurées")
+	GameState._advance_craft(10.0)
+	if GameState.get_item_count("stone_axe") != axes_before + 1 and GameState.get_item_count("stone_axe") < 1:
+		errors.append("fabrication restaurée non terminée")
+
+	# Annulation : les ingrédients sont rendus, rien n'est produit.
+	GameState.inventory.clear()
+	for item_id in axe.inputs:
+		GameState.inventory[str(item_id)] = int(axe.inputs[item_id])
+	GameState.craft(axe)
+	if GameState.has_items(axe.inputs):
+		errors.append("ingrédients non consommés au lancement")
+	GameState.cancel_craft()
+	if not GameState.has_items(axe.inputs) or GameState.get_item_count("stone_axe") != 0 or GameState.is_crafting():
+		errors.append("annulation de fabrication KO")
+
+	# Joueur à bord pendant la sauvegarde : il reprend la barre au chargement.
+	boat.fuel = 20.0
+	boat.interact(player)
+	if not player.is_in_boat():
+		errors.append("embarquement (persistance) KO")
+	if not SaveSystem.save_game(player, construction, world):
+		errors.append("sauvegarde en navigation KO")
+	player.exit_boat()
+	boat._physics_process(0.016)
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement en navigation KO")
+	elif not player.is_in_boat() or not boat._controlled:
+		errors.append("joueur non remis à bord au chargement")
+	player.exit_boat()
+	boat._physics_process(0.016)
+
+	# Sauvegarde de secours : un fichier principal corrompu n'efface pas la partie.
+	SaveSystem.save_game(player, construction, world)
+	SaveSystem.save_game(player, construction, world)
+	if not FileAccess.file_exists(SaveSystem.BACKUP_PATH):
+		errors.append("copie de secours absente")
+	var broken := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
+	broken.store_string("{ pas du json")
+	broken.close()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("copie de secours non utilisée")
+
+	# Empreinte n x n : tente et lit occupent 2 x 2 cases.
+	for item_id in Database.items.keys():
+		GameState.inventory[str(item_id)] = 20
+	construction.clear_all()
+	var tent_index := _catalog_index("tent")
+	construction._selected = tent_index
+	construction.place_free("tent", "tent", Vector3(61.0, 0.0, 61.0), 0.0)
+	for blocked_cell in [Vector2i(60, 60), Vector2i(61, 61), Vector2i(60, 61), Vector2i(59, 59)]:
+		if construction._can_place(blocked_cell, 0):
+			errors.append("tente : empreinte 2x2 non respectée en %s" % str(blocked_cell))
+	if not construction._can_place(Vector2i(62, 60), 0):
+		errors.append("tente : case voisine refusée à tort")
+	var tent_saved: Array = construction.to_save_data()
+	construction.load_save_data(tent_saved)
+	if construction._can_place(Vector2i(61, 61), 0):
+		errors.append("tente : empreinte perdue après chargement")
+	construction.clear_all()
+
+	# Ne pas se murer : un élément qui recouvre le joueur est refusé.
+	player.global_position = Vector3(50.5, 5.0, 50.5)
+	if not construction._blocked_by_player(Vector3(50.5, 5.0, 50.5), 0.0, "chest", 1):
+		errors.append("coffre posé sur le joueur accepté")
+	if construction._blocked_by_player(Vector3(54.5, 5.0, 50.5), 0.0, "chest", 1):
+		errors.append("coffre éloigné refusé à tort")
+	if not construction._blocked_by_player(Vector3(50.5, 5.0, 50.5), 0.0, "wall", 1):
+		errors.append("mur posé sur le joueur accepté")
+	if construction._blocked_by_player(Vector3(50.5, 7.5, 50.5), 0.0, "roof", 1):
+		errors.append("toit au-dessus de la tête refusé à tort")
+	if construction._blocked_by_player(Vector3(50.5, 5.0, 50.5), 0.0, "foundation", 1):
+		errors.append("fondation sous le joueur refusée à tort")
+	player.global_position = world.find_spawn_point()
+
+	# Nettoyage : monde remis à neuf pour la suite.
+	world.apply_save_data({})
 	construction.clear_all()

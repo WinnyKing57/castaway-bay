@@ -44,7 +44,13 @@ func _physics_process(_delta: float) -> void:
 	if global_position.y > 0.0:
 		velocity = Vector3.ZERO
 		return
-	var input := Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
+	# Menus ouverts (artisanat, mort...) : le bateau ne répond plus aux touches.
+	var can_steer := true
+	if is_instance_valid(_player) and _player.has_method("are_controls_enabled"):
+		can_steer = bool(_player.call("are_controls_enabled"))
+	var input := Vector2.ZERO
+	if can_steer:
+		input = Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
 	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
 	# Recharge automatique quand le réservoir est vide et qu'on a du carburant.
 	if fuel <= 0.0 and direction.length() > 0.0 and GameState.remove_item(FUEL_ITEM_ID, 1):
@@ -61,6 +67,46 @@ func _physics_process(_delta: float) -> void:
 		_player.global_position = global_position + SEAT_OFFSET
 		if _player is CharacterBody3D:
 			(_player as CharacterBody3D).velocity = Vector3.ZERO
+
+
+## Embarque `player` sans condition (restauration d'une sauvegarde).
+func board(player: Node) -> void:
+	_player = player if is_instance_valid(player) else null
+	if _player == null or not _player is CharacterBody3D:
+		_player = null
+		return
+	_controlled = true
+	(_player as CharacterBody3D).enter_boat()
+	_player.global_position = global_position + SEAT_OFFSET
+
+
+func get_save_state() -> Dictionary:
+	return {
+		"position": [global_position.x, global_position.y, global_position.z],
+		"rotation_y": rotation.y,
+		"fuel": fuel,
+	}
+
+
+## Restaure position, cap et carburant (valeurs sûres : finies, dans le monde).
+func apply_save_state(state: Dictionary) -> void:
+	_release()
+	var pos: Variant = state.get("position")
+	if typeof(pos) == TYPE_ARRAY and (pos as Array).size() == 3:
+		var ok := true
+		for value in pos:
+			if (typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT) or not is_finite(float(value)):
+				ok = false
+		if ok:
+			var target := Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
+			if Vector2(target.x, target.z).length() <= 140.0 and target.y <= 0.0 and target.y >= -20.0:
+				global_position = target
+	var rot: Variant = state.get("rotation_y")
+	if (typeof(rot) == TYPE_FLOAT or typeof(rot) == TYPE_INT) and is_finite(float(rot)):
+		rotation.y = float(rot)
+	var saved_fuel: Variant = state.get("fuel")
+	if (typeof(saved_fuel) == TYPE_FLOAT or typeof(saved_fuel) == TYPE_INT) and is_finite(float(saved_fuel)):
+		fuel = clampf(float(saved_fuel), 0.0, FUEL_MAX)
 
 
 func interact(player: Node) -> void:
