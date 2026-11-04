@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_build"]
+
+[resource]
+script = ExtResource("1_build")
+id = "house"
+display_name = "Maison"
+description = "Kit de maison complet : fondation, murs et toit plat."
+category = "maison"
+collision_layer = 8
+kind = "house"
+costs = {
+"wood": 10,
+"fiber": 3
+}
+grid_size = 1
+visual_tag = "house"

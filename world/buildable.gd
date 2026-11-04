@@ -181,6 +181,8 @@ func _build_visuals() -> void:
 			_build_generator()
 		"stairs":
 			_build_stairs()
+		"house":
+			_build_house()
 		_:
 			_build_foundation()
 
@@ -611,6 +613,14 @@ func _build_stairs() -> void:
 	ramp.position = Vector3(0.0, 0.50, 0.0)
 	ramp.rotation.x = deg_to_rad(-22.0)
 	add_child(ramp)
+
+
+# ── Maison (kit complet : fondation + murs + toit plat) ──────────────────────
+
+func _build_house() -> void:
+	_build_foundation()
+	_build_wall()
+	_build_roof()
 
 
 # ── Feu de camp ───────────────────────────────────────────────────────────────
