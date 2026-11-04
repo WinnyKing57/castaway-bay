@@ -351,7 +351,7 @@ func _run_smoke_test() -> void:
 			errors.append("ressource non déplétée après récolte")
 
 	# Sons synthétisés : tous les effets doivent exister.
-	var sound_names := PackedStringArray(["harvest", "eat", "craft", "build", "step", "splash", "death", "ui"])
+	var sound_names := PackedStringArray(["harvest", "eat", "craft", "build", "step", "splash", "death", "ui", "music"])
 	for sound in sound_names:
 		var wav := Sfx.get_stream(sound) as AudioStreamWAV
 		if wav == null or wav.data.is_empty():

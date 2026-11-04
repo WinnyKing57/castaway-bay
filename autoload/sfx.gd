@@ -16,6 +16,8 @@ const UI_POOL_SIZE := 4
 var _players: Array[AudioStreamPlayer3D] = []
 var _ui_players: Array[AudioStreamPlayer] = []
 var _streams: Dictionary = {}
+var _music_player: AudioStreamPlayer = null
+var _music_track := "day"
 
 
 func _ready() -> void:
@@ -42,6 +44,12 @@ func _ready() -> void:
 	_streams["splash"] = _make_splash()
 	_streams["death"] = _make_death()
 	_streams["ui"] = _make_ui()
+	_streams["music"] = _make_music(_music_track)
+	if DisplayServer.get_name() != "headless":
+		var music_player := AudioStreamPlayer.new()
+		music_player.volume_db = -12.0
+		add_child(music_player)
+		_music_player = music_player
 
 	# Applique le volume général (réglages persistants) dès le démarrage.
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(Settings.master_volume, 0.0001)))
@@ -71,6 +79,8 @@ func stop_all() -> void:
 		player.stop()
 	for player in _ui_players:
 		player.stop()
+	if _music_player != null:
+		_music_player.stop()
 
 
 ## Joue un son non spatialisé (interface, retour d'action).
@@ -90,6 +100,39 @@ func play_ui(sound: String, volume_db: float = 0.0) -> void:
 	_ui_players[0].stream = stream
 	_ui_players[0].volume_db = volume_db
 	_ui_players[0].play()
+
+
+# --- Musique d'ambiance dynamique -------------------------------------------
+
+func play_music(track: String) -> void:
+	_music_track = track
+	_streams["music"] = _make_music(track)
+	_start_music()
+
+
+func stop_music() -> void:
+	play_music("day")
+
+
+func _start_music() -> void:
+	if _music_player == null:
+		return
+	var stream: AudioStream = _streams.get("music")
+	if stream == null:
+		return
+	_music_player.stream = stream
+	_music_player.play()
+
+
+func _process(_delta: float) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var ratio := GameState.world_time / GameState.SECONDS_PER_DAY
+	var track := "night"
+	if ratio >= 0.25 and ratio < 0.75:
+		track = "day" if ratio < 0.5 else "dusk"
+	if track != _music_track:
+		play_music(track)
 
 
 # --- Synthèse ----------------------------------------------------------------
@@ -157,6 +200,31 @@ func _to_wav(samples: PackedFloat32Array) -> AudioStreamWAV:
 	stream.format = AudioStreamWAV.FORMAT_16_BITS
 	stream.mix_rate = SAMPLE_RATE
 	stream.stereo = false
+	stream.data = data
+	return stream
+
+
+# --- Musique ----------------------------------------------------------------
+
+func _make_music(track: String) -> AudioStreamWAV:
+	var duration := 2.0
+	var samples := PackedFloat32Array()
+	samples.resize(int(duration * SAMPLE_RATE))
+	if track == "night":
+		for i in samples.size():
+			var t := float(i) / SAMPLE_RATE
+			samples[i] = (sin(TAU * 55.0 * t) * 0.12 + randf() * 0.02 - 0.01) * exp(-t * 3.0)
+	else:
+		var amb := _noise(duration, 6.0, 0.5, 0.05)
+		samples = amb
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = SAMPLE_RATE
+	stream.stereo = false
+	var data := PackedByteArray()
+	data.resize(samples.size() * 2)
+	for i in samples.size():
+		data.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32000.0))
 	stream.data = data
 	return stream
 
