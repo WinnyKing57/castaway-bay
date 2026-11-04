@@ -9,8 +9,8 @@ extends Resource
 @export var display_name: String = ""
 @export_multiline var description: String = ""
 
-## foundation | wall | half_wall | campfire | chest | door | roof | roof_slope | roof_ridge | roof_corner_out | roof_corner_in | window | furnace | tent | bed | stairs | house
-@export_enum("foundation", "wall", "half_wall", "campfire", "chest", "door", "roof", "roof_slope", "roof_ridge", "roof_corner_out", "roof_corner_in", "window", "furnace", "tent", "bed", "generator", "stairs", "house") var kind: String = "foundation"
+## foundation | wall | half_wall | campfire | chest | door | roof | roof_slope | roof_ridge | roof_corner_out | roof_corner_in | window | furnace | tent | bed | stairs | house | torch
+@export_enum("foundation", "wall", "half_wall", "campfire", "chest", "door", "roof", "roof_slope", "roof_ridge", "roof_corner_out", "roof_corner_in", "window", "furnace", "tent", "bed", "generator", "stairs", "house", "torch") var kind: String = "foundation"
 
 ## item_id -> quantité consommée à la pose
 @export var costs: Dictionary = {}

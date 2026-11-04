@@ -44,6 +44,7 @@ func _ready() -> void:
 	_streams["splash"] = _make_splash()
 	_streams["death"] = _make_death()
 	_streams["ui"] = _make_ui()
+	_streams["cave"] = _make_cave()
 	_streams["music"] = _make_music(_music_track)
 	if DisplayServer.get_name() != "headless":
 		var music_player := AudioStreamPlayer.new()
@@ -230,6 +231,12 @@ func _make_music(track: String) -> AudioStreamWAV:
 
 
 # --- Sons --------------------------------------------------------------------
+
+func _make_cave() -> AudioStreamWAV:
+	# Ambiance de grotte : souffle sourd + lointain, puis gouttes.
+	var amb := _noise(2.0, 4.0, 0.5, 0.05)
+	return _to_wav(amb)
+
 
 func _make_harvest() -> AudioStreamWAV:
 	# Craquement de bois : bruit sec + petit "toc" grave.

@@ -183,6 +183,8 @@ func _build_visuals() -> void:
 			_build_stairs()
 		"house":
 			_build_house()
+		"torch":
+			_build_torch()
 		_:
 			_build_foundation()
 
@@ -621,6 +623,35 @@ func _build_house() -> void:
 	_build_foundation()
 	_build_wall()
 	_build_roof()
+
+
+## Torche : bâti avec source de lumière (OmniLight) pour éclairer les grottes.
+func _build_torch() -> void:
+	var stick := MeshInstance3D.new()
+	var stick_mesh := CylinderMesh.new()
+	stick_mesh.top_radius = 0.02
+	stick_mesh.bottom_radius = 0.02
+	stick_mesh.height = 1.0
+	stick_mesh.radial_segments = 6
+	stick.mesh = stick_mesh
+	stick.position.y = 0.5
+	stick.material_override = _make_material(Color(0.55, 0.35, 0.18))
+	add_child(stick)
+	var flame := MeshInstance3D.new()
+	var flame_mesh := SphereMesh.new()
+	flame_mesh.radius = 0.16
+	flame_mesh.height = 0.32
+	flame_mesh.radial_segments = 6
+	flame_mesh.rings = 3
+	flame.mesh = flame_mesh
+	flame.position.y = 1.05
+	flame.material_override = _make_material(Color(1.0, 0.6, 0.2))
+	add_child(flame)
+	var light: OmniLight3D = OmniLight3D.new()
+	light.energy = 80.0
+	light.color = Color(1.0, 0.72, 0.42)
+	add_child(light)
+	_add_collision_box(Vector3(0.2, 0.6, 0.2), Vector3(0.0, 0.3, 0.0))
 
 
 # ── Feu de camp ───────────────────────────────────────────────────────────────
