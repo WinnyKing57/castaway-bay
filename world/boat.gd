@@ -46,7 +46,7 @@ func _physics_process(_delta: float) -> void:
 		fuel = maxf(0.0, fuel - _delta * FUEL_DRAIN_PER_SECOND)
 		if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) > 0:
 			GameState.remove_item(FUEL_ITEM_ID, 1)
-			fuel = FUEL_MAX
+			fuel = minf(FUEL_MAX, fuel + FUEL_PER_ITEM)
 	else:
 		velocity = Vector3.ZERO
 	move_and_slide()
@@ -63,16 +63,16 @@ func interact(player: Node) -> void:
 	_controlled = not _controlled
 	_player = player if is_instance_valid(player) else null
 	if not _controlled:
-		if _player is CharacterBody3D:
-			(_player as CharacterBody3D).exit_boat()
+		if _player != null and _player.has_method("exit_boat"):
+			_player.call("exit_boat")
 		_player = null
 		return
 	if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) <= 0:
 		_controlled = false
 		GameState.notify("Bateau : carburant insuffisant")
 		return
-	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).enter_boat(self)
+	if _player != null and _player.has_method("enter_boat"):
+		_player.call("enter_boat", self)
 
 
 func get_interaction_prompt() -> String:
