@@ -17,6 +17,7 @@ signal closed
 ## recettes est honoré ici, les ressources sont consommées au départ.
 var _craft_recipe: RecipeData = null
 var _craft_left := 0.0
+var _craft_inputs_consumed := false
 
 
 func _ready() -> void:
@@ -63,12 +64,13 @@ func close() -> void:
 		return
 	# Une fabrication interrompue par la fermeture du panneau rembourse les
 	# ressources consommées au départ (pas de perte punitive).
-	if _craft_recipe != null and _craft_left > 0.0:
+	if _craft_recipe != null and _craft_left > 0.0 and _craft_inputs_consumed:
 		for item_id in _craft_recipe.inputs:
 			GameState.add_item(str(item_id), int(_craft_recipe.inputs[item_id]))
 		GameState.notify("Fabrication annulée — ressources rendues")
 	_craft_recipe = null
 	_craft_left = 0.0
+	_craft_inputs_consumed = false
 	visible = false
 	closed.emit()
 
@@ -126,9 +128,13 @@ func _on_craft_pressed(recipe: RecipeData) -> void:
 		else:
 			status_label.text = "Ressources insuffisantes."
 		return
-	GameState.consume_items(recipe.inputs)
+	if not GameState.consume_items(recipe.inputs):
+		status_label.text = "Ressources insuffisantes."
+		_rebuild()
+		return
 	if recipe.craft_time > 0.0:
 		_craft_recipe = recipe
+		_craft_inputs_consumed = not Settings.infinite_resources
 		_craft_left = recipe.craft_time
 		status_label.text = "Fabrication de %s…" % recipe.display_name
 	else:
