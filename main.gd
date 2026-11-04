@@ -186,12 +186,17 @@ func _on_menu_save() -> void:
 		GameState.notify("Échec de la sauvegarde")
 
 
+## Indique si le menu (principal ou pause) était ouvert avant d'aller dans les réglages.
+var _menu_was_open := false
+
 func _on_settings_closed() -> void:
-	if menu.is_open():
+	if _menu_was_open:
+		_menu_was_open = false
 		menu.visible = true
 		menu.reopen()
 
 func _on_menu_settings() -> void:
+	_menu_was_open = menu.is_open()
 	settings_panel.open()
 	menu.visible = false
 
