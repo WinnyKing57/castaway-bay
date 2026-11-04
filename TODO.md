@@ -57,13 +57,29 @@
 - [x] Tests de non-régression étendus : fenêtre (toggle + persistance), demi-mur, toit pente,
       faîtage → `SMOKE_TEST OK`
 
+## Fait — améliorations construction (batch 2 — ergonomie placement)
+- [x] **Snap vertical intelligent par kind** : `_compute_ghost_y` utilise désormais une logique
+      propre à chaque type d'élément au lieu d'utiliser le `hit_y` brut du raycast :
+  - **Fondations** : magnétisme sur la fondation voisine la plus proche (comportement inchangé,
+    mais `best_diff` initialisé à `INF` pour corriger le bug de valeur initiale)
+  - **Toits** (plat, pente, faîtage) : `_snap_roof_base_y()` cherche la fondation porteuse dans
+    la case ou les cases voisines immédiates et retourne son Y — le nœud toit est donc posé à la
+    même hauteur que la fondation, et son offset interne de 2.46 m le place automatiquement
+    au-dessus des murs ; si aucune fondation n'est trouvée, arrondi à LEVEL_STEP
+  - **Tous les autres éléments** : `hit_y` arrondi au multiple de LEVEL_STEP le plus proche
+    — un mur visant une fondation (hit_y=0.21) snap à 0.2 m, un mur visant un autre mur
+    (hit_y=2.6) snap à 2.6 m
+- [x] **Offsets internes des toits unifiés** via les constantes `WALL_H = 2.4` et
+      `ROOF_Y = WALL_H + 0.06 = 2.46` dans `buildable.gd` ; `ROOF_INTERNAL_OFFSET = 2.46`
+      dans `construction.gd` pour maintenir la cohérence
+- [x] **Bug `_aligned_neighbor_y` corrigé** : `best_diff` initialisé à `INF` (était `0.0`),
+      la fondation la plus proche était parfois ignorée
+
 ## À faire — corrections prioritaires (bugs actifs)
 - [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique
       complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau)
 
 ## À faire — améliorations construction (suite)
-
-### Toits — raffinements
 - [ ] Coins de toit (intérieur et extérieur) : pièces de raccord 45° pour les angles
 - [ ] Détection d'assemblage : indicateur visuel (contour vert sur l'arête) quand un toit
       est posé contre un autre toit compatible

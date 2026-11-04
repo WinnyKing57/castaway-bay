@@ -23,6 +23,11 @@ var _ghost_material: StandardMaterial3D
 ## Évite de créer une nouvelle ressource par élément posé.
 static var _mat_cache: Dictionary = {}
 
+## Hauteur interne d'un mur (offset des toits pour reposer au-dessus des murs).
+const WALL_H := 2.4
+## Offset Y interne des dalles de toit (WALL_H + 0.06 demi-épaisseur).
+const ROOF_Y := WALL_H + 0.06
+
 
 func get_interaction_prompt() -> String:
 	if kind == "chest":
@@ -243,12 +248,11 @@ func _build_half_wall() -> void:
 
 
 # ── Toit plat ────────────────────────────────────────────────────────────────
-## Dalle 1.0 × 0.12 × 1.0 posée exactement sur le sommet des murs (y = 2.4).
+## Le nœud est posé au Y de la fondation porteuse (via snap construction.gd).
+## ROOF_Y = 2.46 m place la dalle exactement sur le sommet des murs (2.4 m).
 
 func _build_roof() -> void:
-	# Support principal.
-	_add_box(Vector3(1.0, 0.12, 1.0), Vector3(0.0, 2.46, 0.0), Color(0.48, 0.34, 0.20))
-	# Bardeaux en quinconce (3 rangées × 4 tuiles).
+	_add_box(Vector3(1.0, 0.12, 1.0), Vector3(0.0, ROOF_Y, 0.0), Color(0.48, 0.34, 0.20))
 	var tile_color_a := Color(0.55, 0.38, 0.22)
 	var tile_color_b := Color(0.60, 0.43, 0.27)
 	for row in 3:
@@ -258,29 +262,26 @@ func _build_roof() -> void:
 			var tm := BoxMesh.new()
 			tm.size = Vector3(0.22, 0.03, 0.30)
 			tile.mesh = tm
-			tile.position = Vector3(-0.33 + col * 0.22 + offset_x, 2.535,
-									-0.32 + row * 0.32)
+			tile.position = Vector3(-0.33 + col * 0.22 + offset_x,
+									ROOF_Y + 0.075, -0.32 + row * 0.32)
 			tile.material_override = _make_material(
 				tile_color_a if (row + col) % 2 == 0 else tile_color_b)
 			add_child(tile)
-	_add_collision_box(Vector3(1.0, 0.12, 1.0), Vector3(0.0, 2.46, 0.0))
+	_add_collision_box(Vector3(1.0, 0.12, 1.0), Vector3(0.0, ROOF_Y, 0.0))
 
 
 # ── Toit pente simple ─────────────────────────────────────────────────────────
-## Une face inclinée (~26°) pour auvent ou pan unique.
+## Pan incliné. Nœud posé à la Y de la fondation, offset ROOF_Y interne.
 
 func _build_roof_slope() -> void:
-	# Support de base.
-	_add_box(Vector3(1.0, 0.1, 1.0), Vector3(0.0, 2.46, 0.0), Color(0.48, 0.34, 0.20))
-	# Panneaux de pente (PrismMesh incliné).
+	_add_box(Vector3(1.0, 0.1, 1.0), Vector3(0.0, ROOF_Y, 0.0), Color(0.48, 0.34, 0.20))
 	var slope := MeshInstance3D.new()
 	var pm := PrismMesh.new()
 	pm.size = Vector3(1.0, 0.8, 1.0)
 	slope.mesh = pm
-	slope.position = Vector3(0.0, 2.86, 0.0)
+	slope.position = Vector3(0.0, ROOF_Y + 0.4, 0.0)
 	slope.material_override = _make_material(Color(0.52, 0.37, 0.22))
 	add_child(slope)
-	# Bardeaux.
 	var tile_color_a := Color(0.55, 0.38, 0.22)
 	var tile_color_b := Color(0.60, 0.43, 0.27)
 	for row in 3:
@@ -290,48 +291,44 @@ func _build_roof_slope() -> void:
 			var tm := BoxMesh.new()
 			tm.size = Vector3(0.22, 0.03, 0.30)
 			tile.mesh = tm
-			# Positionnement incliné progressif.
 			var rz := -0.32 + row * 0.32
-			var ry := 2.52 + row * 0.26
+			var ry := ROOF_Y + 0.06 + row * 0.26
 			tile.position = Vector3(-0.33 + col * 0.22 + offset_x, ry, rz)
 			tile.rotation.x = deg_to_rad(-15.0)
 			tile.material_override = _make_material(
 				tile_color_a if (row + col) % 2 == 0 else tile_color_b)
 			add_child(tile)
-	_add_collision_box(Vector3(1.0, 0.8, 1.0), Vector3(0.0, 2.86, 0.0))
+	_add_collision_box(Vector3(1.0, 0.8, 1.0), Vector3(0.0, ROOF_Y + 0.4, 0.0))
 
 
 # ── Toit faîtage ─────────────────────────────────────────────────────────────
-## Arête de faîtage : deux pentes se rejoignant en angle — couvre 1 × 1 case.
+## Deux pans symétriques. Nœud posé à la Y de la fondation, offset ROOF_Y.
 
 func _build_roof_ridge() -> void:
 	var mat_tile := _make_material(Color(0.55, 0.38, 0.22))
 	var mat_dark := _make_material(Color(0.42, 0.30, 0.18))
 
-	# Deux primes symétriques formant le «V» inversé.
 	for side in 2:
 		var half := MeshInstance3D.new()
 		var pm := PrismMesh.new()
 		pm.size = Vector3(1.0, 0.7, 0.5)
 		half.mesh = pm
-		half.position = Vector3(0.0, 2.75, (side * 2 - 1) * 0.25)
+		half.position = Vector3(0.0, ROOF_Y + 0.29, (side * 2 - 1) * 0.25)
 		half.rotation.z = deg_to_rad(180.0) if side == 1 else 0.0
 		half.rotation.x = deg_to_rad(180.0) if side == 1 else 0.0
 		half.material_override = mat_tile
 		add_child(half)
 
-	# Solin de faîtage (baguette centrale).
 	var ridge := MeshInstance3D.new()
 	var rm := BoxMesh.new()
 	rm.size = Vector3(1.0, 0.08, 0.14)
 	ridge.mesh = rm
-	ridge.position = Vector3(0.0, 3.07, 0.0)
+	ridge.position = Vector3(0.0, ROOF_Y + 0.61, 0.0)
 	ridge.material_override = mat_dark
 	add_child(ridge)
 
-	# Support de base.
-	_add_box(Vector3(1.0, 0.1, 1.0), Vector3(0.0, 2.46, 0.0), Color(0.48, 0.34, 0.20))
-	_add_collision_box(Vector3(1.0, 0.7, 1.0), Vector3(0.0, 2.81, 0.0))
+	_add_box(Vector3(1.0, 0.1, 1.0), Vector3(0.0, ROOF_Y, 0.0), Color(0.48, 0.34, 0.20))
+	_add_collision_box(Vector3(1.0, 0.7, 1.0), Vector3(0.0, ROOF_Y + 0.35, 0.0))
 
 
 # ── Fenêtre ───────────────────────────────────────────────────────────────────

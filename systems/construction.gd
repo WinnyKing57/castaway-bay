@@ -12,6 +12,9 @@ const WORLD_MASK := 1 | 8  # terrain/props + objets construits
 const MAX_COORD := 1000.0
 ## Éléments posés sur un bord de case (et non au centre).
 const EDGE_KINDS := ["wall", "door", "window"]
+## Offset interne des toits (distance entre le nœud et la dalle visible).
+## Correspond à Buildable.ROOF_Y = WALL_H + 0.06 = 2.46 m.
+const ROOF_INTERNAL_OFFSET := 2.46
 
 var active := false
 
@@ -419,21 +422,87 @@ func _cell_key(kind: String, cell: Vector2i, level: int = 0, rotation: int = 0) 
 	return "cell:%d:%d:%d" % [cell.x, cell.y, level]
 
 
-## Calcule le y du fantome : fondation alignee sur une voisine, puis decalage
-## de niveau (LEVEL_STEP par niveau) ; le mode verrouille impose un y absolu.
+## Hauteur utile (surface supérieure) d'un élément construit selon son kind.
+## Utilisée pour snap-er le Y fantôme sur le dessus d'un élément existant.
+const SURFACE_TOP: Dictionary = {
+	"foundation": 0.2,
+	"wall":        2.4,
+	"half_wall":   1.2,
+	"door":        2.4,
+	"window":      2.4,
+	"stairs":      1.0,
+	"campfire":    0.6,
+	"chest":       0.76,
+	"furnace":     2.2,
+	"tent":        1.0,
+	"bed":         0.8,
+	"generator":   1.0,
+	"roof":        0.12,
+	"roof_slope":  0.9,
+	"roof_ridge":  0.7,
+}
+
+## Calcule le Y de pose du fantôme avec snap intelligent selon le kind :
+##  - En mode verrouillé, le Y absolu mémorisé est toujours retourné.
+##  - Fondations : magnétisme sur la fondation voisine la plus proche.
+##  - Éléments à offset interne (toits) : le nœud doit être posé à la base
+##    de la structure porteuse, pas au hit_y du rayon — on cherche l'élément
+##    porteur le plus proche sous la visée et on retourne son Y.
+##  - Éléments de bord (mur, porte, fenêtre) et éléments de centre ordinaires :
+##    on arrondit hit_y au multiple de LEVEL_STEP le plus proche, puis on
+##    ajoute le décalage de niveau manuel.
 func _compute_ghost_y(hit_y: float, cell: Vector2i, kind: String) -> float:
-	var base_y := hit_y
-	if kind == "foundation":
-		base_y = _aligned_neighbor_y(cell, hit_y)
-	var y := base_y + _build_level * LEVEL_STEP
 	if _level_locked:
 		return _locked_y
-	return y
+
+	var base_y: float
+	match kind:
+		"foundation":
+			base_y = _aligned_neighbor_y(cell, hit_y)
+		"roof", "roof_slope", "roof_ridge":
+			# Les toits ont un offset interne de ~2.46 m : leur nœud doit être
+			# posé au Y de la structure porteuse sous-jacente (fondation ou sol).
+			# On cherche la fondation/sol la plus proche sous le hit_y.
+			base_y = _snap_roof_base_y(cell, hit_y)
+		_:
+			# Pour tous les autres éléments : on arrondit hit_y au LEVEL_STEP
+			# le plus proche pour coller précisément à la grille verticale.
+			base_y = roundf(hit_y / LEVEL_STEP) * LEVEL_STEP
+
+	return base_y + _build_level * LEVEL_STEP
+
+
+## Trouve la Y de base idéale pour un toit : cherche une fondation ou le sol
+## sous la visée, et retourne le Y qui placerait le nœud toit exactement à
+## la base de la structure (fondation, ou 0 si terrain seul).
+## Tolère un décalage de ±1.0 m autour du hit_y pour trouver la fondation.
+func _snap_roof_base_y(cell: Vector2i, hit_y: float) -> float:
+	# 1. Cherche une fondation dans la même cellule (ou voisine immédiate).
+	var best_y := 0.0
+	var best_dist := INF
+	for obj in _objects:
+		if not is_instance_valid(obj):
+			continue
+		if obj.kind != "foundation":
+			continue
+		var obj_cell := Vector2i(floori(obj.position.x), floori(obj.position.z))
+		var dx := absi(obj_cell.x - cell.x)
+		var dz := absi(obj_cell.y - cell.y)
+		if dx > 1 or dz > 1:
+			continue
+		var dist := absf(obj.position.y - (hit_y - ROOF_INTERNAL_OFFSET))
+		if dist < best_dist:
+			best_dist = dist
+			best_y = obj.position.y
+	if best_dist < 1.5:
+		return best_y
+	# 2. Aucune fondation trouvée : on s'aligne sur le sol (arrondi à LEVEL_STEP).
+	return roundf(hit_y / LEVEL_STEP) * LEVEL_STEP
 
 
 func _aligned_neighbor_y(cell: Vector2i, hit_y: float) -> float:
 	var best_y := hit_y
-	var best_diff: float = abs(hit_y - hit_y)
+	var best_diff: float = INF
 	var found := false
 	for obj in _objects:
 		if not is_instance_valid(obj):
@@ -445,13 +514,13 @@ func _aligned_neighbor_y(cell: Vector2i, hit_y: float) -> float:
 		var dz := obj_cell.y - cell.y
 		if not ((dx != 0 or dz != 0) and (dx == 0 or dz == 0)):
 			continue
-		var diff: float = abs(obj.position.y - hit_y)
-		if not found or diff < best_diff:
+		var diff: float = absf(obj.position.y - hit_y)
+		if diff < best_diff:
 			found = true
 			best_diff = diff
 			best_y = obj.position.y
 	if not found:
-		return hit_y
+		return roundf(hit_y / LEVEL_STEP) * LEVEL_STEP
 	return best_y
 
 
