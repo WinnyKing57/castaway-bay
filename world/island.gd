@@ -12,6 +12,7 @@ const PROP_COUNT := 80
 const SEA_LEVEL := 0.0
 
 var _noise: FastNoiseLite
+var _noise2: FastNoiseLite
 var _mesh_instance: MeshInstance3D
 var _generated := false
 
@@ -31,6 +32,12 @@ func generate(seed_value: int = 0) -> void:
 	_noise.frequency = 0.006
 	_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_noise.fractal_octaves = 4
+	_noise2 = FastNoiseLite.new()
+	_noise2.seed = _noise.seed + 777
+	_noise2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_noise2.frequency = 0.004
+	_noise2.fractal_type = FastNoiseLite.FRACTAL_FBM
+	_noise2.fractal_octaves = 3
 
 	GameState.world_seed = _noise.seed
 
@@ -62,6 +69,9 @@ func get_height_at(x: float, z: float) -> float:
 	var n := _noise.get_noise_2d(x, z) * 0.5 + 0.5
 	var height := pow(n, 1.7) * 26.0 * falloff
 	height -= 3.5 * (1.0 - falloff)
+	if _noise2 != null:
+		var n2 := _noise2.get_noise_2d(x, z) * 0.5 + 0.5
+		height += pow(n2, 1.6) * 12.0 * falloff
 	return height
 
 
