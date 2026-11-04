@@ -9,6 +9,7 @@ const SPEED := 5.0
 const TURN_SPEED := 2.5
 const FUEL_MAX := 30.0
 const FUEL_PER_ITEM := 30.0
+const FUEL_DRAIN_PER_SECOND := 0.5
 const FUEL_ITEM_ID := "fuel"
 const METAL_ITEM_ID := "metal"
 
@@ -38,11 +39,11 @@ func _physics_process(_delta: float) -> void:
 	if global_position.y > 0.0:
 		velocity = Vector3.ZERO
 		return
-	var input := Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
+	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
 	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
 	if direction.length() > 0.0 and fuel > 0.0:
 		velocity = direction * SPEED
-		fuel = maxf(0.0, fuel - _delta * 5.0)
+		fuel = maxf(0.0, fuel - _delta * FUEL_DRAIN_PER_SECOND)
 		if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) > 0:
 			GameState.remove_item(FUEL_ITEM_ID, 1)
 			fuel = FUEL_MAX
@@ -98,3 +99,26 @@ func repair(player: Node = null) -> bool:
 	else:
 		GameState.notify("Réparation impossible : il faut 1 morceau de métal.")
 		return false
+
+
+## Données persistantes du bateau. Le contrôle n'est jamais restauré :
+## le joueur recharge toujours à pied pour éviter un état d'entrée incohérent.
+func get_save_data() -> Dictionary:
+	return {
+		"position": [global_position.x, global_position.y, global_position.z],
+		"rotation_y": rotation.y,
+		"broken": broken,
+		"fuel": fuel,
+	}
+
+
+func apply_save_data(data: Dictionary) -> void:
+	var saved_position: Array = data.get("position", [])
+	if saved_position.size() == 3:
+		global_position = Vector3(float(saved_position[0]), float(saved_position[1]), float(saved_position[2]))
+	rotation.y = float(data.get("rotation_y", rotation.y))
+	broken = bool(data.get("broken", broken))
+	fuel = clampf(float(data.get("fuel", fuel)), 0.0, FUEL_MAX)
+	_controlled = false
+	_player = null
+	velocity = Vector3.ZERO
