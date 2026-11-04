@@ -39,6 +39,9 @@ func apply_save_state(state: String) -> void:
 		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth, 1.0)
 		var mat := _visual.material_override as StandardMaterial3D
 		if mat != null:
+			mat.albedo_color = Color(0.85, 0.25, 0.3) if growth >= 1.0 else Color(0.2 + 0.3 * growth, 0.55 + 0.2 * growth, 0.2)
+		var mat := _visual.material_override as StandardMaterial3D
+		if mat != null:
 			if growth >= 1.0:
 				mat.albedo_color = Color(0.85, 0.25, 0.3)
 			else:
