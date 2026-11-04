@@ -9,5 +9,6 @@ display_name = "Portes"
 description = "Portes en planches avec poignée."
 category = "maison"
 collision_layer = 8
+kind = "door"
 costs = {"wood": 3, "fiber": 1}
 visual_tag = "door"

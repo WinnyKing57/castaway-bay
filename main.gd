@@ -133,6 +133,7 @@ func _on_menu_new_game() -> void:
 	GameState.reset()
 	construction.clear_all()
 	world.regenerate(randi())
+	player.exit_boat()
 	player.global_position = world.find_spawn_point()
 	player.velocity = Vector3.ZERO
 	hud.hide_death()
@@ -204,6 +205,7 @@ func _on_crafting_closed() -> void:
 
 func _respawn() -> void:
 	GameState.respawn()
+	player.exit_boat()
 	player.global_position = world.find_spawn_point()
 	player.velocity = Vector3.ZERO
 	player.set_controls_enabled(true)
@@ -229,6 +231,10 @@ func _run_smoke_test() -> void:
 	await get_tree().process_frame
 
 	var errors: PackedStringArray = []
+
+	# Le test écrit dans user:// : on met de côté la vraie sauvegarde et les
+	# vrais réglages du joueur pour les restaurer à la fin.
+	var user_backup := _backup_user_files()
 
 	if player == null:
 		errors.append("joueur absent")
@@ -473,10 +479,15 @@ func _run_smoke_test() -> void:
 	if construction.to_save_data().size() != expected_buildings:
 		errors.append("constructions non restaurées")
 
+	# --- Non-régression : stabilité -------------------------------------------
+	_run_stability_tests(errors)
+
 	# Hotbar : chaque case sélectionnable doit avoir une action InputMap.
 	for index in GameState.hotbar_items.size():
 		if not InputMap.has_action("hotbar_%d" % (index + 1)):
 			errors.append("hotbar_%d manquant" % (index + 1))
+
+	_restore_user_files(user_backup)
 
 	if errors.is_empty():
 		Sfx.stop_all()
@@ -486,3 +497,175 @@ func _run_smoke_test() -> void:
 	else:
 		print("SMOKE_TEST ECHEC : ", ", ".join(errors))
 		get_tree().quit(1)
+
+
+## Copie en mémoire les fichiers utilisateur que le test va écraser.
+func _backup_user_files() -> Dictionary:
+	var backup := {}
+	for path in [SaveSystem.SAVE_PATH, Settings.PATH]:
+		backup[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
+	return backup
+
+
+func _restore_user_files(backup: Dictionary) -> void:
+	for path in backup:
+		var content: Variant = backup[path]
+		if content == null:
+			if FileAccess.file_exists(path):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+			continue
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		if file != null:
+			file.store_buffer(content)
+			file.close()
+
+
+func _catalog_index(buildable_id: String) -> int:
+	for index in construction._catalog.size():
+		if construction._catalog[index].id == buildable_id:
+			return index
+	return -1
+
+
+func _write_raw_save(text: String) -> void:
+	var file := FileAccess.open(SaveSystem.SAVE_PATH, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+## Tests de non-régression de la passe de stabilisation.
+func _run_stability_tests(errors: PackedStringArray) -> void:
+	# Inventaire : une quantité <= 0 ne doit jamais modifier le stock.
+	GameState.add_item("stone", 5)
+	var stone_before := GameState.get_item_count("stone")
+	if GameState.remove_item("stone", -3):
+		errors.append("retrait négatif accepté")
+	if GameState.remove_item("stone", 0):
+		errors.append("retrait nul accepté")
+	if GameState.get_item_count("stone") != stone_before:
+		errors.append("retrait invalide a modifié le stock")
+	if GameState.has_items({"stone": -1}) or GameState.consume_items({"stone": 0}):
+		errors.append("coût négatif/nul accepté")
+	if GameState.get_item_count("stone") != stone_before:
+		errors.append("coût invalide a modifié le stock")
+
+	# Construction : on se donne de quoi tout poser.
+	for item_id in Database.items.keys():
+		GameState.add_item(str(item_id), 50)
+	construction.clear_all()
+	var cell := Vector2i(10, 10)
+	construction.place_free("foundation", "foundation", Vector3(10.5, 0.0, 10.5), 0.0)
+
+	# Chevauchement inter-catégories : coffre / feu sur une fondation de même niveau.
+	for other in ["chest", "campfire", "roof"]:
+		construction._selected = _catalog_index(other)
+		if construction._selected < 0:
+			errors.append("constructible absent : %s" % other)
+			continue
+		if construction._can_place(cell, 0):
+			errors.append("%s accepté sur une fondation (même niveau)" % other)
+		if not construction._can_place(cell, 1):
+			errors.append("%s refusé au niveau supérieur" % other)
+
+	# Murs : l'empreinte est par bord, et doit survivre à une sauvegarde.
+	var wall_cell := Vector2i(12, 12)
+	var wall_rot := 3.0 * PI * 0.5
+	var wall_base := Vector3(12.5, 0.0, 12.5)
+	var wall_pos := wall_base + Vector3(sin(wall_rot), 0.0, cos(wall_rot)) * 0.5
+	construction.place_free("wall", "wall", wall_pos, wall_rot)
+	construction.place_free("campfire", "campfire", Vector3(14.5, 0.0, 14.5), 0.0)
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("mur doublon (même bord) accepté")
+	if not construction._can_place(wall_cell, 0, 0):
+		errors.append("mur sur un autre bord refusé")
+	construction._selected = _catalog_index("door")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("porte acceptée sur le bord d'un mur")
+
+	var count_before := construction.to_save_data().size()
+	if not SaveSystem.save_game(player, construction):
+		errors.append("sauvegarde (stabilité) KO")
+	GameState.craft_station = ""
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement (stabilité) KO")
+	if construction.to_save_data().size() != count_before:
+		errors.append("constructions perdues/dupliquées après chargement")
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(wall_cell, 0, 3):
+		errors.append("empreinte du mur perdue après chargement")
+	if GameState.craft_station != "campfire":
+		errors.append("station de fabrication non restaurée")
+
+	# Sauvegarde : entrées dupliquées / inconnues / non numériques ignorées.
+	construction.load_save_data([
+		{"kind": "foundation", "data_id": "foundation", "position": [20.5, 0.0, 20.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "foundation", "position": [20.5, 0.0, 20.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "inexistant", "position": [30.5, 0.0, 30.5], "rotation_y": 0.0},
+		{"kind": "foundation", "data_id": "foundation", "position": [1.0, "x", 1.0], "rotation_y": 0.0},
+		"pas un dictionnaire",
+	])
+	if construction.to_save_data().size() != 1:
+		errors.append("chargement construction : %d élément(s) au lieu de 1" % construction.to_save_data().size())
+	construction.clear_all()
+
+	# Sauvegardes malformées : toutes doivent être rejetées sans toucher à l'état.
+	var wood_marker := GameState.get_item_count("wood")
+	var bad_saves := [
+		'{"version": 1, "stats": {"health": "abc"}, "inventory": {}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {"wood": "beaucoup"}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {"position": [1, 2]}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {"position": [1, "a", 3]}}',
+		'{"version": 999, "stats": {}, "inventory": {}, "player": {}}',
+		'{"version": 1, "world_time": "midi", "stats": {}, "inventory": {}, "player": {}}',
+		'{"version": 1, "stats": {}, "inventory": {}, "player": {}, "construction": {}}',
+		'[1, 2, 3]',
+	]
+	for raw in bad_saves:
+		_write_raw_save(raw)
+		if SaveSystem.load_game_into(player, world, construction):
+			errors.append("sauvegarde malformée acceptée : %s" % raw.left(60))
+	if GameState.get_item_count("wood") != wood_marker:
+		errors.append("une sauvegarde rejetée a modifié l'inventaire")
+
+	# Sauvegarde valide mais « sale » : quantités négatives et objets inconnus filtrés.
+	_write_raw_save('{"version": 1, "stats": {"health": 500, "hunger": -20}, "inventory": {"wood": -3, "fantome": 5, "stone": 2}, "player": {"position": [0, 5, 0]}}')
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde valide refusée")
+	else:
+		if GameState.get_item_count("wood") != 0 or GameState.inventory.has("fantome"):
+			errors.append("inventaire non assaini au chargement")
+		if GameState.get_item_count("stone") != 2:
+			errors.append("objet valide perdu au chargement")
+		if GameState.stats.health > 100.0 or GameState.stats.hunger < 0.0:
+			errors.append("jauges non bornées au chargement")
+
+	# Bateau : un chargement ou un respawn doit libérer le joueur.
+	var boat: Boat = null
+	for child in world.get_children():
+		if child is Boat:
+			boat = child
+			break
+	if boat == null:
+		errors.append("bateau introuvable")
+	else:
+		boat.interact(player)
+		if not player.is_in_boat():
+			errors.append("embarquement KO")
+		player.exit_boat()
+		boat._physics_process(0.016)
+		if boat._controlled:
+			errors.append("bateau toujours piloté après sortie forcée du joueur")
+		if player.is_in_boat():
+			errors.append("joueur toujours à bord")
+		# Retrait de métal : la réparation consomme du métal du joueur.
+		boat.fuel = 0.0
+		GameState.inventory.erase("fuel")
+		GameState.add_item("metal", 1)
+		boat.interact(player)
+		if boat.fuel <= 0.0 or GameState.get_item_count("metal") != 0:
+			errors.append("réparation du bateau KO")
+		player.exit_boat()
+		boat._physics_process(0.016)
+	construction.clear_all()

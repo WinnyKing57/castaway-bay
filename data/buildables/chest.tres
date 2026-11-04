@@ -9,5 +9,6 @@ display_name = "Coffre"
 description = "Coffre de stockage en planches."
 category = "maison"
 collision_layer = 8
+kind = "chest"
 costs = {"wood": 5, "fiber": 3}
 visual_tag = "chest"

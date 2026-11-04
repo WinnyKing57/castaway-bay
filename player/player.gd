@@ -148,6 +148,10 @@ func exit_boat() -> void:
 	_in_boat = false
 
 
+func is_in_boat() -> bool:
+	return _in_boat
+
+
 func is_swimming() -> bool:
 	return _swimming
 

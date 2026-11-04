@@ -9,5 +9,6 @@ display_name = "Fenêtre"
 description = "Fenêtre en planches, laisse passer la lumière."
 category = "maison"
 collision_layer = 8
+kind = "window"
 costs = {"wood": 2, "fiber": 2}
 visual_tag = "window"

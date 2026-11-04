@@ -11,6 +11,8 @@ const FUEL_MAX := 30.0
 const FUEL_PER_ITEM := 30.0
 const FUEL_ITEM_ID := "fuel"
 const METAL_ITEM_ID := "metal"
+## Position du joueur par rapport au bateau (le corps flotte à mi-hauteur).
+const SEAT_OFFSET := Vector3(0.0, 1.0, 0.0)
 
 var fuel := FUEL_MAX
 var metal := 0
@@ -33,41 +35,68 @@ func _physics_process(_delta: float) -> void:
 	if not _controlled:
 		velocity = Vector3.ZERO
 		return
+	# Le joueur a quitté le bateau sans passer par interact() (mort, chargement,
+	# nouvelle partie, respawn) : on libère les commandes pour ne pas rester
+	# piloté « dans le vide ».
+	if GameState.is_dead or not _player_is_aboard():
+		_release()
+		return
 	if global_position.y > 0.0:
 		velocity = Vector3.ZERO
 		return
 	var input := Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
 	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
+	# Recharge automatique quand le réservoir est vide et qu'on a du carburant.
+	if fuel <= 0.0 and direction.length() > 0.0 and GameState.remove_item(FUEL_ITEM_ID, 1):
+		fuel = FUEL_MAX
 	if direction.length() > 0.0 and fuel > 0.0:
 		velocity = direction * SPEED
 		fuel = maxf(0.0, fuel - _delta * 5.0)
-		if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) > 0:
-			GameState.remove_item(FUEL_ITEM_ID, 1)
-			fuel = FUEL_MAX
 	else:
 		velocity = Vector3.ZERO
 	move_and_slide()
-	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).velocity = velocity
+	# Le joueur est assis dans le bateau : il suit sa position (sa propre
+	# physique est suspendue pendant la navigation).
+	if is_instance_valid(_player):
+		_player.global_position = global_position + SEAT_OFFSET
+		if _player is CharacterBody3D:
+			(_player as CharacterBody3D).velocity = Vector3.ZERO
 
 
 func interact(player: Node) -> void:
 	if not _controlled and fuel <= 0.0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
 		repair()
 		return
-	_controlled = not _controlled
-	_player = player if is_instance_valid(player) else null
-	if not _controlled:
-		if _player is CharacterBody3D:
-			(_player as CharacterBody3D).exit_boat()
-		_player = null
+	if _controlled:
+		_release()
 		return
 	if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) <= 0:
-		_controlled = false
 		GameState.notify("Bateau : carburant insuffisant")
 		return
+	_player = player if is_instance_valid(player) else null
+	if _player == null:
+		return
+	_controlled = true
 	if _player is CharacterBody3D:
 		(_player as CharacterBody3D).enter_boat()
+		_player.global_position = global_position + SEAT_OFFSET
+
+
+func _player_is_aboard() -> bool:
+	if not is_instance_valid(_player):
+		return false
+	if _player.has_method("is_in_boat"):
+		return bool(_player.call("is_in_boat"))
+	return true
+
+
+## Rend les commandes au joueur et remet le bateau au repos.
+func _release() -> void:
+	_controlled = false
+	velocity = Vector3.ZERO
+	if is_instance_valid(_player) and _player is CharacterBody3D:
+		(_player as CharacterBody3D).exit_boat()
+	_player = null
 
 
 func get_interaction_prompt() -> String:
@@ -81,8 +110,7 @@ func get_interaction_prompt() -> String:
 
 
 func repair() -> void:
-	if metal > 0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
-		GameState.remove_item(METAL_ITEM_ID, 1)
-		metal -= 1
+	# Une réparation consomme 1 métal de l'inventaire du joueur.
+	if GameState.remove_item(METAL_ITEM_ID, 1):
 		fuel = FUEL_MAX
 		GameState.notify("Bateau réparé")

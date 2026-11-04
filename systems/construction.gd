@@ -8,6 +8,10 @@ extends Node3D
 
 const REACH := 8.0
 const WORLD_MASK := 1 | 8  # terrain/props + objets construits
+## Coordonnées max acceptées dans une sauvegarde (le terrain fait ±130 m).
+const MAX_COORD := 1000.0
+## Éléments posés sur un bord de case (et non au centre).
+const EDGE_KINDS := ["wall", "door", "window"]
 
 var active := false
 
@@ -169,16 +173,14 @@ func _place() -> void:
 		GameState.notify("Ressources insuffisantes")
 		return
 
+	if _ghost == null:
+		return
 	var position := _ghost.global_position
-	var cell := Vector2i(floori(position.x), floori(position.z))
-	var level := int(round(position.y / LEVEL_STEP))
 	var rotation := _rotation_steps * PI * 0.5
 	if data.kind == "wall":
 		position = position + Vector3(sin(rotation), 0.0, cos(rotation)) * 0.5
-	_spawn(data.kind, data.id, position, _ghost.rotation.y)
-	_occupied[_cell_key(data.kind, cell, level, _rotation_steps)] = true
-	if data.kind == "campfire" or data.kind == "furnace":
-		GameState.craft_station = "campfire" if data.kind == "campfire" else "furnace"
+	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
+	_register_object(node)
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
 
@@ -187,10 +189,31 @@ func _place() -> void:
 ## Utilisé par le chargement de sauvegarde et par les tests d'intégration.
 func place_free(kind: String, data_id: String, position: Vector3, rotation_y: float) -> Buildable:
 	var node := _spawn(kind, data_id, position, rotation_y)
-	var cell := Vector2i(floori(position.x), floori(position.z))
-	var level := int(round(position.y / LEVEL_STEP))
-	_occupied[_cell_key(node.kind, cell, level, 0)] = true
+	_register_object(node)
 	return node
+
+
+## Enregistre l'empreinte d'un élément posé (clé d'occupation + station).
+## Une seule voie pour la pose et le chargement : la clé est recalculée depuis
+## la position/rotation réelles du nœud, donc identique avant et après une
+## sauvegarde.
+func _register_object(node: Buildable) -> void:
+	_occupied[_key_for_object(node.kind, node.position, node.rotation.y)] = true
+	if node.kind == "campfire" or node.kind == "furnace":
+		GameState.craft_station = node.kind
+
+
+## Clé d'occupation d'un élément déjà posé (position réelle du nœud).
+## Les murs sont décalés d'un demi-mètre vers leur bord : on retire ce décalage
+## pour retrouver la case d'origine, comme au moment de la pose.
+func _key_for_object(kind: String, position: Vector3, rotation_y: float) -> String:
+	var base := position
+	if kind == "wall":
+		base = position - Vector3(sin(rotation_y), 0.0, cos(rotation_y)) * 0.5
+	var cell := Vector2i(floori(base.x), floori(base.z))
+	var level := int(round(position.y / LEVEL_STEP))
+	var steps := wrapi(int(round(rotation_y / (PI * 0.5))), 0, 4)
+	return _cell_key(kind, cell, level, steps)
 
 
 func _spawn(kind: String, data_id: String, position: Vector3, rotation_y: float) -> Buildable:
@@ -249,8 +272,16 @@ func _raycast() -> Dictionary:
 	return get_world_3d().direct_space_state.intersect_ray(params)
 
 
+## Clé d'occupation. Deux familles, indépendantes de la catégorie exacte :
+##  - éléments « de bord » (mur, porte, fenêtre) : un bord par case, niveau et
+##    orientation ; un mur et une porte ne peuvent donc pas partager un bord ;
+##  - tout le reste occupe le centre de la case à un niveau donné : fondation,
+##    toit, feu, coffre... ne peuvent pas se superposer, quelle que soit leur
+##    catégorie.
 func _cell_key(kind: String, cell: Vector2i, level: int = 0, rotation: int = 0) -> String:
-	return "%s:%d:%d:%d:%d" % [kind, cell.x, cell.y, level, rotation]
+	if EDGE_KINDS.has(kind):
+		return "edge:%d:%d:%d:%d" % [cell.x, cell.y, level, wrapi(rotation, 0, 4)]
+	return "cell:%d:%d:%d" % [cell.x, cell.y, level]
 
 
 ## Calcule le y du fantome : fondation alignee sur une voisine, puis decalage
@@ -336,16 +367,48 @@ func load_save_data(entries: Variant) -> void:
 	for entry in entries:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var pos_array: Array = entry.get("position", [])
-		if pos_array.size() != 3:
+		var pos_array: Variant = entry.get("position", [])
+		if typeof(pos_array) != TYPE_ARRAY or (pos_array as Array).size() != 3:
 			continue
-		var position := Vector3(float(pos_array[0]), float(pos_array[1]), float(pos_array[2]))
-		place_free(
-			str(entry.get("kind", "foundation")),
-			str(entry.get("data_id", "")),
-			position,
-			float(entry.get("rotation_y", 0.0))
-		)
+		var coords: Array = pos_array
+		var numeric := true
+		for value in coords:
+			if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+				numeric = false
+			elif not is_finite(float(value)) or absf(float(value)) > MAX_COORD:
+				numeric = false
+		if not numeric:
+			continue
+		var raw_rot: Variant = entry.get("rotation_y", 0.0)
+		if (typeof(raw_rot) != TYPE_FLOAT and typeof(raw_rot) != TYPE_INT) or not is_finite(float(raw_rot)):
+			continue
+
+		# L'identifiant doit exister dans la base ; la catégorie vient de la base
+		# (source de vérité), pas du fichier. Anciennes sauvegardes sans
+		# identifiant : on retombe sur la catégorie enregistrée.
+		var data_id := str(entry.get("data_id", ""))
+		var kind := ""
+		if Database.buildables.has(data_id):
+			kind = str((Database.buildables[data_id] as BuildableData).kind)
+		elif data_id.is_empty():
+			var saved_kind := str(entry.get("kind", ""))
+			for candidate in Database.buildables.values():
+				if (candidate as BuildableData).kind == saved_kind:
+					kind = saved_kind
+					data_id = (candidate as BuildableData).id
+					break
+		if kind.is_empty():
+			push_warning("[Construction] Élément ignoré (identifiant inconnu : %s)" % data_id)
+			continue
+
+		var position := Vector3(float(coords[0]), float(coords[1]), float(coords[2]))
+		var rotation_y := float(raw_rot)
+		# Anti-duplication : une sauvegarde qui contient deux fois la même
+		# empreinte ne recrée qu'un seul élément.
+		if _occupied.has(_key_for_object(kind, position, rotation_y)):
+			push_warning("[Construction] Doublon ignoré à %s" % str(position))
+			continue
+		place_free(kind, data_id, position, rotation_y)
 
 
 func clear_all() -> void:
@@ -354,3 +417,4 @@ func clear_all() -> void:
 			obj.queue_free()
 	_objects.clear()
 	_occupied.clear()
+	GameState.craft_station = ""

@@ -6,6 +6,8 @@ extends Node
 ## évoluer le jeu sans casser les anciennes sauvegardes.
 
 const SAVE_PATH := "user://savegame.json"
+## Quantité maximale d'un objet restaurée depuis une sauvegarde.
+const MAX_STACK := 99999
 
 
 func has_save() -> bool:
@@ -50,26 +52,40 @@ func save_game(player: Node3D, construction: Node = null) -> bool:
 ## Lit la sauvegarde et l'applique à l'état global + au joueur.
 ## Si `world` est fourni et que la graine a changé, l'île est régénérée
 ## avant de replacer le joueur (sinon il tomberait dans le vide).
+## La sauvegarde est entièrement validée (types, valeurs finies, bornes) avant
+## que le moindre état du jeu ne soit modifié.
 func load_game_into(player: Node3D, world: Node = null, construction: Node = null) -> bool:
 	var data := _read_save()
 	if data.is_empty():
 		return false
 
-	GameState.world_time = float(data.get("world_time", GameState.world_time))
+	# Le joueur ne doit pas rester bloqué « à bord » d'un bateau après un chargement.
+	if player.has_method("exit_boat"):
+		player.call("exit_boat")
 
-	var saved_seed := int(data.get("world_seed", 0))
+	GameState.world_time = fposmod(_num(data.get("world_time"), GameState.world_time), GameState.SECONDS_PER_DAY)
+
+	var saved_seed := int(_num(data.get("world_seed"), 0.0))
 	if world != null and saved_seed != 0 and saved_seed != GameState.world_seed:
 		world.regenerate(saved_seed)
 
 	var saved_stats: Dictionary = data.get("stats", {})
 	for key in saved_stats:
 		if GameState.stats.has(key):
-			GameState.stats[key] = float(saved_stats[key])
+			GameState.stats[key] = clampf(_num(saved_stats[key], GameState.stats[key]), 0.0, 100.0)
 
+	# Inventaire : seuls les objets connus, avec une quantité entière positive.
 	GameState.inventory.clear()
 	var saved_inventory: Dictionary = data.get("inventory", {})
 	for key in saved_inventory:
-		GameState.inventory[key] = int(saved_inventory[key])
+		var item_id := str(key)
+		var amount := int(_num(saved_inventory[key], 0.0))
+		if amount <= 0:
+			continue
+		if not Database.items.has(item_id):
+			push_warning("[SaveSystem] Objet inconnu ignoré : %s" % item_id)
+			continue
+		GameState.inventory[item_id] = mini(amount, MAX_STACK)
 	GameState.inventory_changed.emit()
 
 	if construction != null:
@@ -79,7 +95,12 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 	var pos: Array = saved_player.get("position", [])
 	if pos.size() == 3:
 		player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
-	player.rotation.y = float(saved_player.get("rotation_y", 0.0))
+		# Position aberrante (hors du monde) : on replace le joueur sur la plage.
+		var horizontal := Vector2(player.global_position.x, player.global_position.z)
+		if world != null and world.has_method("find_spawn_point") \
+				and (horizontal.length() > 140.0 or player.global_position.y < -20.0 or player.global_position.y > 300.0):
+			player.global_position = world.call("find_spawn_point")
+	player.rotation.y = _num(saved_player.get("rotation_y"), 0.0)
 	if player is CharacterBody3D:
 		(player as CharacterBody3D).velocity = Vector3.ZERO
 
@@ -98,7 +119,7 @@ func _read_save() -> Dictionary:
 
 	var parsed: Variant = JSON.parse_string(text)
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_error("[SaveSystem] Sauvegarde illisible")
+		push_warning("[SaveSystem] Sauvegarde illisible")
 		return {}
 
 	var data: Dictionary = parsed
@@ -110,7 +131,9 @@ func _read_save() -> Dictionary:
 	return data
 
 
-## Valide la structure minimale d'une sauvegarde avant de l'appliquer.
+## Valide une sauvegarde avant de l'appliquer : structure, types et valeurs
+## numériques finies. Toute incohérence rejette la sauvegarde entière (on
+## préfère refuser un fichier douteux que charger un état à moitié valide).
 func _is_valid(data: Dictionary) -> bool:
 	if typeof(data.get("stats")) != TYPE_DICTIONARY:
 		return false
@@ -120,4 +143,47 @@ func _is_valid(data: Dictionary) -> bool:
 		return false
 	if typeof(data.get("construction", [])) != TYPE_ARRAY:
 		return false
-	return int(data.get("version", 0)) <= GameState.SAVE_VERSION
+	if not _is_number(data.get("version", 0)):
+		return false
+	if int(data.get("version", 0)) > GameState.SAVE_VERSION:
+		return false
+
+	# Champs scalaires optionnels : s'ils existent, ils doivent être numériques.
+	for key in ["world_time", "world_seed"]:
+		if data.has(key) and not _is_number(data[key]):
+			return false
+
+	var stats: Dictionary = data["stats"]
+	for key in stats:
+		if not _is_number(stats[key]):
+			return false
+
+	var inventory: Dictionary = data["inventory"]
+	for key in inventory:
+		if typeof(key) != TYPE_STRING:
+			return false
+		if not _is_number(inventory[key]):
+			return false
+
+	var player_data: Dictionary = data["player"]
+	if player_data.has("rotation_y") and not _is_number(player_data["rotation_y"]):
+		return false
+	if player_data.has("position"):
+		var pos: Variant = player_data["position"]
+		if typeof(pos) != TYPE_ARRAY or (pos as Array).size() != 3:
+			return false
+		for value in pos:
+			if not _is_number(value) or absf(float(value)) > 100000.0:
+				return false
+	return true
+
+
+func _is_number(value: Variant) -> bool:
+	return (typeof(value) == TYPE_FLOAT or typeof(value) == TYPE_INT) and is_finite(float(value))
+
+
+## Convertit en float si `value` est un nombre fini, sinon renvoie `fallback`.
+func _num(value: Variant, fallback: float) -> float:
+	if _is_number(value):
+		return float(value)
+	return fallback

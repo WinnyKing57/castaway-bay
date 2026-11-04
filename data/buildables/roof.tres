@@ -9,5 +9,6 @@ display_name = "Toit"
 description = "Toit en planches, pose sur mur ou fondation."
 category = "maison"
 collision_layer = 8
+kind = "roof"
 costs = {"wood": 6, "fiber": 2}
 visual_tag = "roof"
