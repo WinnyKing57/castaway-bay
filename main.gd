@@ -823,7 +823,57 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 			errors.append("constructions sauvegarde v1 non restaurées")
 	construction.clear_all()
 
+	# Fenêtres : interaction, état ouvert/fermé, persistance
+	construction.clear_all()
+	var win_rot := 0.0
+	var win_base := Vector3(20.5, 0.0, 20.5)
+	var win_pos := win_base + Vector3(sin(win_rot), 0.0, cos(win_rot)) * 0.5
+	var win_node := construction.place_free("window", "window", win_pos, win_rot)
+	if win_node == null:
+		errors.append("pose fenêtre KO")
+	else:
+		if win_node.get_interaction_prompt().is_empty():
+			errors.append("prompt fenêtre absent")
+		win_node.toggle_window()
+		if not win_node.is_open:
+			errors.append("fenêtre toggle KO")
+		if not SaveSystem.save_game(player, construction, world):
+			errors.append("sauvegarde avec fenêtre ouverte KO")
+		construction.clear_all()
+		if not SaveSystem.load_game_into(player, world, construction):
+			errors.append("chargement avec fenêtre KO")
+		var restored_win: Buildable = null
+		for obj in construction._objects:
+			if obj.kind == "window":
+				restored_win = obj
+				break
+		if restored_win == null or not restored_win.is_open:
+			errors.append("état ouvert de la fenêtre non restauré après chargement")
 
+	# Nouveaux types : demi-mur, toit pente, faîtage
+	construction.clear_all()
+	var hw_node := construction.place_free("half_wall", "half_wall", Vector3(25.5, 0.0, 24.5), 0.0)
+	if hw_node == null:
+		errors.append("pose demi-mur KO")
+	var rs_node := construction.place_free("roof_slope", "roof_slope", Vector3(27.5, 0.0, 24.5), 0.0)
+	if rs_node == null:
+		errors.append("pose toit en pente KO")
+	var rr_node := construction.place_free("roof_ridge", "roof_ridge", Vector3(29.5, 0.0, 24.5), 0.0)
+	if rr_node == null:
+		errors.append("pose faîtage KO")
+	if not SaveSystem.save_game(player, construction, world):
+		errors.append("sauvegarde nouveaux types de toit KO")
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement nouveaux types de toit KO")
+	else:
+		var kinds_found := PackedStringArray()
+		for obj in construction._objects:
+			kinds_found.append(obj.kind)
+		for expected in ["half_wall", "roof_slope", "roof_ridge"]:
+			if not expected in kinds_found:
+				errors.append("type %s perdu après chargement" % expected)
+	construction.clear_all()
 ## Tests de persistance : « rien de ce que fait le joueur ne doit se perdre ».
 func _run_persistence_tests(errors: PackedStringArray) -> void:
 	for item_id in Database.items.keys():

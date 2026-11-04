@@ -187,7 +187,18 @@ func _blocked_by_player(center: Vector3, rot_y: float, kind: String, size: int) 
 	if _player == null or kind == "foundation":
 		return false
 	var is_edge := EDGE_KINDS.has(kind)
-	var height := 2.4 if (is_edge or kind == "roof") else 1.0
+	var height: float
+	match kind:
+		"wall":
+			height = 2.4
+		"half_wall":
+			height = 1.2
+		"door", "window":
+			height = 2.4
+		"roof", "roof_slope", "roof_ridge":
+			height = 1.0
+		_:
+			height = 1.0 if not is_edge else 2.4
 	var p := _player.global_position
 	if center.y >= p.y + 1.8 or center.y + height <= p.y:
 		return false
@@ -482,7 +493,7 @@ func to_save_data() -> Array:
 		}
 		if obj.kind == "chest" and not obj.chest_inventory.is_empty():
 			entry["storage"] = obj.chest_inventory.duplicate()
-		if obj.kind == "door" and obj.is_open:
+		if (obj.kind == "door" or obj.kind == "window") and obj.is_open:
 			entry["is_open"] = true
 		result.append(entry)
 	return result
@@ -542,9 +553,12 @@ func load_save_data(entries: Variant) -> void:
 			push_warning("[Construction] Doublon ignoré à %s" % str(position))
 			continue
 		var node := place_free(kind, data_id, position, rotation_y)
-		if kind == "door" and bool(entry.get("is_open", false)):
+		if (kind == "door" or kind == "window") and bool(entry.get("is_open", false)):
 			node.is_open = true
-			node._apply_door_state()
+			if kind == "door":
+				node._apply_door_state()
+			else:
+				node._apply_window_state()
 		if kind == "chest" and entry.has("storage") and typeof(entry["storage"]) == TYPE_DICTIONARY:
 			var storage: Dictionary = entry["storage"]
 			for item_key in storage:

@@ -29,89 +29,57 @@
 - [x] Stabilisation avancée : clés de bord canoniques (anti-doublon partagé mur/porte/fenêtre),
       alignement fantôme d'arêtes, prise en compte directe du mode créatif (matériaux infinis)
       dans les fabrications et constructions
-- [x] Portes animées (pivot + battant), escaliers 4 marches, lit fonctionnel
+- [x] Portes animées (pivot + battant + rainures), escaliers 4 → 5 marches, lit fonctionnel
 - [x] Démolition (clic droit) avec remboursement 75 % des matériaux
 - [x] Compatibilité v1 testée et validée sans régression
 - [x] CI GitHub Actions : exécution automatique de `./run.sh --test` en headless
 - [x] Tests de non-régression : `./run.sh --test` → `SMOKE_TEST OK`
 - [x] Export autonome Linux x86_64 en place et testé en mode headless
-- [x] **Bugfix** : retour en jeu après les paramètres (le menu ne réapparaissait pas)
+- [x] **Bugfix** : retour en jeu après les paramètres (le menu ne réapparaissait plus)
+
+## Fait — améliorations construction (batch 1)
+- [x] **Fenêtres fonctionnelles et transparentes** : vitrage `TRANSPARENCY_ALPHA` (alpha 0.22,
+      roughness 0, metallic 0.2, culling double face), montants en croix, bandes de remplissage
+      mur haut et bas, interaction **E** ouvrir/fermer (pivot 90°), état persisté dans la sauvegarde
+- [x] **Toits modulaires** : toit plat avec bardeaux en quinconce positionné à y=2.46 (flush
+      avec le sommet des murs 2.4 m), toit en pente simple (`roof_slope`) avec tuiles inclinées,
+      faîtage à deux pans (`roof_ridge`) avec solin ; 3 fichiers `.tres` ajoutés
+- [x] **Escaliers corrigés** : 5 marches (sommet à exactement 1.0 m = 5 × LEVEL_STEP), collision
+      en rampe à 22° (au lieu de 45°), marches bicolores (claires/foncées), rambardes fines
+- [x] **Matériaux** : cache statique partagé (1 instance par couleur hexadécimale), murs avec
+      5 planches en micro-variation de teinte + 2 poutres horizontales (mi-hauteur et sommet),
+      fondations sans z-fighting (planches décoratives à +0.21 m)
+- [x] **Coffre** : ferrures métalliques aux 4 coins avant, 2 bandes cerclant le coffre, serrure
+      centrale, lames de bois sur le corps et le couvercle
+- [x] **Demi-mur** (`half_wall`, 1.2 m de hauteur) : nouveau type pour rebords, balustrades
+      et allèges de fenêtre ; fichier `.tres` ajouté
+- [x] Persistance fenêtres : `is_open` sauvegardé et restauré comme les portes
+- [x] Tests de non-régression étendus : fenêtre (toggle + persistance), demi-mur, toit pente,
+      faîtage → `SMOKE_TEST OK`
 
 ## À faire — corrections prioritaires (bugs actifs)
-
 - [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique
-      complet (ambiance météo, fluidité de navigation du bateau en conditions réelles)
+      complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau)
 
-## À faire — améliorations construction (priorité haute)
+## À faire — améliorations construction (suite)
 
-### Fenêtres fonctionnelles et transparentes
-- [ ] Remplacer le `PlaneMesh` opaque par un vrai matériau transparent (vitrage) :
-      `StandardMaterial3D` avec `transparency = TRANSPARENCY_ALPHA`, `albedo_color` bleu-clair
-      alpha 0.25, `roughness = 0.0`, `metallic = 0.2` pour l'effet verre
-- [ ] Ajouter des montants de fenêtre en croix (4 barres fines `BoxMesh` 0.04 × 0.04 × épaisseur)
-      pour structurer le panneau de verre et donner un aspect plus réaliste
-- [ ] La fenêtre doit comporter un encadrement de mur de part et d'autre pour combler le vide
-      au-dessus et en dessous (deux bandes 1.0 × 0.65 × 0.16 à y≈0.6 et y≈1.85)
-- [ ] Interaction (E) : ouvrir/fermer la fenêtre (pivote le panneau de verre de 90° comme la porte)
-      avec persistance de l'état dans la sauvegarde
+### Toits — raffinements
+- [ ] Coins de toit (intérieur et extérieur) : pièces de raccord 45° pour les angles
+- [ ] Détection d'assemblage : indicateur visuel (contour vert sur l'arête) quand un toit
+      est posé contre un autre toit compatible
 
-### Toits modulaires et assemblage
-- [ ] Remplacer le toit actuel (planche plate + prisme décoratif isolé) par des pièces
-      modulaires distinctes permettant de couvrir des surfaces rectangulaires :
-  - **Toit plat** : dalle 1.0 × 0.1 × 1.0 à l'étage supérieur (version actuelle simplifiée)
-  - **Toit pente simple** (une face) : prisme 1.0 × 0.6 × 1.0 incliné selon la rotation, pour les
-    toits sur une seule pente (appentis, auvent)
-  - **Toit en V** / arête de faîtage : élément d'arête central combinant deux pentes se rejoignant
-    en angle pour fermer un toit à deux pans
-  - **Toit coin intérieur** / **coin extérieur** : pièces de raccord pour les angles à 90°
-- [ ] Ajuster le positionnement : les toits doivent reposer sur les murs sans débord excessif,
-      aligner automatiquement leur y sur le sommet des murs voisins (LEVEL_STEP × 12 ≈ 2.4 m)
-- [ ] Ajouter une détection d'assemblage : un toit posé à côté d'un autre toit de même type/rotation
-      doit générer un bord de raccord invisible (ajuster la collision pour éviter les espaces)
+### Escaliers
+- [ ] Snap automatique vers l'étage voisin quand le joueur place un escalier près d'un étage
+- [ ] Escalier 2 cases de large (`grid_size = 2`) pour les constructions plus grandes
 
-### Escaliers — positionnement et intégration
-- [ ] Corriger l'alignement vertical : le sommet de l'escalier (marche haute) doit arriver exactement
-      au niveau du sol de l'étage supérieur (y = nb_niveaux × LEVEL_STEP, soit 1.0 m pour 5 fondations)
-- [ ] La collision en pente (inclinée à −45°) est trop raide ; réduire l'angle à ~20–25° et la
-      centrer mieux pour permettre une montée fluide sans sauter par-dessus les marches
-- [ ] Ajouter un mode de snap automatique : en mode construction, proposer l'altitude cible de la
-      fondation supérieure voisine lorsque le joueur place un escalier à côté d'un étage existant
-- [ ] Permettre les escaliers à 2 cases de large (`grid_size = 2`) pour les constructions plus grandes
-
-### Matériaux et rendu des éléments constructibles
-- [ ] Mettre en cache les matériaux communs (une instance partagée par couleur) pour économiser la
-      mémoire GPU : actuellement chaque `_make_material()` crée une nouvelle ressource indépendante
-- [ ] Murs : ajouter une légère variation de teinte entre les planches (micro-variation ±5 % de
-      luminosité) ou une texture procédurale (bruit UV) pour casser l'aspect monochrome
-- [ ] Murs : ajouter la poutre verticale aux angles (montants) pour renforcer l'aspect charpente
-      quand deux murs perpendiculaires sont posés l'un à côté de l'autre
-- [ ] Fondations : rendre la planche décorative (les 3 lames) légèrement en relief (z offset +0.01)
-      plutôt qu'enfouies dans la surface — évite le z-fighting visible
-- [ ] Escaliers : utiliser deux teintes de bois (marches claires, limons foncés) pour mieux séparer
-      visuellement la structure portante des surfaces de marche
-- [ ] Toits : ajouter un matériau tuile/bardeaux via la répétition de `BoxMesh` plats en quinconce
-      sur la surface (3 rangées × 4 tuiles) pour donner un aspect couverture réaliste
-- [ ] Coffre : ajouter des ferrures métalliques aux angles (8 petits cubes sombres) et les deux
-      bandes en métal qui cerclent le couvercle pour renforcer le visuel
-
-### Alignement et cohérence des éléments entre eux
-- [ ] Fenêtre : la fenêtre actuelle est trop courte (0.7 m) et ne s'encadre pas bien dans un mur
-      2.4 m — prévoir une version haute (0.8 × 1.2 × 0.16) centrée entre y=0.8 et y=2.0,
-      avec bandes de remplissage haut et bas comme le mur standard
-- [ ] Sol et escalier : quand un escalier est posé contre une fondation d'étage, le joueur doit
-      pouvoir monter sans "sauter" d'un coup — tester et ajuster la collision en rampe avec un
-      `CapsuleShape3D` de test pour valider la fluidité
-- [ ] Mur + porte + fenêtre : uniformiser l'épaisseur (0.16 m) et la hauteur (2.4 m) pour que les
-      éléments de bord soient flush avec les murs voisins sans espace ni dépassement
-- [ ] Toit + mur : le toit actuel est positionné à y=2.3 mais le sommet du mur est à y=2.4 → le toit
-      dépasse légèrement ou chevauche. Ajuster le niveau cible du toit à y=2.4 + épaisseur
-- [ ] Ajouter un élément "demi-mur" (hauteur 1.2 m) pour les rebords, balustrades et allèges de
-      fenêtre sans devoir construire un mur complet
+### Murs et construction
+- [ ] Poutres verticales aux angles : quand deux murs sont posés perpendiculairement, afficher
+      un montant 0.15 × 2.4 × 0.15 à l'intersection pour renforcer l'aspect charpente
+- [ ] Annuler la dernière pose (**Ctrl+Z**) sans repasser en mode démolition
 
 ## À faire — interface de construction
 - [ ] Afficher un aperçu des dimensions de l'élément sélectionné dans le HUD (largeur × profondeur)
 - [ ] Indicateur visuel quand le toit peut s'assembler avec un toit voisin (contour de liaison en vert)
-- [ ] Annuler la dernière pose (Ctrl+Z) sans repasser en mode démolition
 
 ## À faire (par ordre de priorité)
 
