@@ -21,10 +21,13 @@ ni code d'un jeu commercial n'est utilisé).
    La hache double le bois récolté.
 4. **Construire** : **B** active le mode construction (fondation, mur,
    feu de camp). Clic gauche pose, **R** tourne, molette change d'élément.
-5. **Sauvegarder** : **F9** / **F10**. La graine de l'île, l'inventaire, les
-   jauges, la position et les constructions sont conservés. L'état des
-   ressources (arbres récoltés, cultures) n'est pas encore sauvegardé : voir
-   « Limites connues ».
+5. **Sauvegarder** : **F9** / **F10**, plus une **sauvegarde automatique**
+   (toutes les 2 min, en quittant vers le menu, à la fermeture de la fenêtre et
+   quand l'appli passe en arrière-plan). Tout est conservé : graine de l'île,
+   position, cap et regard du joueur, jauges, inventaire, barre rapide,
+   fabrication en cours, constructions, ressources récoltées (et leur délai de
+   repousse), cultures plantées, position et carburant du bateau, et le fait
+   d'être à bord. « Continuer » te ramène exactement où tu étais.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
@@ -64,6 +67,8 @@ Le test couvre le socle (île, nage, récolte, artisanat, construction,
 sauvegarde) **et** des tests de non-régression de stabilité :
 
 - inventaire : retraits et coûts négatifs/nuls refusés ;
+- persistance : position/regard du joueur, ressources, cultures, bateau, fabrication en cours, stations, copie de secours `.bak` ;
+- artisanat : fabrication chronométrée, annulation avec remboursement ;
 - construction : chevauchements entre catégories (coffre/feu/toit sur une
   fondation), bords de murs/portes, empreintes conservées après chargement ;
 - sauvegarde : fichiers malformés rejetés sans toucher à l'état, quantités et
@@ -158,7 +163,7 @@ Garde-fous en place (voir `./run.sh --test`) :
 
 - **Inventaire** : `remove_item()` refuse toute quantité ≤ 0 ; `has_items()` /
   `consume_items()` refusent les coûts ≤ 0 (donnée corrompue).
-- **Construction** : l'occupation d'une case ne dépend plus de la catégorie du
+- **Construction** : `grid_size` est respecté (tente et lit occupent 2 x 2 cases) et un élément ne peut pas être posé sur le joueur. L'occupation d'une case ne dépend plus de la catégorie du
   bâtiment. Deux familles : *éléments de bord* (mur, porte, fenêtre : un par
   bord, niveau et orientation) et *éléments de centre* (fondation, toit, feu,
   coffre… : un par case et par niveau). La clé est recalculée depuis la
@@ -177,16 +182,41 @@ Garde-fous en place (voir `./run.sh --test`) :
 - **Données** : `chest`, `door`, `roof` et `window` déclarent maintenant leur
   `kind` (ils étaient construits comme des fondations).
 
+### Persistance (sauvegarde v2)
+
+`user://savegame.json` (version 2, les sauvegardes v1 se chargent toujours) :
+
+| Bloc | Contenu |
+|---|---|
+| `player` | position, `rotation_y`, `pitch` (regard), `in_boat` |
+| `stats`, `inventory`, `hotbar_index`, `world_time`, `world_seed` | état de survie et de la partie |
+| `craft` | fabrication chronométrée en cours (ingrédients déjà consommés) |
+| `construction` | éléments posés (id, position, rotation) ; stations recalculées |
+| `world_state` | ressources épuisées (id stable + délai de repousse), cultures plantées (id + progression), bateau (position, cap, carburant) |
+
+Les ressources ont un identifiant stable (ordre de génération, déterministe pour
+une graine). Ce qui n'est pas listé est remis à neuf au chargement.
+
+Écriture sûre : fichier temporaire, ancienne sauvegarde conservée dans
+`savegame.json.bak`, restaurée si l'écriture échoue ; si le fichier principal est
+illisible, « Continuer » utilise la copie de secours. La sauvegarde automatique
+n'écrit jamais depuis le menu principal ni pendant la mort.
+
+### Artisanat chronométré
+
+`craft_time` (secondes) est maintenant appliqué : les ingrédients sont pris au
+lancement, la fabrication continue en arrière-plan même panneau fermé, peut être
+annulée depuis le panneau (ingrédients rendus, aussi à la mort) et reprend après
+un chargement. `craft_time = 0` reste instantané.
+
 ### Limites connues
 
-- Les ressources récoltables et les cultures ne sont pas sauvegardées : après
-  un chargement à graine identique, elles reviennent à leur état de
-  génération.
-- Une seule station de fabrication est mémorisée (la dernière posée entre feu
-  de camp et four).
-- Les transitions joueur/bateau et le rendu sont vérifiés par le test sans
-  fenêtre uniquement : à valider à la main (monter/descendre, mourir à bord,
-  charger pendant la navigation).
+- Une même recette ne peut pas être mise en file : une seule fabrication à la
+  fois.
+- Les coffres n'ont pas encore de contenu (rien à sauvegarder).
+- Les transitions joueur/bateau, l'autosauvegarde à la fermeture de la fenêtre et
+  le rendu sont à valider à la main avec fenêtre : le test sans fenêtre couvre la
+  logique, pas l'affichage.
 
 ---
 

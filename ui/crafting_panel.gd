@@ -18,6 +18,7 @@ func _ready() -> void:
 	visible = false
 	close_button.pressed.connect(close)
 	GameState.inventory_changed.connect(_on_inventory_changed)
+	GameState.craft_changed.connect(_on_craft_changed)
 
 
 func is_open() -> bool:
@@ -50,9 +51,31 @@ func _on_inventory_changed() -> void:
 		_rebuild()
 
 
+func _on_craft_changed() -> void:
+	if visible:
+		_rebuild()
+		if not GameState.is_crafting():
+			status_label.text = "Choisis une recette."
+
+
+## Pendant une fabrication chronométrée, le panneau affiche la progression.
+## Fermer le panneau ne l'interrompt pas : elle continue en arrière-plan.
+func _process(_delta: float) -> void:
+	if visible and GameState.is_crafting():
+		var recipe: RecipeData = GameState.current_craft["recipe"]
+		status_label.text = "Fabrication : %s — %d %%" % [recipe.display_name, int(GameState.craft_progress() * 100.0)]
+
+
 func _rebuild() -> void:
 	for child in recipes_box.get_children():
 		child.queue_free()
+
+	if GameState.is_crafting():
+		var cancel := Button.new()
+		cancel.custom_minimum_size = Vector2(0, 46)
+		cancel.text = "Annuler la fabrication (ingrédients rendus)"
+		cancel.pressed.connect(func() -> void: GameState.cancel_craft())
+		recipes_box.add_child(cancel)
 
 	var ids := Database.recipes.keys()
 	ids.sort()
@@ -83,7 +106,10 @@ func _row_text(recipe: RecipeData) -> String:
 
 func _on_craft_pressed(recipe: RecipeData) -> void:
 	if GameState.craft(recipe):
-		status_label.text = "Fabriqué : %s" % recipe.display_name
+		status_label.text = (
+			"Fabrication : %s…" % recipe.display_name if GameState.is_crafting()
+			else "Fabriqué : %s" % recipe.display_name
+		)
 	else:
 		status_label.text = "Ressources insuffisantes."
 	_rebuild()

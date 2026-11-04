@@ -10,16 +10,39 @@ const SAVE_PATH := "user://savegame.json"
 const MAX_STACK := 99999
 
 
+const BACKUP_PATH := SAVE_PATH + ".bak"
+
+
 func has_save() -> bool:
-	return FileAccess.file_exists(SAVE_PATH)
+	return FileAccess.file_exists(SAVE_PATH) or FileAccess.file_exists(BACKUP_PATH)
 
 
 func delete_save() -> void:
-	if has_save():
+	delete_backup()
+	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 
-func save_game(player: Node3D, construction: Node = null) -> bool:
+func delete_backup() -> void:
+	if FileAccess.file_exists(BACKUP_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(BACKUP_PATH))
+
+
+## Écrit la sauvegarde complète : état du joueur (position, regard, bateau),
+## jauges, inventaire, barre rapide, fabrication en cours, constructions et état
+## du monde (ressources récoltées, cultures, bateau).
+## L'écriture est sûre : fichier temporaire, puis la sauvegarde précédente est
+## conservée en `.bak` ; en cas d'échec on restaure l'ancienne.
+func save_game(player: Node3D, construction: Node = null, world: Node = null) -> bool:
+	var player_data := {
+		"position": [player.global_position.x, player.global_position.y, player.global_position.z],
+		"rotation_y": player.rotation.y,
+	}
+	if player.has_method("get_pitch"):
+		player_data["pitch"] = player.call("get_pitch")
+	if player.has_method("is_in_boat"):
+		player_data["in_boat"] = bool(player.call("is_in_boat"))
+
 	var data := {
 		"version": GameState.SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(),
@@ -27,25 +50,41 @@ func save_game(player: Node3D, construction: Node = null) -> bool:
 		"world_seed": GameState.world_seed,
 		"stats": GameState.stats.duplicate(),
 		"inventory": GameState.inventory.duplicate(),
-		"player": {
-			"position": [player.global_position.x, player.global_position.y, player.global_position.z],
-			"rotation_y": player.rotation.y,
-		},
+		"hotbar_index": GameState.hotbar_index,
+		"player": player_data,
 	}
+	var craft_state := GameState.craft_save_state()
+	if not craft_state.is_empty():
+		data["craft"] = craft_state
 	if construction != null:
 		data["construction"] = construction.to_save_data()
+	if world != null and world.has_method("to_save_data"):
+		data["world_state"] = world.call("to_save_data")
 
 	var tmp_path := SAVE_PATH + ".tmp"
 	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	if file == null:
 		push_error("[SaveSystem] Impossible d'écrire : %s" % tmp_path)
 		return false
-
 	file.store_string(JSON.stringify(data, "\t"))
 	file.close()
-	if DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp_path), ProjectSettings.globalize_path(SAVE_PATH)) != OK:
-		push_error("[SaveSystem] Impossible de renommer la sauvegarde : %s" % SAVE_PATH)
-		return false
+
+	var save_abs := ProjectSettings.globalize_path(SAVE_PATH)
+	var tmp_abs := ProjectSettings.globalize_path(tmp_path)
+	var bak_abs := ProjectSettings.globalize_path(BACKUP_PATH)
+	var had_save := FileAccess.file_exists(SAVE_PATH)
+	if had_save:
+		DirAccess.copy_absolute(save_abs, bak_abs)
+
+	if DirAccess.rename_absolute(tmp_abs, save_abs) != OK:
+		# Certaines plateformes refusent de remplacer un fichier existant.
+		if had_save:
+			DirAccess.remove_absolute(save_abs)
+		if DirAccess.rename_absolute(tmp_abs, save_abs) != OK:
+			push_error("[SaveSystem] Impossible de renommer la sauvegarde : %s" % SAVE_PATH)
+			if had_save and not FileAccess.file_exists(SAVE_PATH):
+				DirAccess.copy_absolute(bak_abs, save_abs)
+			return false
 	return true
 
 
@@ -53,7 +92,8 @@ func save_game(player: Node3D, construction: Node = null) -> bool:
 ## Si `world` est fourni et que la graine a changé, l'île est régénérée
 ## avant de replacer le joueur (sinon il tomberait dans le vide).
 ## La sauvegarde est entièrement validée (types, valeurs finies, bornes) avant
-## que le moindre état du jeu ne soit modifié.
+## que le moindre état du jeu ne soit modifié. Si le fichier principal est
+## illisible, la copie de secours `.bak` est essayée.
 func load_game_into(player: Node3D, world: Node = null, construction: Node = null) -> bool:
 	var data := _read_save()
 	if data.is_empty():
@@ -87,9 +127,20 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 			continue
 		GameState.inventory[item_id] = mini(amount, MAX_STACK)
 	GameState.inventory_changed.emit()
+	if data.has("hotbar_index"):
+		GameState.select_hotbar(int(_num(data["hotbar_index"], 0.0)))
+
+	# Fabrication en cours (ingrédients déjà consommés à la sauvegarde).
+	GameState.clear_craft()
+	if data.has("craft"):
+		GameState.restore_craft(data["craft"])
 
 	if construction != null:
 		construction.load_save_data(data.get("construction", []))
+
+	# État du monde : ressources récoltées, cultures, bateau (absent des v1).
+	if world != null and data.has("world_state") and world.has_method("apply_save_data"):
+		world.call("apply_save_data", data["world_state"])
 
 	var saved_player: Dictionary = data.get("player", {})
 	var pos: Array = saved_player.get("position", [])
@@ -101,29 +152,50 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 				and (horizontal.length() > 140.0 or player.global_position.y < -20.0 or player.global_position.y > 300.0):
 			player.global_position = world.call("find_spawn_point")
 	player.rotation.y = _num(saved_player.get("rotation_y"), 0.0)
+	if player.has_method("set_pitch"):
+		player.call("set_pitch", _num(saved_player.get("pitch"), 0.0))
 	if player is CharacterBody3D:
 		(player as CharacterBody3D).velocity = Vector3.ZERO
+
+	# Le joueur reprend la barre du bateau s'il naviguait à la sauvegarde.
+	if saved_player.get("in_boat", false) == true and world != null and world.has_method("get_boat"):
+		var boat: Node = world.call("get_boat")
+		if boat != null and boat.has_method("board"):
+			boat.call("board", player)
 
 	GameState.is_dead = false
 	return true
 
 
 func _read_save() -> Dictionary:
-	if not has_save():
+	for path in [SAVE_PATH, BACKUP_PATH]:
+		var data := _read_file(path)
+		if not data.is_empty():
+			if path == BACKUP_PATH:
+				push_warning("[SaveSystem] Sauvegarde principale illisible : copie de secours utilisée")
+			return data
+	return {}
+
+
+func _read_file(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return {}
 	var text := file.get_as_text()
 	file.close()
 
-	var parsed: Variant = JSON.parse_string(text)
+	# JSON.new().parse() (et non parse_string) : un fichier corrompu ne déclenche
+	# pas d'erreur moteur, on le traite nous-mêmes.
+	var json := JSON.new()
+	var parsed: Variant = json.data if json.parse(text) == OK else null
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_warning("[SaveSystem] Sauvegarde illisible")
+		push_warning("[SaveSystem] Sauvegarde illisible : %s" % path)
 		return {}
 
 	var data: Dictionary = parsed
-	var version := int(data.get("version", 0))
+	var version := int(data.get("version", 0)) if _is_number(data.get("version", 0)) else 0
 	if version > GameState.SAVE_VERSION:
 		push_warning("[SaveSystem] Sauvegarde d'une version plus récente (%d)" % version)
 	if not _is_valid(data):
@@ -165,8 +237,20 @@ func _is_valid(data: Dictionary) -> bool:
 		if not _is_number(inventory[key]):
 			return false
 
+	for key in ["hotbar_index"]:
+		if data.has(key) and not _is_number(data[key]):
+			return false
+	if data.has("craft") and typeof(data["craft"]) != TYPE_DICTIONARY:
+		return false
+	if data.has("world_state") and typeof(data["world_state"]) != TYPE_DICTIONARY:
+		return false
+
 	var player_data: Dictionary = data["player"]
 	if player_data.has("rotation_y") and not _is_number(player_data["rotation_y"]):
+		return false
+	if player_data.has("pitch") and not _is_number(player_data["pitch"]):
+		return false
+	if player_data.has("in_boat") and typeof(player_data["in_boat"]) != TYPE_BOOL:
 		return false
 	if player_data.has("position"):
 		var pos: Variant = player_data["position"]

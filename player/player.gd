@@ -152,6 +152,19 @@ func is_in_boat() -> bool:
 	return _in_boat
 
 
+func are_controls_enabled() -> bool:
+	return _controls_enabled
+
+
+## Inclinaison de la tête (regard haut/bas), sauvegardée avec la position.
+func get_pitch() -> float:
+	return head.rotation.x
+
+
+func set_pitch(value: float) -> void:
+	head.rotation.x = clampf(value, -PITCH_LIMIT, PITCH_LIMIT)
+
+
 func is_swimming() -> bool:
 	return _swimming
 

@@ -13,6 +13,10 @@ extends StaticBody3D
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
 const REGROW_SECONDS := 120.0
 
+## Identifiant stable (ordre de génération, déterministe pour une graine donnée) :
+## sert à retrouver cette ressource dans une sauvegarde. -1 = non sauvegardée.
+var save_id := -1
+
 var _loot: Dictionary = {}
 var _depleted := false
 var _regrow_left := 0.0
@@ -70,6 +74,26 @@ func _process(delta: float) -> void:
 		return
 	_regrow_left -= delta
 	if _regrow_left <= 0.0:
+		_regrow()
+
+
+func is_depleted() -> bool:
+	return _depleted
+
+
+func get_save_state() -> Dictionary:
+	return {"id": save_id, "regrow_left": _regrow_left}
+
+
+## Replace la ressource dans l'état sauvegardé (épuisée avec son délai restant,
+## ou de nouveau disponible).
+func apply_save_state(depleted: bool, regrow_left: float) -> void:
+	if depleted:
+		_depleted = true
+		_regrow_left = clampf(regrow_left, 0.0, REGROW_SECONDS)
+		visible = false
+		collision_layer = 0
+	elif _depleted:
 		_regrow()
 
 

@@ -11,10 +11,12 @@
 - [x] Véhicule : bateau sur l'eau (spawn + enter/exit, `Boat`)
 - [x] Passe de stabilisation : inventaire, occupation inter-catégories, validation des sauvegardes, bateau/joueur, `kind` des données, tests de non-régression (voir README « Stabilité et robustesse »)
 
+- [x] Persistance complète (joueur, bateau, ressources, cultures, fabrication, autosave, `.bak`), stations multiples, `grid_size`, artisanat chronométré
+
 ## À faire (par ordre de priorité)
-- [ ] **Persistance des ressources** : sauvegarder l'état des arbres/rochers récoltés et des cultures (ids stables par graine)
+- [ ] **CI** : exécuter `./run.sh --test` (Godot 4.7 headless) sur chaque PR
+- [ ] **Coffres** : contenu stockable (puis sauvegardé)
 - [ ] **Validation manuelle** (Godot avec fenêtre) : monter/descendre du bateau, mourir à bord, charger en navigation, poser mur/porte/fenêtre sur un même bord
-- [ ] **Stations multiples** : mémoriser feu de camp *et* four simultanément
 - [ ] **Finition M7** : réglages son, menus avancés, export Linux `x86_64` (binaire exporté en place)
 - [ ] **Grottes / biomes** (M1 suite) : nouvelle zone avec loots spécifiques (éclairage torche déjà dispo)
 - [ ] **Farming avancé** : semis manuels, croissance visuelle

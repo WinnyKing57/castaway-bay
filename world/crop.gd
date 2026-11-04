@@ -7,6 +7,9 @@ const SEED_ITEM_ID := "seed"
 
 @export var item_id: String = "berry"
 
+## Identifiant stable (ordre de génération) pour la sauvegarde. -1 = aucun.
+var save_id := -1
+
 var progress := 0.0
 var _planted := false
 var _visual: MeshInstance3D
@@ -29,6 +32,23 @@ func _ready() -> void:
 	visual.material_override = _make_material(Color(0.2, 0.55, 0.2))
 	add_child(visual)
 	_visual = visual
+
+
+func is_planted() -> bool:
+	return _planted
+
+
+func get_save_state() -> Dictionary:
+	return {"id": save_id, "progress": progress}
+
+
+## Restaure l'état de la culture (plantée + progression, ou vide).
+func apply_save_state(planted: bool, saved_progress: float) -> void:
+	_planted = planted
+	progress = clampf(saved_progress, 0.0, GROWTH_SECONDS * 4.0) if planted else 0.0
+	if _visual != null:
+		var growth := clampf(progress / GROWTH_SECONDS, 0.0, 1.0) if planted else 0.0
+		_visual.scale = Vector3(1.0, 0.2 + 0.9 * growth if planted else 1.0, 1.0)
 
 
 func get_interaction_prompt() -> String:
