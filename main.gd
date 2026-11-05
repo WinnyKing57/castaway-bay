@@ -375,6 +375,30 @@ func _run_smoke_test() -> void:
 	if world.caves.is_empty():
 		errors.append("aucune grotte générée")
 
+	# Biomes : diversité (forêt / plaine / ferme) et zone agricole peuplée.
+	var biome_counts := [0, 0, 0, 0, 0]
+	for gx in range(-10, 11):
+		for gz in range(-10, 11):
+			var biome: int = world._biome_at(gx * 16.0, gz * 16.0)
+			biome_counts[biome] += 1
+	print("[Test] biomes (échantillon) : ", biome_counts)
+	if int(biome_counts[Island.BIOME_FOREST]) == 0:
+		errors.append("aucune forêt générée")
+	if int(biome_counts[Island.BIOME_PLAINS]) == 0:
+		errors.append("aucune plaine générée")
+	if int(biome_counts[Island.BIOME_FARM]) == 0:
+		errors.append("aucune zone agricole générée")
+	var crop_count := 0
+	for child in world.get_children():
+		if child is Crop:
+			crop_count += 1
+	if crop_count == 0:
+		errors.append("aucune culture générée")
+	var boat_spawn := world.find_boat_spawn_point()
+	var boat_ground := world.get_height_at(boat_spawn.x, boat_spawn.z)
+	if boat_ground > -0.2 or boat_ground < -3.5:
+		errors.append("point d'échouage du bateau invalide")
+
 	# Récolte : butin ajouté et ressource déplétée (elle repoussera plus tard).
 	var test_tree: Harvestable = null
 	for child in world.get_children():
@@ -400,7 +424,7 @@ func _run_smoke_test() -> void:
 
 	# Nage : on place le joueur au-dessus d'un fond profond, au large.
 	var swim_point := Vector3.ZERO
-	var radii: Array[float] = [120.0, 124.0, 127.0]
+	var radii: Array[float] = [190.0, 196.0, 202.0, 208.0]
 	for radius in radii:
 		for i in 24:
 			var angle := i * TAU / 24.0

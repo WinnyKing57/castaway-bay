@@ -174,6 +174,24 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 
 ---
 
+## Fait — carte étendue et biomes (monde actuel)
+- [x] Île agrandie (260 → 420 m, grille 160) : monde plus vaste, même résolution de détail
+- [x] Biomes de surface garantis sur chaque île par secteurs angulaires déformés par un
+      bruit basse fréquence : **forêt dense**, **plaines plates**, **bocage**,
+      **hauteurs rocheuses**, plus **plage** littorale et **zone agricole** dédiée
+- [x] Relief modelé par biome : plaines aplaties, hauteurs accentuées, plateau agricole
+      avec fondu progressif (aucune falaise aux transitions de biome)
+- [x] Végétation par biome : bosquets d'arbres serrés en forêt (vraie densité de
+      sous-bois), palmiers/argile/rochers sur la plage, buissons/graines en plaine,
+      minerais en altitude ; cultures semées dans la ferme
+- [x] Couleurs de terrain distinctes : sable, plaine claire, forêt sombre, bocage,
+      roche et sol agricole
+- [x] Spawn côtier du bateau et zone de nage recalculés pour la nouvelle taille
+- [x] Smoke test étendu : présence de tous les biomes, cultures et point d'échouage
+      valide → `SMOKE_TEST OK`
+
+---
+
 ## Feuille de route — toutes les prochaines étapes (développement complet)
 
 > TODO volontairement exhaustif : chaque lot à implémenter doit finir par des tests
@@ -224,7 +242,8 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 1. **Grotte complète** (cavités + torche + ambiance) — lot A : **fait**.
 2. **PNJ/commerce complet** (réputation/quêtes/dialogues) — lot B.
 3. **Îlots secondaires** (M5) — lot C : **hors périmètre pour l'instant** (monde actuel uniquement ;
-   la cartographie/boussole est faite).
+   la cartographie/boussole est faite ; biomes, plages, forêts et zone agricole du monde actuel
+   sont livrés).
 4. **Finition M7** — lot D (musiques faites ; reste la distribution/itch.io).
 5. **Gameplay complémentaire** — lot E.
 6. **Technique/LOD/manette/traductions** — lot F.

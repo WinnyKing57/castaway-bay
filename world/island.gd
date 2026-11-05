@@ -6,10 +6,21 @@ extends Node3D
 ## La graine est mémorisée dans GameState.world_seed et sauvegardée, afin
 ## qu'un chargement retrouve exactement le même relief.
 
-const ISLAND_SIZE := 260.0
-const GRID_RES := 96
-const PROP_COUNT := 80
+const ISLAND_SIZE := 420.0
+const GRID_RES := 160
 const SEA_LEVEL := 0.0
+
+## Biomes de surface. La plage et les sommets sont déterminés par l'altitude,
+## les autres par un bruit basse fréquence + une modulation angulaire.
+const BIOME_PLAINS := 0
+const BIOME_FOREST := 1
+const BIOME_WOODLAND := 2
+const BIOME_HIGHLANDS := 3
+const BIOME_FARM := 4
+
+## Altitude maximale de la plage (sable) et rayon de la zone agricole.
+const BEACH_MAX_HEIGHT := 2.4
+const FARM_RADIUS := 22.0
 
 ## Radius de detection d'une grotte pour l'ambiance dark/torche.
 const CAVE_PROXIMITY := 5.0
@@ -21,12 +32,20 @@ var caves: Array = []
 
 var _noise: FastNoiseLite
 var _noise2: FastNoiseLite
+var _biome_noise: FastNoiseLite
+var _biome_phase := 0.0
+var _farm_center := Vector2.ZERO
 var _mesh_instance: MeshInstance3D
 var _generated := false
 
 
 func _ready() -> void:
 	generate()
+
+
+## Demi-largeur du monde (rayon de l'île), pour valider les positions sauvegardées.
+func world_radius() -> float:
+	return ISLAND_SIZE * 0.5
 
 
 func generate(seed_value: int = 0) -> void:
@@ -46,6 +65,16 @@ func generate(seed_value: int = 0) -> void:
 	_noise2.frequency = 0.004
 	_noise2.fractal_type = FastNoiseLite.FRACTAL_FBM
 	_noise2.fractal_octaves = 3
+	_biome_noise = FastNoiseLite.new()
+	_biome_noise.seed = _noise.seed + 1234
+	_biome_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_biome_noise.frequency = 0.0035
+	_biome_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	_biome_noise.fractal_octaves = 2
+
+	_biome_phase = float(abs(_noise.seed) % 1000) / 1000.0 * TAU
+	var farm_angle := _biome_phase * 1.7
+	_farm_center = Vector2(cos(farm_angle), sin(farm_angle)) * (ISLAND_SIZE * 0.10)
 
 	GameState.world_seed = _noise.seed
 
@@ -69,6 +98,8 @@ func regenerate(seed_value: int) -> void:
 
 
 ## Hauteur du terrain (y monde) à une position donnée.
+## Le relief est ensuite modelé par biome : plaines et ferme aplaties,
+## forêt légèrement adoucie, hauteurs rocheuses accentuées.
 func get_height_at(x: float, z: float) -> float:
 	if _noise == null:
 		return SEA_LEVEL
@@ -81,7 +112,63 @@ func get_height_at(x: float, z: float) -> float:
 	if _noise2 != null:
 		var n2 := _noise2.get_noise_2d(x, z) * 0.5 + 0.5
 		height += pow(n2, 1.6) * 12.0 * falloff
+
+	var v := _sector_value(x, z)
+	var plains_w := _band_weight(v, 1.4, 2.2, 0.22)
+	var highlands_w := _band_weight(v, 3.1, 4.0, 0.22)
+	if plains_w > 0.0:
+		height = lerpf(height, 3.7, 0.5 * falloff * plains_w)
+	if highlands_w > 0.0:
+		height *= lerpf(1.0, 1.14, highlands_w)
+
+	# Zone agricole : plateau plat garanti, fondu progressif jusqu'au bord.
+	var farm_dist := Vector2(x, z).distance_to(_farm_center)
+	if farm_dist < FARM_RADIUS:
+		var flat := clampf(1.0 - farm_dist / FARM_RADIUS, 0.0, 1.0)
+		height = lerpf(height, 3.0, 0.85 * flat)
 	return height
+
+
+## Biome de surface à une position (hors plage/sommets, gérés par l'altitude).
+## Combine un bruit basse fréquence et une modulation angulaire pour garantir
+## des régions variées (plaines, forêt, bocage, hauteurs) sur chaque île.
+func _biome_at(x: float, z: float) -> int:
+	if _biome_noise == null:
+		return BIOME_WOODLAND
+	if Vector2(x, z).distance_to(_farm_center) < FARM_RADIUS:
+		return BIOME_FARM
+
+	var v := _sector_value(x, z)
+	if v < 1.4:
+		return BIOME_FOREST
+	if v < 2.2:
+		return BIOME_PLAINS
+	if v < 3.1:
+		return BIOME_WOODLAND
+	return BIOME_HIGHLANDS
+
+
+## Coordonnée continue de biome (0..4) : secteurs angulaires déformés par un
+## bruit basse fréquence. Garantit de grandes régions variées sur chaque île.
+func _sector_value(x: float, z: float) -> float:
+	if _biome_noise == null:
+		return 0.0
+	var sector := (atan2(z, x) + PI) / TAU
+	var warp := _biome_noise.get_noise_2d(x, z) * 0.16
+	return fposmod(sector + warp, 1.0) * 4.0
+
+
+## Poids lissé d'un intervalle [lo, hi] avec fondu de largeur `blend` aux bords.
+func _band_weight(v: float, lo: float, hi: float, blend: float) -> float:
+	if v <= lo or v >= hi:
+		return 0.0
+	var w := 1.0
+	if v < lo + blend:
+		w = (v - lo) / blend
+	if v > hi - blend:
+		w = minf(w, (hi - v) / blend)
+	w = clampf(w, 0.0, 1.0)
+	return w * w * (3.0 - 2.0 * w)
 
 
 ## Point de départ praticable, près du centre de l'île.
@@ -116,7 +203,8 @@ func _build_terrain() -> void:
 			var x := -ISLAND_SIZE * 0.5 + gx * step
 			var z := -ISLAND_SIZE * 0.5 + gz * step
 			var height := get_height_at(x, z)
-			surface.set_color(_color_for_height(height))
+			var biome := _biome_at(x, z)
+			surface.set_color(_color_for(biome, height))
 			surface.set_normal(_normal_at(x, z, step))
 			surface.set_uv(Vector2(gx, gz) / float(GRID_RES))
 			surface.add_vertex(Vector3(x, height, z))
@@ -166,16 +254,32 @@ func _normal_at(x: float, z: float, step: float) -> Vector3:
 	return Vector3(left - right, 2.0 * step, back - front).normalized()
 
 
-func _color_for_height(height: float) -> Color:
-	if height < 0.6:
-		return Color(0.30, 0.46, 0.20)
-	if height < 2.2:
-		return Color(0.36, 0.52, 0.22)
-	if height < 9.0:
-		return Color(0.22, 0.40, 0.17)
-	if height < 14.0:
-		return Color(0.42, 0.40, 0.34)
-	return Color(0.82, 0.83, 0.86)
+func _color_for(biome: int, height: float) -> Color:
+	# Plage et fonds marins.
+	if height < -1.0:
+		return Color(0.34, 0.40, 0.30)
+	if height < 1.1:
+		return Color(0.58, 0.52, 0.36)
+	if height < BEACH_MAX_HEIGHT:
+		return Color(0.78, 0.70, 0.47)
+	# Sommets rocheux.
+	if height > 15.0:
+		return Color(0.82, 0.83, 0.86)
+	if height > 12.0:
+		return Color(0.46, 0.44, 0.40)
+
+	# Couleurs des biomes de plaine.
+	match biome:
+		BIOME_FARM:
+			return Color(0.40, 0.31, 0.19)
+		BIOME_FOREST:
+			return Color(0.13, 0.30, 0.13)
+		BIOME_PLAINS:
+			return Color(0.46, 0.64, 0.27)
+		BIOME_WOODLAND:
+			return Color(0.24, 0.42, 0.19)
+		_:
+			return Color(0.36, 0.40, 0.28)
 
 
 # --- Végétation --------------------------------------------------------------
@@ -187,44 +291,181 @@ func _spawn_props() -> void:
 		return
 
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 1234567
+	rng.seed = _noise.seed + 1337
 
+	# Budgets par biome : garantit une forêt dense, des plaines aérées,
+	# un bocage mixte, des hauteurs minérales et un carré agricole.
+	var next_id := 0
+	next_id = _scatter_forest(scene, rng, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_PLAINS, 70, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_WOODLAND, 60, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_HIGHLANDS, 45, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_FARM, 12, next_id)
+	next_id = _scatter_beach(scene, rng, 45, next_id)
+
+	_ensure_deep_minerals(scene)
+
+
+## Forêt dense : groupes d'arbres serrés (clairières entre les bosquets),
+## pour un vrai rendu de sous-bois sans saturer toute l'île.
+func _scatter_forest(scene: PackedScene, rng: RandomNumberGenerator, id_start: int) -> int:
+	var placed := 0
+	var clusters := 0
+	while placed < 240 and clusters < 70:
+		clusters += 1
+		var anchor := Vector3.ZERO
+		var found := false
+		for attempt in 40:
+			var angle := rng.randf() * TAU
+			var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.44
+			var ax := cos(angle) * radius
+			var az := sin(angle) * radius
+			var ah := get_height_at(ax, az)
+			if ah < BEACH_MAX_HEIGHT or ah > 15.0:
+				continue
+			if _biome_at(ax, az) != BIOME_FOREST:
+				continue
+			anchor = Vector3(ax, ah, az)
+			found = true
+			break
+		if not found:
+			continue
+
+		var cluster_size := rng.randi_range(6, 13)
+		for tree_index in cluster_size:
+			if placed >= 240:
+				break
+			var off := Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * 11.0
+			var fx := anchor.x + off.x
+			var fz := anchor.z + off.y
+			var fh := get_height_at(fx, fz)
+			if fh < BEACH_MAX_HEIGHT or fh > 15.0:
+				continue
+			if _biome_at(fx, fz) != BIOME_FOREST:
+				continue
+			_spawn_prop(scene, "arbre", Vector3(fx, fh, fz), rng.randf() * TAU, id_start + placed)
+			placed += 1
+	return id_start + placed
+
+
+## Disperse `count` ressources d'un biome donné, en rejetant les positions hors
+## biome/altitude. Retourne le prochain identifiant de sauvegarde libre.
+func _scatter_biome(scene: PackedScene, rng: RandomNumberGenerator, biome: int, count: int, id_start: int) -> int:
 	var placed := 0
 	var attempts := 0
-	while placed < PROP_COUNT and attempts < 4000:
+	var max_attempts := count * 160
+	while placed < count and attempts < max_attempts:
 		attempts += 1
 		var angle := rng.randf() * TAU
-		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.44
+		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.46
 		var x := cos(angle) * radius
 		var z := sin(angle) * radius
 		var height := get_height_at(x, z)
-		if height < 1.4:
+		if height < BEACH_MAX_HEIGHT or height > 15.0:
 			continue
-
-		var prop: Harvestable = scene.instantiate()
-		if height < 1.5:
-			prop.kind = "argile"
-		elif height < 4.0:
-			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
-		elif height > 14.0:
-			# Profondeurs : minerais rares, or et charbon.
-			prop.kind = "or" if rng.randf() < 0.35 else "charbon"
-		elif height > 12.0:
-			prop.kind = "fer" if rng.randf() < 0.5 else "cristal"
-		elif height > 9.0:
-			prop.kind = "rocher"
-		elif rng.randf() < 0.8:
-			prop.kind = "arbre"
-		else:
-			prop.kind = "buisson"
-
-		prop.position = Vector3(x, height, z)
-		prop.rotation.y = rng.randf() * TAU
-		prop.save_id = placed
-		add_child(prop)
+		if _biome_at(x, z) != biome:
+			continue
+		var kind := _pick_prop(biome, height, rng)
+		if kind.is_empty():
+			continue
+		_spawn_prop(scene, kind, Vector3(x, height, z), rng.randf() * TAU, id_start + placed)
 		placed += 1
+	return id_start + placed
 
-	_ensure_deep_minerals(scene)
+
+## Disperse la végétation de plage (palmiers, argile, buissons) sur le littoral.
+func _scatter_beach(scene: PackedScene, rng: RandomNumberGenerator, count: int, id_start: int) -> int:
+	var placed := 0
+	var attempts := 0
+	var max_attempts := count * 160
+	while placed < count and attempts < max_attempts:
+		attempts += 1
+		var angle := rng.randf() * TAU
+		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.46
+		var x := cos(angle) * radius
+		var z := sin(angle) * radius
+		var height := get_height_at(x, z)
+		if height < 0.8 or height > BEACH_MAX_HEIGHT:
+			continue
+		if Vector2(x, z).length() < ISLAND_SIZE * 0.32:
+			continue
+		var kind := _pick_beach_prop(rng)
+		if kind.is_empty():
+			continue
+		_spawn_prop(scene, kind, Vector3(x, height, z), rng.randf() * TAU, id_start + placed)
+		placed += 1
+	return id_start + placed
+
+
+func _spawn_prop(scene: PackedScene, kind: String, pos: Vector3, yaw: float, save_id: int) -> void:
+	var prop: Harvestable = scene.instantiate()
+	prop.kind = kind
+	prop.position = pos
+	prop.rotation.y = yaw
+	prop.save_id = save_id
+	add_child(prop)
+
+
+## Choisit une ressource cohérente avec le biome et l'altitude.
+func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator) -> String:
+	if height > 14.0:
+		return "or" if rng.randf() < 0.3 else "charbon"
+	if height > 12.0:
+		return "fer" if rng.randf() < 0.5 else "cristal"
+	if height > 9.0:
+		return "rocher" if rng.randf() < 0.75 else "arbre"
+
+	var r := rng.randf()
+	match biome:
+		BIOME_FOREST:
+			if r < 0.78:
+				return "arbre"
+			if r < 0.90:
+				return "buisson"
+			if r < 0.97:
+				return "seed"
+			return "rocher"
+		BIOME_PLAINS:
+			if r < 0.22:
+				return "arbre"
+			if r < 0.62:
+				return "buisson"
+			if r < 0.90:
+				return "seed"
+			return "rocher"
+		BIOME_WOODLAND:
+			if r < 0.50:
+				return "arbre"
+			if r < 0.68:
+				return "buisson"
+			if r < 0.85:
+				return "rocher"
+			return "fer"
+		BIOME_HIGHLANDS:
+			if r < 0.50:
+				return "rocher"
+			if r < 0.72:
+				return "fer"
+			if r < 0.88:
+				return "cristal"
+			return "arbre"
+		BIOME_FARM:
+			return "buisson" if r < 0.40 else ""
+	return "arbre"
+
+
+func _pick_beach_prop(rng: RandomNumberGenerator) -> String:
+	var r := rng.randf()
+	if r < 0.42:
+		return "palmier"
+	if r < 0.60:
+		return "argile"
+	if r < 0.75:
+		return "buisson"
+	if r < 0.84:
+		return "rocher"
+	return ""
+
 
 
 ## Garantit la présence de charbon et d'or sur les points les plus hauts,
@@ -232,10 +473,10 @@ func _spawn_props() -> void:
 func _ensure_deep_minerals(scene: PackedScene) -> void:
 	var peaks: Array[Vector3] = []
 	var peak_heights: Array[float] = []
-	for i in range(-42, 43):
-		for j in range(-42, 43):
-			var x := i * 3.0
-			var z := j * 3.0
+	for i in range(-52, 53):
+		for j in range(-52, 53):
+			var x := i * 4.0
+			var z := j * 4.0
 			var h := get_height_at(x, z)
 			if h <= 1.5:
 				continue
@@ -261,7 +502,7 @@ func _ensure_deep_minerals(scene: PackedScene) -> void:
 
 ## Point d'échouage du bateau sur l'eau près du rivage (hauteur sous l'eau entre -2.0 et -0.3).
 func find_boat_spawn_point() -> Vector3:
-	var radii: Array[float] = [105.0, 112.0, 118.0, 124.0, 128.0]
+	var radii: Array[float] = [158.0, 166.0, 174.0, 182.0, 190.0, 198.0, 206.0]
 	for radius in radii:
 		for step in 24:
 			var angle := step * TAU / 24.0
@@ -317,10 +558,10 @@ func _generate_caves() -> void:
 	if generated.is_empty():
 		var apex := Vector3.ZERO
 		var apex_height := -INF
-		for i in range(-42, 43):
-			for j in range(-42, 43):
-				var px := i * 3.0
-				var pz := j * 3.0
+		for i in range(-52, 53):
+			for j in range(-52, 53):
+				var px := i * 4.0
+				var pz := j * 4.0
 				var ph := get_height_at(px, pz)
 				if ph > apex_height:
 					apex_height = ph
@@ -387,19 +628,21 @@ func is_in_cave(position: Vector3) -> bool:
 
 
 func _spawn_crops() -> void:
-	var count := 6
+	# La zone agricole est un plateau plat dédié : on y sème quelques plants.
+	var count := 14
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 9876543
+	rng.seed = _noise.seed + 987654
 	var placed := 0
 	var attempts := 0
-	while placed < count and attempts < 2000:
+	while placed < count and attempts < 400:
 		attempts += 1
-		var angle := rng.randf() * TAU
-		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.44
-		var x := cos(angle) * radius
-		var z := sin(angle) * radius
+		var off := Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * (FARM_RADIUS - 3.0)
+		var x := _farm_center.x + off.x
+		var z := _farm_center.y + off.y
+		if _biome_at(x, z) != BIOME_FARM:
+			continue
 		var height := get_height_at(x, z)
-		if height < 4.0:
+		if height < 2.0:
 			continue
 		var crop := Crop.new()
 		crop.item_id = "berry"

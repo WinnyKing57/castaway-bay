@@ -148,8 +148,11 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 		player.global_position = Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
 		# Position aberrante (hors du monde) : on replace le joueur sur la plage.
 		var horizontal := Vector2(player.global_position.x, player.global_position.z)
+		var max_horizontal := 230.0
+		if world != null and world.has_method("world_radius"):
+			max_horizontal = float(world.call("world_radius")) + 20.0
 		if world != null and world.has_method("find_spawn_point") \
-				and (horizontal.length() > 140.0 or player.global_position.y < -20.0 or player.global_position.y > 300.0):
+				and (horizontal.length() > max_horizontal or player.global_position.y < -20.0 or player.global_position.y > 300.0):
 			player.global_position = world.call("find_spawn_point")
 	player.rotation.y = _num(saved_player.get("rotation_y"), 0.0)
 	if player.has_method("set_pitch"):
