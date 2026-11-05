@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "corn"
+display_name = "Maïs"
+description = "Un épi de maïs doré. Plus nourrissant que les baies."
+category = "nourriture"
+max_stack = 20
+value = 3
+is_consumable = true
+hunger_restore = 20.0
+thirst_restore = 5.0

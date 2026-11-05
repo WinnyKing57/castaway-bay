@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "flour"
+display_name = "Farine"
+description = "Moud 3 blés en 2 farines."
+inputs = {"wheat": 3}
+outputs = {"flour": 2}
