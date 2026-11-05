@@ -479,10 +479,12 @@ func _run_smoke_test() -> void:
 		errors.append("aucune grotte générée")
 
 	# Biomes : diversité (forêt / plaine / ferme) et zone agricole peuplée.
-	var biome_counts := [0, 0, 0, 0, 0]
+	var biome_counts := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	for gx in range(-10, 11):
 		for gz in range(-10, 11):
 			var biome: int = world._biome_at(gx * 16.0, gz * 16.0)
+			if biome >= biome_counts.size():
+				biome_counts.resize(biome + 1)
 			biome_counts[biome] += 1
 	print("[Test] biomes (échantillon) : ", biome_counts)
 	if int(biome_counts[Island.BIOME_FOREST]) == 0:
@@ -491,6 +493,10 @@ func _run_smoke_test() -> void:
 		errors.append("aucune plaine générée")
 	if int(biome_counts[Island.BIOME_FARM]) == 0:
 		errors.append("aucune zone agricole générée")
+	if int(biome_counts[Island.BIOME_MOUNTAIN]) == 0:
+		errors.append("aucune montagne générée")
+	if int(biome_counts[Island.BIOME_BEACH]) == 0:
+		errors.append("aucune plage générée")
 	var crop_count := 0
 	for child in world.get_children():
 		if child is Crop:

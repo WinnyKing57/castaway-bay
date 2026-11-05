@@ -26,8 +26,10 @@ const SWIM_ENTER_DEPTH := 1.4
 const SWIM_EXIT_DEPTH := 0.5
 ## Profondeur à laquelle le joueur flotte (le corps est à moitié immergé).
 const SWIM_FLOAT_DEPTH := 1.0
-## Limite du monde : le terrain fait ±130 m, on reste dans ce cercle.
-const WORLD_RADIUS := 128.0
+## Limite du monde : déterminée dynamiquement par Island.world_radius().
+## La valeur par défaut 128.0 est conservée comme valeur minimale
+## mais la vraie borne vient du générateur d'île actif.
+var world_radius_offset := 20.0
 
 ## Rayon à proximité duquel un feu de camp / fourneau compte comme station.
 const CRAFT_STATION_RANGE := 4.0
@@ -133,12 +135,16 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
-	# Limite du monde : on clamp le joueur dans le cercle de rayon WORLD_RADIUS.
+	# Limite du monde : on clamp le joueur dans le cercle de rayon Island.world_radius() + offset.
 	var horizontal := Vector2(global_position.x, global_position.z)
-	if horizontal.length() > WORLD_RADIUS:
+	var max_radius := 128.0
+	var world_node := get_node_or_null("/root/Main/World")
+	if world_node != null and world_node.has_method("world_radius"):
+		max_radius = float(world_node.call("world_radius")) + world_radius_offset
+	if horizontal.length() > max_radius:
 		var angle := atan2(global_position.z, global_position.x)
-		global_position.x = cos(angle) * WORLD_RADIUS
-		global_position.z = sin(angle) * WORLD_RADIUS
+		global_position.x = cos(angle) * max_radius
+		global_position.z = sin(angle) * max_radius
 	_update_craft_station()
 	_update_interaction_prompt()
 	_update_footsteps(delta)

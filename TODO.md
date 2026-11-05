@@ -178,14 +178,17 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 
 ### 3. PNJ, campements et commerce insulaire (M6)
 - [x] Automate de troc (marchand itinérant) avec géométrie et collision visibles
-- [ ] Épave de navire marchand avec survivants
+- [x] Épave de navire marchand avec survivant (Trader) générée sur l'île et posée
+      aléatoirement (`world/island.gd` → `_spawn_secondary_islands()`)
 - [x] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées)
 - [x] Monnaie locale ou troc direct d'objets rares
 - [x] Dialogues et livre de bord / journal d'aventure
 
 ### 4. Véhicules et exploration lointaine (M5 suite)
 - [x] Véhicule terrestre (buggy / quad tout-terrain pour parcourir les reliefs) : `world/quad.gd` (CharacterBody3D, pilotage, emboard/exit, sauvegarde) + spawn/island/save + interaction E
-- [ ] Îlots secondaires accessibles en bateau avec ressources uniques
+- [x] Îles secondaires : 3 îlots générés autour de l'île principale avec biomes et
+      ressources uniques (`world/island.gd` → `_spawn_secondary_islands()`), épave de
+      navire avec survivant posée sur l'un d'eux
 - [x] Cartographie / boussole artisanale — boussole HUD 8 directions (`ui/hud.gd`) suivant le cap du joueur
 
 ### 5. Finition et distribution (M7 suite)
@@ -197,9 +200,12 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 
 ## Fait — carte étendue et biomes (monde actuel)
 - [x] Île agrandie (260 → 420 m, grille 160) : monde plus vaste, même résolution de détail
+- [x] Île agrandie (420 → 520 m, grille 160 → 240) : monde (~520 m de diamètre, ~1,15 km de
+      diamètre avec le rayon de déploiement) et résolution de terrain nettement plus fine
 - [x] Biomes de surface garantis sur chaque île par secteurs angulaires déformés par un
       bruit basse fréquence : **forêt dense**, **plaines plates**, **bocage**,
-      **hauteurs rocheuses**, plus **plage** littorale et **zone agricole** dédiée
+      **hauteurs rocheuses**, plus **plage** littorale, **pré** fleuri, **plateau agricole**,
+      **montagne** et **île secondaire** — 10 biomes au total
 - [x] Relief modelé par biome : plaines aplaties, hauteurs accentuées, plateau agricole
       avec fondu progressif (aucune falaise aux transitions de biome)
 - [x] Végétation par biome : bosquets d'arbres serrés en forêt (vraie densité de
@@ -273,3 +279,10 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 4. **Finition M7** — lot D (musiques faites ; reste la distribution/itch.io).
 5. **Gameplay complémentaire** — lot E.
 6. **Technique/LOD/manette/traductions** — lot F.
+
+## Documentation
+
+- [x] Suite de documentation française complète (`docs/`) : architecture, monde, survie,
+      récolte, artisanat, construction, véhicules, agriculture, marché/réputation/quêtes,
+      sauvegarde/UI, tests — indexé depuis `README.md` (`docs/INDEX.md`)
+- [x] `README.md` à jour avec la documentation des systèmes livrés.

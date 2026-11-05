@@ -6,8 +6,8 @@ extends Node3D
 ## La graine est mémorisée dans GameState.world_seed et sauvegardée, afin
 ## qu'un chargement retrouve exactement le même relief.
 
-const ISLAND_SIZE := 420.0
-const GRID_RES := 160
+const ISLAND_SIZE := 520.0          # Île principale agrandie (~520 m de diamètre)
+const GRID_RES := 240               # Grille de terrain plus détaillée
 const SEA_LEVEL := 0.0
 
 ## Biomes de surface. La plage et les sommets sont déterminés par l'altitude,
@@ -17,18 +17,28 @@ const BIOME_FOREST := 1
 const BIOME_WOODLAND := 2
 const BIOME_HIGHLANDS := 3
 const BIOME_FARM := 4
+const BIOME_BEACH := 5           # Nouveaux biomes
+const BIOME_PLAINS_PLATEAU := 6  # Plateaux agricoles
+const BIOME_MEADOW := 7          # Préaux fleuris
+const BIOME_MOUNTAIN := 8        # Sommets rocheux
+const BIOME_SECONDARY_ISLAND := 9 # Îlots secondaires
 
-## Altitude maximale de la plage (sable) et rayon de la zone agricole.
+## Altitudes limites.
 const BEACH_MAX_HEIGHT := 2.4
 const FARM_RADIUS := 22.0
+const MOUNTAIN_TOP_HEIGHT := 30.0
 
 ## Radius de detection d'une grotte pour l'ambiance dark/torche.
 const CAVE_PROXIMITY := 5.0
 ## nombre maxi de grottes générées par île.
-const CAVE_COUNT := 6
+const CAVE_COUNT := 8           # Augmenté de 6 à 8
 
 ## Positions des grottes stockées pour la détection d'ambiance.
 var caves: Array = []
+
+## Facteur d'extension pour les îles secondaires.
+const SECONDARY_ISLAND_RADIUS := 340.0   # rayon à partir duquel apparaissent les îles secondaires
+const SECONDARY_ISLAND_COUNT := 3        # nombre d'îlots secondaires
 
 var _noise: FastNoiseLite
 var _noise2: FastNoiseLite
@@ -81,6 +91,7 @@ func generate(seed_value: int = 0) -> void:
 	_build_terrain()
 	_spawn_props()
 	_generate_caves()
+	_spawn_secondary_islands()
 	_spawn_boat()
 	_spawn_quad()
 	_spawn_crops()
@@ -114,12 +125,15 @@ func get_height_at(x: float, z: float) -> float:
 		height += pow(n2, 1.6) * 12.0 * falloff
 
 	var v := _sector_value(x, z)
-	var plains_w := _band_weight(v, 1.4, 2.2, 0.22)
-	var highlands_w := _band_weight(v, 3.1, 4.0, 0.22)
-	if plains_w > 0.0:
-		height = lerpf(height, 3.7, 0.5 * falloff * plains_w)
-	if highlands_w > 0.0:
-		height *= lerpf(1.0, 1.14, highlands_w)
+	var forest_w := _band_weight(v, 0.2, 1.2, 0.22)    # secteur forêt (moins élevé)
+	var plateau_w := _band_weight(v, 3.6, 4.6, 0.22)   # secteur plateau/plaine agricole (plat)
+	var mountain_w := _band_weight(v, 6.8, 7.9, 0.22)  # secteur montagne (accentué)
+	if forest_w > 0.0:
+		height *= lerpf(1.0, 0.92, forest_w)   # forêt un peu plus douce
+	if plateau_w > 0.0:
+		height = lerpf(height, 3.0, 0.85 * falloff * plateau_w)   # plateau plat
+	if mountain_w > 0.0:
+		height *= lerpf(1.0, 1.28, mountain_w)   # montagnes plus hautes
 
 	# Zone agricole : plateau plat garanti, fondu progressif jusqu'au bord.
 	var farm_dist := Vector2(x, z).distance_to(_farm_center)
@@ -135,15 +149,34 @@ func get_height_at(x: float, z: float) -> float:
 func _biome_at(x: float, z: float) -> int:
 	if _biome_noise == null:
 		return BIOME_WOODLAND
+	var height := get_height_at(x, z)
+
+	# Plage : altitude basse, proche du bord.
+	if height < BEACH_MAX_HEIGHT and height >= SEA_LEVEL:
+		return BIOME_BEACH
+
+	# Sommets rocheux : très haute altitude.
+	if height > 22.0:
+		return BIOME_MOUNTAIN
+
+	# Îles secondaires : hors de l'île principale.
+	if Vector2(x, z).length() > ISLAND_SIZE * 0.5 + 60.0:
+		return BIOME_SECONDARY_ISLAND
+
+	# Zone agricole principale.
 	if Vector2(x, z).distance_to(_farm_center) < FARM_RADIUS:
 		return BIOME_FARM
 
 	var v := _sector_value(x, z)
-	if v < 1.4:
+	if v < 1.2:
 		return BIOME_FOREST
 	if v < 2.2:
+		return BIOME_MEADOW
+	if v < 3.6:
 		return BIOME_PLAINS
-	if v < 3.1:
+	if v < 4.6:
+		return BIOME_PLAINS_PLATEAU
+	if v < 6.8:
 		return BIOME_WOODLAND
 	return BIOME_HIGHLANDS
 
@@ -155,7 +188,7 @@ func _sector_value(x: float, z: float) -> float:
 		return 0.0
 	var sector := (atan2(z, x) + PI) / TAU
 	var warp := _biome_noise.get_noise_2d(x, z) * 0.16
-	return fposmod(sector + warp, 1.0) * 4.0
+	return fposmod(sector + warp, 1.0) * 8.0   # 8 biomes au lieu de 4
 
 
 ## Poids lissé d'un intervalle [lo, hi] avec fondu de largeur `blend` aux bords.
@@ -263,8 +296,10 @@ func _color_for(biome: int, height: float) -> Color:
 	if height < BEACH_MAX_HEIGHT:
 		return Color(0.78, 0.70, 0.47)
 	# Sommets rocheux.
-	if height > 15.0:
+	if height > 22.0:
 		return Color(0.82, 0.83, 0.86)
+	if height > 15.0:
+		return Color(0.52, 0.49, 0.45)
 	if height > 12.0:
 		return Color(0.46, 0.44, 0.40)
 
@@ -278,6 +313,16 @@ func _color_for(biome: int, height: float) -> Color:
 			return Color(0.46, 0.64, 0.27)
 		BIOME_WOODLAND:
 			return Color(0.24, 0.42, 0.19)
+		BIOME_MEADOW:
+			return Color(0.38, 0.58, 0.22)      # Vert plus clair, pré fleuri
+		BIOME_PLAINS_PLATEAU:
+			return Color(0.42, 0.48, 0.24)      # Plateau agricole plus foncé
+		BIOME_HIGHLANDS:
+			return Color(0.36, 0.40, 0.28)
+		BIOME_MOUNTAIN:
+			return Color(0.50, 0.48, 0.44)
+		BIOME_SECONDARY_ISLAND:
+			return Color(0.20, 0.45, 0.20)      # Jungle/îlot tropical
 		_:
 			return Color(0.36, 0.40, 0.28)
 
@@ -297,11 +342,14 @@ func _spawn_props() -> void:
 	# un bocage mixte, des hauteurs minérales et un carré agricole.
 	var next_id := 0
 	next_id = _scatter_forest(scene, rng, next_id)
-	next_id = _scatter_biome(scene, rng, BIOME_PLAINS, 70, next_id)
-	next_id = _scatter_biome(scene, rng, BIOME_WOODLAND, 60, next_id)
-	next_id = _scatter_biome(scene, rng, BIOME_HIGHLANDS, 45, next_id)
-	next_id = _scatter_biome(scene, rng, BIOME_FARM, 12, next_id)
-	next_id = _scatter_beach(scene, rng, 45, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_PLAINS, 120, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_WOODLAND, 100, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_HIGHLANDS, 80, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_MEADOW, 60, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_PLAINS_PLATEAU, 40, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_FARM, 24, next_id)
+	next_id = _scatter_biome(scene, rng, BIOME_MOUNTAIN, 30, next_id)
+	next_id = _scatter_beach(scene, rng, 90, next_id)
 
 	_ensure_deep_minerals(scene)
 
@@ -414,6 +462,8 @@ func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator) -> String
 		return "fer" if rng.randf() < 0.5 else "cristal"
 	if height > 9.0:
 		return "rocher" if rng.randf() < 0.75 else "arbre"
+	if height > 7.0:
+		return "fer" if rng.randf() < 0.6 else "cristal"
 
 	var r := rng.randf()
 	match biome:
@@ -449,8 +499,50 @@ func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator) -> String
 			if r < 0.88:
 				return "cristal"
 			return "arbre"
-		BIOME_FARM:
-			return "buisson" if r < 0.40 else ""
+		BIOME_MEADOW:
+			if r < 0.30:
+				return "buisson"
+			if r < 0.65:
+				return "seed"
+			return "arbre"
+		BIOME_PLAINS_PLATEAU:
+			if r < 0.25:
+				return "arbre"
+			if r < 0.55:
+				return "buisson"
+			if r < 0.80:
+				return "seed"
+			return "rocher"
+		BIOME_MOUNTAIN:
+			if r < 0.40:
+				return "rocher"
+			if r < 0.65:
+				return "fer"
+			if r < 0.85:
+				return "cristal"
+			return "arbre"
+		BIOME_BEACH:
+			if r < 0.42:
+				return "palmier"
+			if r < 0.60:
+				return "argile"
+			if r < 0.75:
+				return "buisson"
+			if r < 0.84:
+				return "rocher"
+			return ""
+		BIOME_SECONDARY_ISLAND:
+			if r < 0.30:
+				return "palmier"
+			if r < 0.50:
+				return "cristal"
+			if r < 0.70:
+				return "buisson"
+			if r < 0.85:
+				return "rocher"
+			if r < 0.95:
+				return "or"
+			return "arbre"
 	return "arbre"
 
 
@@ -501,8 +593,17 @@ func _ensure_deep_minerals(scene: PackedScene) -> void:
 
 
 ## Point d'échouage du bateau sur l'eau près du rivage (hauteur sous l'eau entre -2.0 et -0.3).
+## Rayons dynamiques proportionnels à ISLAND_SIZE.
 func find_boat_spawn_point() -> Vector3:
-	var radii: Array[float] = [158.0, 166.0, 174.0, 182.0, 190.0, 198.0, 206.0]
+	var radii: Array[float] = [
+		ISLAND_SIZE * 0.38,
+		ISLAND_SIZE * 0.40,
+		ISLAND_SIZE * 0.42,
+		ISLAND_SIZE * 0.44,
+		ISLAND_SIZE * 0.46,
+		ISLAND_SIZE * 0.48,
+		ISLAND_SIZE * 0.50
+	]
 	for radius in radii:
 		for step in 24:
 			var angle := step * TAU / 24.0
@@ -511,7 +612,7 @@ func find_boat_spawn_point() -> Vector3:
 			var height := get_height_at(x, z)
 			if height >= -2.0 and height <= -0.3:
 				return Vector3(x, 0.0, z)
-	return Vector3(0.0, 0.0, 115.0)
+	return Vector3(0.0, 0.0, ISLAND_SIZE * 0.25)
 
 
 func _spawn_boat() -> void:
@@ -616,6 +717,108 @@ func _build_cave_entrance(pos: Vector3, yaw: float) -> void:
 	entrance.add_child(dark)
 
 	add_child(entrance)
+
+
+## Spawn secondary islands with unique biomes and resources.
+func _spawn_secondary_islands() -> void:
+	var scene: PackedScene = load("res://world/harvestable.tscn")
+	if scene == null:
+		push_error("[Island] harvestable.tscn introuvable")
+		return
+	
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _noise.seed + 5555
+	
+	for i in SECONDARY_ISLAND_COUNT:
+		var island_radius := rng.randf_range(SECONDARY_ISLAND_RADIUS * 0.7, SECONDARY_ISLAND_RADIUS * 0.9)
+		var island_angle := rng.randf() * TAU
+		var center_x := cos(island_angle) * island_radius
+		var center_z := sin(island_angle) * island_radius
+		var island_center := Vector2(center_x, center_z)
+		
+		var island_biome := rng.randi() % 4 + 5  # 5-8 (beach, plains, meadow, mountain)
+		var island_biome_noise := FastNoiseLite.new()
+		island_biome_noise.seed = _noise.seed + i * 1000
+		island_biome_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		island_biome_noise.frequency = 0.0025
+		island_biome_noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+		island_biome_noise.fractal_octaves = 1
+		
+		var island_spawned := 0
+		var max_trees := 0
+		match island_biome:
+			5:  # BIOME_BEACH
+				max_trees = 60
+				var props := ["palmier", "buisson", "rocher", "argile"]
+				for j in max_trees:
+					var angle := rng.randf() * TAU
+					var radius := sqrt(rng.randf()) * island_radius * 0.3
+					var x := cos(angle) * radius + center_x
+					var z := sin(angle) * radius + center_z
+					var height := get_height_at(x, z)
+					if height < 0.5 or height > BEACH_MAX_HEIGHT:
+						continue
+					var kind := rng.randf_range(0, len(props))
+					var kind_str := props[int(kind)]
+					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
+			6:  # BIOME_PLAINS_PLATEAU
+				max_trees = 100
+				var props := ["buisson", "seed", "rocher", "fer"]
+				for j in max_trees:
+					var angle := rng.randf() * TAU
+					var radius := sqrt(rng.randf()) * island_radius * 0.35
+					var x := cos(angle) * radius + center_x
+					var z := sin(angle) * radius + center_z
+					var height := get_height_at(x, z)
+					if height < 1.5 or height > 12.0:
+						continue
+					var kind_idx := rng.randf_range(0, len(props))
+					var kind_str := props[int(kind_idx)]
+					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
+			7:  # BIOME_MEADOW
+				max_trees = 80
+				var props := ["buisson", "seed", "rocher", "cristal"]
+				for j in max_trees:
+					var angle := rng.randf() * TAU
+					var radius := sqrt(rng.randf()) * island_radius * 0.4
+					var x := cos(angle) * radius + center_x
+					var z := sin(angle) * radius + center_z
+					var height := get_height_at(x, z)
+					if height < 2.0 or height > 15.0:
+						continue
+					var kind_idx := rng.randf_range(0, len(props))
+					var kind_str := props[int(kind_idx)]
+					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
+			8:  # BIOME_MOUNTAIN
+				max_trees = 70
+				var props := ["rocher", "fer", "cristal", "or"]
+				for j in max_trees:
+					var angle := rng.randf() * TAU
+					var radius := sqrt(rng.randf()) * island_radius * 0.35
+					var x := cos(angle) * radius + center_x
+					var z := sin(angle) * radius + center_z
+					var height := get_height_at(x, z)
+					if height < 5.0 or height > 25.0:
+						continue
+					var kind_idx := rng.randf_range(0, len(props))
+					var kind_str := props[int(kind_idx)]
+					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
+	# Spawn merchant wreck and survivor
+	var wreck_scene := load("res://world/merchant_wreck.tscn")
+	if wreck_scene != null:
+		var wreck := wreck_scene.instantiate()
+		wreck.position = Vector3(
+			rng.randf_range(-80.0, 80.0),
+			0.0,
+			rng.randf_range(-80.0, 80.0)
+		)
+		wreck.rotation.y = rng.randf() * TAU
+		add_child(wreck)
+		
+		var survivor := Trader.new()
+		survivor.position = wreck.position + Vector3(0.0, 0.5, 0.0)
+		survivor.rotation.y = wreck.rotation.y + deg_to_rad(90.0)
+		add_child(survivor)
 
 
 ## Vrai si le joueur est proche d'une grotte (proximité < CAVE_PROXIMITY).

@@ -152,7 +152,11 @@ func apply_save_state(state: Dictionary) -> void:
 				ok = false
 		if ok:
 			var target := Vector3(float(pos[0]), float(pos[1]), float(pos[2]))
-			if Vector2(target.x, target.z).length() <= 140.0 and target.y <= 0.0 and target.y >= -20.0:
+			var world_node := get_node_or_null("/root/Main/World")
+			var max_radius := 140.0
+			if world_node != null and world_node.has_method("world_radius"):
+				max_radius = float(world_node.call("world_radius")) + 20.0
+			if Vector2(target.x, target.z).length() <= max_radius and target.y <= 0.0 and target.y >= -20.0:
 				global_position = target
 	var rot: Variant = state.get("rotation_y")
 	if (typeof(rot) == TYPE_FLOAT or typeof(rot) == TYPE_INT) and is_finite(float(rot)):

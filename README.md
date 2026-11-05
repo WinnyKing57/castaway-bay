@@ -4,7 +4,11 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 à M4 terminés**, M1 partiel (nage, sons synthétisés),
+> État actuel : **M0 à M7 livrés** (M0-M4 terminés, M5/M6/M7 partiels terminés,
+> île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
+> artisanat avancé, construction modulaire, véhicules, **persistance complète
+> (format v2)**, marchand/troc/quêtes/réputation/journal, musiques, **carte
+> étendue avec biomes variés, îles secondaires et épave de navire**.
 > M5 partiel (bateau et quad opérationnels, îlots secondaires à venir),
 > M6 partiel (marchand, troc, quêtes, réputation et journal livrés ; épave de
 > navire marchand à venir) et M7 partiel (réglages, export Linux) —
@@ -192,6 +196,31 @@ Accessible depuis le menu pause ou l'écran principal (**Échap ▸ Réglages**)
 - **Mode créatif (Matériaux infinis)** : option de triche permettant de
   fabriquer et construire sans consommer de composants. Elle peut être activée
   ou désactivée à tout moment sans corrompre la sauvegarde.
+
+---
+
+## Documentation
+
+La documentation complète du jeu et des mécaniques est disponible dans
+[`docs/`](docs/) :
+
+| Document | Contenu |
+|---|---|
+| [`docs/INDEX.md`](docs/INDEX.md) | Sommaire de la documentation |
+| [`docs/01-architecture.md`](docs/01-architecture.md) | Architecture, autoloads, données `.tres`, règles |
+| [`docs/02-monde.md`](docs/02-monde.md) | Monde, relief, biomes, grottes, îles secondaires |
+| [`docs/03-survie.md`](docs/03-survie.md) | Santé, faim, soif, fatigue, mort |
+| [`docs/04-recolte.md`](docs/04-recolte.md) | Récolte, ressources, loot, répousses |
+| [`docs/05-artisanat.md`](docs/05-artisanat.md) | Recettes, fabrication, outils |
+| [`docs/06-construction.md`](docs/06-construction.md) | Construction, grille, fantôme, niveaux |
+| [`docs/07-vehicules.md`](docs/07-vehicules.md) | Bateau, quad, navigation, épave |
+| [`docs/08-agriculture.md`](docs/08-agriculture.md) | Agriculture, semis, croissance |
+| [`docs/09-marche-repetition.md`](docs/09-marche-repetition.md) | Marchand, troc, quêtes, réputation, journal |
+| [`docs/10-sauvegarde-ui.md`](docs/10-sauvegarde-ui.md) | Sauvegarde, interface, signaux |
+| [`docs/11-tests.md`](docs/11-tests.md) | Tests, smoke test, outils |
+
+Chaque document explique le fonctionnement d'un système : entrées, sorties,
+états et exemples.
 
 ---
 
