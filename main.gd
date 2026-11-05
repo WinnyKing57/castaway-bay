@@ -12,12 +12,17 @@ extends Node3D
 @onready var menu: MenuPanel = $HUD/MenuPanel
 @onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
+@onready var sun = $Sun
 
 ## Intervalle de la sauvegarde automatique (secondes de jeu).
 const AUTOSAVE_SECONDS := 120.0
 
 ## Vrai uniquement pendant une vraie partie (pas au menu, pas en test/outils).
 var _in_game := false
+
+## Ambiance de grotte : état courant et cadence des sons d'ambiance.
+var _cave_sound_cooldown := 0.0
+var _cave_warned := false
 
 
 func _ready() -> void:
@@ -64,6 +69,38 @@ func _ready() -> void:
 func _is_dev_run() -> bool:
 	var args := OS.get_cmdline_user_args()
 	return "--smoke-test" in args or "--overview" in args or "--show-crafting" in args
+
+
+## Ambiance des grottes : obscurité progressive + sons réverbérants.
+## S'exécute à chaque image tant que le jeu n'est pas en pause.
+func _process(delta: float) -> void:
+	if get_tree().paused or GameState.is_dead:
+		return
+	if player == null or world == null or sun == null:
+		return
+
+	var in_cave: bool = world.is_in_cave(player.global_position)
+	var target := 1.0 if in_cave else 0.0
+	sun.cave_darkness = move_toward(sun.cave_darkness, target, delta * 2.5)
+	Sfx.set_cave(in_cave)
+
+	if not in_cave:
+		_cave_warned = false
+		return
+
+	# Sons d'ambiance espacés : souffle de grotte et gouttes d'eau.
+	_cave_sound_cooldown -= delta
+	if _cave_sound_cooldown <= 0.0:
+		_cave_sound_cooldown = 12.0
+		Sfx.play("cave", player.global_position, -6.0)
+
+	if not _cave_warned:
+		_cave_warned = true
+		var has_torch: bool = GameState.selected_hotbar_item() == "torch" and GameState.get_item_count("torch") > 0
+		if has_torch:
+			GameState.notify("Grotte : la torche éclaire faiblement autour de toi.")
+		else:
+			GameState.notify("Grotte sombre : sélectionne une torche (touche 3) pour voir clair.")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -324,7 +361,7 @@ func _run_smoke_test() -> void:
 		errors.append("joueur sous le niveau de la mer")
 
 	# Végétation : l'île doit contenir de quoi survivre (bois, fibres, cocos).
-	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0}
+	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0, "charbon": 0, "or": 0}
 	for child in world.get_children():
 		if child is Harvestable:
 			kinds[child.kind] = int(kinds.get(child.kind, 0)) + 1
@@ -333,6 +370,10 @@ func _run_smoke_test() -> void:
 		errors.append("aucun palmier généré")
 	if int(kinds["arbre"]) == 0:
 		errors.append("aucun arbre généré")
+	if int(kinds["charbon"]) == 0 or int(kinds["or"]) == 0:
+		errors.append("minerais profonds manquants (charbon/or)")
+	if world.caves.is_empty():
+		errors.append("aucune grotte générée")
 
 	# Récolte : butin ajouté et ressource déplétée (elle repoussera plus tard).
 	var test_tree: Harvestable = null

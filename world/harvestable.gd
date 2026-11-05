@@ -7,7 +7,7 @@ extends StaticBody3D
 ## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
 ## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile", "cristal") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile", "cristal", "charbon", "or") var kind: String = "arbre"
 
 ## Temps de repousse : une ressource récoltée redevient disponible après
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
@@ -49,6 +49,12 @@ func _ready() -> void:
 		"cristal":
 			_loot = {"crystal": 2}
 			_build_crystal()
+		"charbon":
+			_loot = {"coal": 3}
+			_build_charbon()
+		"or":
+			_loot = {"gold": 4}
+			_build_or()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
@@ -237,6 +243,37 @@ func _build_crystal() -> void:
 	gem.material_override = _make_material(Color(0.55, 0.8, 0.95))
 	add_child(gem)
 	_add_box_collision(Vector3(0.8, 1.6, 0.8), Vector3(0.0, 0.8, 0.0))
+
+
+func _build_charbon() -> void:
+	# Charbon : roche noire fine, minéral rare en profondeur.
+	var rock := MeshInstance3D.new()
+	var rock_mesh := BoxMesh.new()
+	rock_mesh.size = Vector3(0.5, 0.8, 0.5)
+	rock.mesh = rock_mesh
+	rock.position.y = 0.4
+	rock.material_override = _make_material(Color(0.12, 0.11, 0.10))
+	add_child(rock)
+	_add_box_collision(Vector3(0.5, 0.8, 0.5), Vector3(0.0, 0.4, 0.0))
+
+
+func _build_or() -> void:
+	# Or : bloc métallique brillant, mine précieuse.
+	var ore := MeshInstance3D.new()
+	var ore_mesh := BoxMesh.new()
+	ore_mesh.size = Vector3(0.45, 0.9, 0.45)
+	ore.mesh = ore_mesh
+	ore.position.y = 0.45
+	ore.material_override = _make_material(Color(0.85, 0.65, 0.2))
+	add_child(ore)
+	var metal := MeshInstance3D.new()
+	var metal_mesh := BoxMesh.new()
+	metal_mesh.size = Vector3(0.1, 0.95, 0.1)
+	metal.mesh = metal_mesh
+	metal.position = Vector3(0.0, 0.45, 0.0)
+	metal.material_override = _make_material(Color(1.0, 0.85, 0.4))
+	add_child(metal)
+	_add_box_collision(Vector3(0.45, 0.9, 0.45), Vector3(0.0, 0.45, 0.0))
 
 
 func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:

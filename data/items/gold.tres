@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "gold"
+display_name = "Or"
+description = "Or pur, métal précieux extrait des grottes profondes, utilisé pour les échanges avec le marchand."
+category = "ressource"
+max_stack = 99
+value = 150

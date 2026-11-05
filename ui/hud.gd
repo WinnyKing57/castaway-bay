@@ -1,7 +1,7 @@
 class_name Hud
 extends CanvasLayer
 ## Interface de jeu : jauges, horloge, invite d'interaction, inventaire, toasts,
-## barre rapide, écran de mort et informations de construction.
+## barre rapide, écran de mort, boussole et informations de construction.
 ##
 ## La vue ne décide de rien : elle lit GameState et écoute ses signaux.
 
@@ -29,6 +29,7 @@ var _player: Player
 var _slot_panels: Array[PanelContainer] = []
 var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
+var _compass_label: Label
 
 
 func _ready() -> void:
@@ -38,10 +39,33 @@ func _ready() -> void:
 	GameState.toast.connect(_show_toast)
 	GameState.died.connect(_on_died)
 
+	_build_compass()
 	_build_hotbar()
 	_refresh_inventory()
 	_refresh_hotbar()
 	toast_label.text = ""
+
+
+## Boussole discrète en bas-droite : N/E/S/O + flèche selon le cap du joueur.
+func _build_compass() -> void:
+	_compass_label = Label.new()
+	_compass_label.name = "Compass"
+	_compass_label.anchor_left = 1.0
+	_compass_label.anchor_top = 1.0
+	_compass_label.anchor_right = 1.0
+	_compass_label.anchor_bottom = 1.0
+	_compass_label.offset_left = -300.0
+	_compass_label.offset_top = -60.0
+	_compass_label.offset_right = -24.0
+	_compass_label.offset_bottom = -24.0
+	_compass_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_compass_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_compass_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	_compass_label.add_theme_constant_override("outline_size", 4)
+	_compass_label.add_theme_font_size_override("font_size", 18)
+	_compass_label.modulate = Color(0.7, 0.85, 1.0)
+	_compass_label.text = "↑ N"
+	$Root.add_child(_compass_label)
 
 
 ## Branché par main.gd une fois le joueur instancié.
@@ -58,11 +82,24 @@ func _process(delta: float) -> void:
 
 	if _player != null:
 		underwater_tint.visible = _player.is_underwater()
+		_update_compass()
 
 	if _toast_time_left > 0.0:
 		_toast_time_left -= delta
 		if _toast_time_left <= 0.0:
 			toast_label.text = ""
+
+
+## Cap du joueur : Godot regarde vers -Z au cap 0 ; +Y tourne vers l'ouest.
+## On affiche une flèche et le point cardinal le plus proche (8 directions).
+func _update_compass() -> void:
+	if _compass_label == null or _player == null:
+		return
+	var yaw := wrapf(_player.rotation.y, -PI, PI)
+	# Index 0 = N (-Z), puis O, S, E dans le sens trigonométrique.
+	var dirs := ["↑ N", "↖ NO", "← O", "↙ SO", "↓ S", "↘ SE", "→ E", "↗ NE"]
+	var index := int(round((yaw + TAU) / (TAU / 8.0))) % 8
+	_compass_label.text = str(dirs[index])
 
 
 func _on_prompt_changed(prompt: String) -> void:

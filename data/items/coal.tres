@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "coal"
+display_name = "Charbon"
+description = "Charbon de bois fossile, brûle dans le four pour cuire les briques et l'électronique."
+category = "ressource"
+max_stack = 99
+value = 20

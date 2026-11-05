@@ -139,10 +139,16 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ## À faire (par ordre de priorité)
 
 ### 1. Grottes et biomes souterrains (M1 suite)
-- [ ] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux
-- [ ] Ambiance d'éclairage sombre nécessitant la torche
-- [x] Minerais spécifiques et rares dans les profondeurs (métaaux précieux, charbon, cristaux) — incrément : cristal (kind `cristal`) récoltable
-- [ ] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs
+- [x] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux —
+      `world/island.gd` : `_generate_caves()` place des arches de roche sombres sur les hauteurs,
+      au moins une grotte garantie par île
+- [x] Ambiance d'éclairage sombre nécessitant la torche — `cave_darkness` dans `world/day_night.gd`,
+      piloté par `main.gd` (assombrit lumière ambiante, brouillard et ciel)
+- [x] Minerais spécifiques et rares dans les profondeurs (métaux précieux, charbon, cristaux) —
+      kinds `cristal`, `fer`, `charbon`, `or` + `data/items/coal.tres`, `gold.tres` ; 2 charbon
+      et 2 or garantis sur les sommets, tirage supplémentaire au-dessus de 14 m
+- [x] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs — `_make_cave()` enrichi
+      (souffle + gouttes), joué périodiquement dans les grottes ; piste musicale `cave` dédiée
 
 ### 2. Agriculture et élevage avancés
 - [ ] Système d'arrosage (récipient d'eau douce / pluie)
@@ -159,10 +165,11 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### 4. Véhicules et exploration lointaine (M5 suite)
 - [x] Véhicule terrestre (buggy / quad tout-terrain pour parcourir les reliefs) : `world/quad.gd` (CharacterBody3D, pilotage, emboard/exit, sauvegarde) + spawn/island/save + interaction E
 - [ ] Îlots secondaires accessibles en bateau avec ressources uniques
-- [ ] Cartographie / boussole artisanale
+- [x] Cartographie / boussole artisanale — boussole HUD 8 directions (`ui/hud.gd`) suivant le cap du joueur
 
 ### 5. Finition et distribution (M7 suite)
-- [ ] Intégration de musiques d'ambiance dynamiques
+- [x] Intégration de musiques d'ambiance dynamiques — pistes `day`/`dusk`/`night`/`cave`
+      bouclées, transitions automatiques (`autoload/sfx.gd`, `set_cave()`)
 - [ ] Page de distribution itch.io, packaging et builds multi-plateformes
 
 ---
@@ -173,13 +180,17 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 > de non-régression (`./run.sh --test` → `SMOKE_TEST OK`) et, quand le lot le permet,
 > des tests headless ciblés.
 
-### A. Grottes et biomes souterrains (M1 suite) — livré partiel
-- [x] Minerais spécifiques et rares dans les profondeurs (cristal) — `world/harvestable.gd`, `data/items/crystal.tres`
+### A. Grottes et biomes souterrains (M1 suite) — livré
+- [x] Minerais spécifiques et rares dans les profondeurs (cristal, fer, charbon, or) —
+      `world/harvestable.gd`, `data/items/{crystal,coal,gold}.tres`
 - [x] Éclairage sombre nécessitant la torche — constructible `torch` + `OmniLight` (`world/buildable.gd`, `data/buildables/torch.tres`)
-- [x] Ambiance sonore grottes — stream `cave` (`autoload/sfx.gd`)
-- [ ] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux
-- [ ] Ambiance d'éclairage sombre (profondeur, portée de la torche) — `torch` + `OmniLight`
-- [ ] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs
+- [x] Ambiance sonore grottes — stream `cave` enrichi (souffle + gouttes) (`autoload/sfx.gd`)
+- [x] Génération de cavités / entrées de grottes procédurales sur les flancs rocheux —
+      arches de roche sombres, une grotte minimum garantie (`world/island.gd`)
+- [x] Ambiance d'éclairage sombre (profondeur, portée de la torche) — `cave_darkness`
+      progressif (`world/day_night.gd`, piloté par `main.gd`)
+- [x] Ambiance sonore réverbérante et gouttes d'eau pour les intérieurs — `_make_cave()` +
+      piste `cave` (`autoload/sfx.gd`, `Sfx.set_cave()`)
 
 ### B. PNJ, campements et commerce insulaire (M6)
 - [x] Automate de troc (marchand itinérant) — `world/trader.gd`, spawn/save island
@@ -191,10 +202,11 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### C. Véhicules et exploration lointaine (M5 suite)
 - [x] Véhicule terrestre (buggy) — `world/quad.gd`
 - [ ] Îlots secondaires accessibles en bateau avec ressources uniques
-- [ ] Cartographie / boussole artisanale
+- [x] Cartographie / boussole artisanale — boussole HUD 8 directions
 
 ### D. Finition et distribution (M7)
-- [ ] Intégration de musiques d'ambiance dynamiques (réelles) + transitions
+- [x] Intégration de musiques d'ambiance dynamiques (réelles) + transitions — pistes bouclées
+      `day`/`dusk`/`night`/`cave` (`autoload/sfx.gd`)
 - [ ] Page de distribution itch.io, packaging et builds multi-plateformes
 
 ### E. Gameplay et survie complémentaire
@@ -204,13 +216,15 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 
 ### F. Technique et architecture
 - [ ] Streaming des zones, LOD, MultiMesh, mode manette, Steam Deck, traductions
-- [ ] Tests headless ciblés par lot : torche, musique, cave, trader, cristal, carte
+- [x] Tests headless ciblés : cave, minerais profonds (charbon/or), streams audio (dont
+      `cave`/`music`) ajoutés au smoke test ; reste : torche, trader, carte
 
 ## Prochaines étapes prioritaires (feuille de route)
 
-1. **Grotte complète** (cavités + torche + ambiance) — lot A.
+1. **Grotte complète** (cavités + torche + ambiance) — lot A : **fait**.
 2. **PNJ/commerce complet** (réputation/quêtes/dialogues) — lot B.
-3. **Îlots secondaires + cartographie** (M5) — lot C.
-4. **Finition M7** — lot D.
+3. **Îlots secondaires** (M5) — lot C : **hors périmètre pour l'instant** (monde actuel uniquement ;
+   la cartographie/boussole est faite).
+4. **Finition M7** — lot D (musiques faites ; reste la distribution/itch.io).
 5. **Gameplay complémentaire** — lot E.
 6. **Technique/LOD/manette/traductions** — lot F.

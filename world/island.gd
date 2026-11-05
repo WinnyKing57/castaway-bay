@@ -11,6 +11,14 @@ const GRID_RES := 96
 const PROP_COUNT := 80
 const SEA_LEVEL := 0.0
 
+## Radius de detection d'une grotte pour l'ambiance dark/torche.
+const CAVE_PROXIMITY := 5.0
+## nombre maxi de grottes générées par île.
+const CAVE_COUNT := 6
+
+## Positions des grottes stockées pour la détection d'ambiance.
+var caves: Array = []
+
 var _noise: FastNoiseLite
 var _noise2: FastNoiseLite
 var _mesh_instance: MeshInstance3D
@@ -43,6 +51,7 @@ func generate(seed_value: int = 0) -> void:
 
 	_build_terrain()
 	_spawn_props()
+	_generate_caves()
 	_spawn_boat()
 	_spawn_quad()
 	_spawn_crops()
@@ -197,6 +206,9 @@ func _spawn_props() -> void:
 			prop.kind = "argile"
 		elif height < 4.0:
 			prop.kind = "palmier" if rng.randf() < 0.6 else ("seed" if rng.randf() < 0.3 else "buisson")
+		elif height > 14.0:
+			# Profondeurs : minerais rares, or et charbon.
+			prop.kind = "or" if rng.randf() < 0.35 else "charbon"
 		elif height > 12.0:
 			prop.kind = "fer" if rng.randf() < 0.5 else "cristal"
 		elif height > 9.0:
@@ -211,6 +223,40 @@ func _spawn_props() -> void:
 		prop.save_id = placed
 		add_child(prop)
 		placed += 1
+
+	_ensure_deep_minerals(scene)
+
+
+## Garantit la présence de charbon et d'or sur les points les plus hauts,
+## même si le tirage aléatoire n'a rien placé au-dessus du seuil de profondeur.
+func _ensure_deep_minerals(scene: PackedScene) -> void:
+	var peaks: Array[Vector3] = []
+	var peak_heights: Array[float] = []
+	for i in range(-42, 43):
+		for j in range(-42, 43):
+			var x := i * 3.0
+			var z := j * 3.0
+			var h := get_height_at(x, z)
+			if h <= 1.5:
+				continue
+			peaks.append(Vector3(x, h, z))
+			peak_heights.append(h)
+	if peaks.is_empty():
+		return
+
+	# Tri décroissant simple pour choisir les quatre sommets les plus hauts.
+	var order: Array[int] = []
+	for idx in peaks.size():
+		order.append(idx)
+	order.sort_custom(func(a: int, b: int) -> bool: return peak_heights[a] > peak_heights[b])
+
+	var deep_kinds := ["charbon", "charbon", "or", "or"]
+	for k in mini(deep_kinds.size(), order.size()):
+		var prop: Harvestable = scene.instantiate()
+		prop.kind = deep_kinds[k]
+		prop.position = peaks[order[k]]
+		prop.save_id = 9000 + k
+		add_child(prop)
 
 
 ## Point d'échouage du bateau sur l'eau près du rivage (hauteur sous l'eau entre -2.0 et -0.3).
@@ -246,6 +292,98 @@ func _spawn_trader() -> void:
 	trader.name = "Trader"
 	trader.position = Vector3(60.0, get_height_at(60.0, 60.0), 60.0)
 	add_child(trader)
+
+
+func _generate_caves() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _noise.seed + 4242
+	var attempts := 0
+	var generated: Array[Vector3] = []
+	while generated.size() < CAVE_COUNT and attempts < 600:
+		attempts += 1
+		var angle := rng.randf() * TAU
+		var radius := sqrt(rng.randf()) * ISLAND_SIZE * 0.42
+		var x := cos(angle) * radius
+		var z := sin(angle) * radius
+		var height := get_height_at(x, z)
+		# Une grotte s'ouvre uniquement sur les flancs rocheux élevés.
+		if height < 10.0:
+			continue
+		var pos := Vector3(x, height, z)
+		generated.append(pos)
+		_build_cave_entrance(pos, rng.randf() * TAU)
+
+	# Filet de sécurité : au moins une grotte sur le point culminant.
+	if generated.is_empty():
+		var apex := Vector3.ZERO
+		var apex_height := -INF
+		for i in range(-42, 43):
+			for j in range(-42, 43):
+				var px := i * 3.0
+				var pz := j * 3.0
+				var ph := get_height_at(px, pz)
+				if ph > apex_height:
+					apex_height = ph
+					apex = Vector3(px, ph, pz)
+		if apex_height > 1.5:
+			generated.append(apex)
+			_build_cave_entrance(apex, 0.0)
+
+	self.caves = generated
+
+
+## Entrée de grotte visible : arche de roche sombre, creusée dans le flanc.
+func _build_cave_entrance(pos: Vector3, yaw: float) -> void:
+	var entrance := Node3D.new()
+	entrance.name = "CaveEntrance"
+	entrance.position = pos
+	entrance.rotation.y = yaw
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.16, 0.15, 0.14)
+	mat.roughness = 1.0
+
+	# Deux montants massifs.
+	for side in [-1.0, 1.0]:
+		var pillar := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(1.3, 3.2, 1.3)
+		pillar.mesh = box
+		pillar.position = Vector3(side * 1.7, 1.6, 0.0)
+		pillar.material_override = mat
+		entrance.add_child(pillar)
+
+	# Linteau.
+	var lintel := MeshInstance3D.new()
+	var lintel_box := BoxMesh.new()
+	lintel_box.size = Vector3(4.7, 1.0, 1.3)
+	lintel.mesh = lintel_box
+	lintel.position = Vector3(0.0, 3.7, 0.0)
+	lintel.material_override = mat
+	entrance.add_child(lintel)
+
+	# Fond noir : donne l'impression d'une cavité qui s'enfonce.
+	var dark := MeshInstance3D.new()
+	var dark_box := BoxMesh.new()
+	dark_box.size = Vector3(2.6, 3.0, 0.2)
+	dark.mesh = dark_box
+	dark.position = Vector3(0.0, 1.5, -0.9)
+	var dark_mat := StandardMaterial3D.new()
+	dark_mat.albedo_color = Color(0.01, 0.01, 0.015)
+	dark_mat.roughness = 1.0
+	dark.material_override = dark_mat
+	entrance.add_child(dark)
+
+	add_child(entrance)
+
+
+## Vrai si le joueur est proche d'une grotte (proximité < CAVE_PROXIMITY).
+## Utilisé pour activer l'éclairage sombre et l'ambiance sonore.
+func is_in_cave(position: Vector3) -> bool:
+	for c in caves:
+		if position.distance_to(c) < CAVE_PROXIMITY:
+			return true
+	return false
 
 
 func _spawn_crops() -> void:
