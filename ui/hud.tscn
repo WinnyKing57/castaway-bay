@@ -197,8 +197,8 @@ theme_override_font_sizes/font_size = 15
 text = "ZQSD / WASD : se déplacer
 Maj : courir — Espace : sauter
 E : interagir — F : utiliser
-1-4 : barre rapide
-C : artisanat — B : construire
+1-5 : barre rapide
+J : journal — C : artisanat — B : construire
 R : tourner (construction)
 F9 : sauvegarder — F10 : charger
 Échap : pause"

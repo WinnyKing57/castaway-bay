@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = "ore_supply"
+display_name = "Minerai pour la forge"
+description = "Une commande de pierre et de métal pour réparer les outils de l'atelier."
+required_items = {
+"stone": 8,
+"metal": 4
+}
+reward_items = {
+"crystal": 2
+}
+reward_reputation = 10
+min_reputation = 15

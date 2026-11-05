@@ -4,11 +4,12 @@ Jeu de survie / construction sur une île déserte, développé avec **Godot 4.7
 Remake libre et original, inspiré des jeux de survie insulaire (aucun asset
 ni code d'un jeu commercial n'est utilisé).
 
-> État actuel : **M0 à M4 terminés**, M5 partiel (bateau opérationnel, véhicule
-> terrestre à venir), M1 partiel (nage, sons synthétisés) et M7 partiel
-> (réglages, export Linux) —
+> État actuel : **M0 à M4 terminés**, M1 partiel (nage, sons synthétisés),
+> M5 partiel (bateau et quad opérationnels, îlots secondaires à venir),
+> M6 partiel (marchand, troc, quêtes, réputation et journal livrés ; épave de
+> navire marchand à venir) et M7 partiel (réglages, export Linux) —
 > île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
-> artisanat avancé, construction modulaire, bateau, **persistance complète
+> artisanat avancé, construction modulaire, véhicules, **persistance complète
 > (format v2)** et sauvegarde automatique.
 
 ---
@@ -33,18 +34,42 @@ ni code d'un jeu commercial n'est utilisé).
    d'élément, **PgUp / PgDn** changent d'étage et **V** verrouille l'altitude.
 5. **Naviguer** : repère le bateau échoué au large, répare sa coque avec du
    métal, fais le plein de carburant et navigue pour explorer les pourtours de
-   l'océan.
-6. **Sauvegarder & Reprendre** : **F9** / **F10**, plus une **sauvegarde
+   l'océan. Un quad tout-terrain permet aussi de parcourir les reliefs.
+6. **Troquer & tenir le journal** : trouve l'automate marchand et parle-lui
+   (**E**). Sa réputation débloque des trocs directs et des quêtes
+   d'approvisionnement (bois, nourriture, minerai, denrées rares). Les échanges
+   et les quêtes rendues augmentent la réputation. **J** ouvre le livre de bord
+   qui retrace les découvertes, les quêtes et les grands événements de survie.
+7. **Sauvegarder & Reprendre** : **F9** / **F10**, plus une **sauvegarde
    automatique** (toutes les 2 min, en quittant vers le menu, à la fermeture de
    la fenêtre et quand l'appli passe en arrière-plan). Tout est conservé :
    graine de l'île, position, cap et regard du joueur, jauges, inventaire, barre
    rapide, fabrication en cours, constructions, ressources récoltées (et leur
-   délai de repousse), cultures plantées, position et carburant du bateau, et le
-   fait d'être à bord. « Continuer » te ramène exactement où tu étais.
+   délai de repousse), cultures plantées, position et carburant des véhicules,
+   réputation, quêtes, journal d'aventure et état du marchand. « Continuer » te
+   ramène exactement où tu étais.
 
 L'océan se traverse à la nage : au-delà de la taille, le joueur flotte et
 peut nager (Espace pour remonter). Les sons sont synthétisés à la volée,
 aucun fichier audio n'est nécessaire.
+
+### Marchand, réputation et journal
+
+L'automate marchand propose deux activités, toutes deux pilotées par les données
+(`data/trades/` et `data/quests/`) :
+
+- **Troc direct** : donne des ressources, reçois-en d'autres. Chaque échange
+  rapporte 1 point de réputation et les offres les plus intéressantes exigent un
+  palier de confiance (Méfiant, Neutre, Amical, Allié).
+- **Quêtes d'approvisionnement** : accepte une commande, rapporte les objets
+  demandés, puis rends-la au marchand pour une récompense et un gain de
+  réputation plus important. Une quête ne peut être accomplie qu'une fois.
+- **Livre de bord** (**J**) : journal chronologique des rencontres, découvertes,
+  quêtes, morts et paliers de réputation. Il est conservé dans la sauvegarde et
+  limité aux 120 entrées les plus récentes.
+
+Le panneau du marchand affiche son dialogue (qui évolue avec la réputation et
+les quêtes prêtes à rendre), les trocs accessibles et l'état de chaque quête.
 
 Au lancement, le **menu principal** propose de commencer une nouvelle île
 ou de reprendre la sauvegarde existante.
@@ -87,6 +112,9 @@ sauvegarde) **et** des tests de non-régression de stabilité :
   fondation), bords de murs/portes, empreintes conservées après chargement ;
 - sauvegarde : fichiers malformés rejetés sans toucher à l'état, quantités et
   objets invalides assainis, doublons de constructions ignorés ;
+- marchand : bornes de réputation, troc verrouillé/déverrouillé, gain de
+  réputation, acceptation et remise de quête, récompenses, journal, ouverture et
+  fermeture des panneaux, persistance de la rencontre et du compteur d'échanges ;
 - bateau : libération du joueur après sortie forcée, réparation.
 
 Le test sauvegarde puis restaure `user://savegame.json` et
@@ -111,6 +139,7 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | E | interagir / récolter |
 | 1 à 5 | sélectionner un objet de la barre rapide |
 | F | utiliser l'objet sélectionné (manger, boire) |
+| J | ouvrir / fermer le livre de bord |
 | C | ouvrir / fermer l'artisanat |
 | B | activer / quitter le mode construction |
 | R | tourner l'élément en cours de construction |
@@ -185,18 +214,21 @@ Détails, conventions d'intégration et lots inspirés : voir
 
 ```
 autoload/        singletons globaux (état, base de données, sauvegarde, audio)
-data/            définitions de données : ItemData, RecipeData, BuildableData + .tres
+data/            définitions de données : ItemData, RecipeData, BuildableData,
+                 QuestData, TradeData + .tres (items, recipes, buildables,
+                 quests, trades)
 player/          contrôleur joueur (scène + script)
-world/           île procédurale, ressources récoltables, cultures, bateau, océan
+world/           île procédurale, ressources, cultures, véhicules, océan, marchand
 systems/         mode construction (grille, aperçu fantôme, sauvegarde)
-ui/              HUD, panneau d'artisanat, menus
+ui/              HUD, artisanat, coffres, marchand, journal, menus
 main.tscn/.gd    assemblage de la scène de jeu
 ```
 
 ### Les 4 règles d'architecture
 
-1. **Data-driven** : un objet, une recette ou un constructible = un fichier
-   `.tres` dans `data/items/`, `data/recipes/` ou `data/buildables/`.
+1. **Data-driven** : un objet, une recette, un constructible, une quête ou un
+   troc = un fichier `.tres` dans `data/items/`, `data/recipes/`,
+   `data/buildables/`, `data/quests/` ou `data/trades/`.
    Aucun code à écrire pour en ajouter.
 2. **Interface plutôt que types** : tout ce qui est interactif expose
    `interact(player)` et `get_interaction_prompt()`. Le joueur ne connaît
@@ -220,7 +252,7 @@ main.tscn/.gd    assemblage de la scène de jeu
 | M3 | Artisanat : interface, recettes, outils | ✅ |
 | M4 | Construction : grille, fondations, murs, niveaux, fantôme | ✅ |
 | M5 | Véhicules : bateau opérationnel ; véhicule terrestre à venir | 🟡 |
-| M6 | PNJ, quêtes, commerce, réputation | ⬜ |
+| M6 | PNJ, quêtes, commerce, réputation | 🟡 |
 | M7 | Finition : réglages et export Linux validés ; page itch.io à venir | 🟡 |
 
 Le détail des idées non planifiées est dans [`IDEAS.md`](IDEAS.md).
@@ -246,6 +278,10 @@ Garde-fous en place (voir `./run.sh --test`) :
 - **Coffres de stockage** : stockage persistant d'objets (touche **E** pour ouvrir),
   interface intuitive de dépôt et retrait (+1 / Tout), boutons de transfert global,
   persistance du contenu dans les sauvegardes v2.
+- **Marchand, quêtes et journal** : réputation bornée à 0-100, trocs et quêtes
+  refusés si les ressources ou la réputation manquent, quêtes non répétables,
+  identifiants inconnus et entrées de journal invalides ignorés au chargement,
+  panneaux qui se ferment proprement et rendent le contrôle au joueur.
 - **Chargement des constructions** : l'identifiant doit exister dans la base
   (la catégorie vient de la base, pas du fichier), les coordonnées doivent être
   finies et bornées, les doublons sont ignorés, la station de fabrication
@@ -272,7 +308,8 @@ Garde-fous en place (voir `./run.sh --test`) :
 | `stats`, `inventory`, `hotbar_index`, `world_time`, `world_seed` | état de survie et de la partie |
 | `craft` | fabrication chronométrée en cours (ingrédients déjà consommés) |
 | `construction` | éléments posés (id, position, rotation, stockage pour les coffres) ; stations recalculées |
-| `world_state` | ressources épuisées (id stable + délai de repousse), cultures plantées (id + progression), bateau (position, cap, carburant) |
+| `world_state` | ressources épuisées (id stable + délai de repousse), cultures plantées (id + progression), bateau et quad (position, cap, carburant), marchand (position, rencontre, nombre d'échanges) |
+| `npc` | réputation, quêtes acceptées/accomplies, livre de bord (bloc optionnel, absent des sauvegardes v1) |
 
 Les ressources ont un identifiant stable (ordre de génération, déterministe pour
 une graine). Ce qui n'est pas listé est remis à neuf au chargement.
@@ -296,6 +333,9 @@ chargement. `craft_time = 0` reste instantané.
 - Les transitions joueur/bateau, l'autosauvegarde à la fermeture de la fenêtre et
   le rendu sont à valider à la main avec fenêtre : le test sans fenêtre couvre la
   logique, pas l'affichage.
+- Le panneau du marchand et le livre de bord sont couverts par les tests
+  headless (ouverture, troc, quête, persistance) ; leur ergonomie et leur rendu
+  restent à valider en session graphique.
 
 ---
 

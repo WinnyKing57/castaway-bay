@@ -1,6 +1,6 @@
 # Castaway Bay — Prochaines étapes
 
-## Fait (M0 → M4 + M5/M7 partiels + stabilisation + persistance)
+## Fait (M0 → M4 + M5/M6/M7 partiels + stabilisation + persistance)
 - [x] Île procédurale, eau low-poly animée, cycle jour/nuit dynamique
 - [x] Joueur FPS, récolte (bois, pierre, fibres, baies, métal, argile, graines),
       survie (santé, faim, soif, fatigue), mort et respawn
@@ -96,9 +96,29 @@
       `_build_stairs` agrandit marches/limons/rambarde/ramp pour la largeur 1.84 m
 - [x] **Aperçu des dimensions** : le HUD de construction affiche la taille (ex. `2x2`, `1×1 [bord]`)
 
+## Fait — PNJ, commerce et journal (lot B)
+- [x] **Marchand itinérant visible** : géométrie low-poly construite en code (corps, tête,
+      œil lumineux, antenne), collision `BoxShape3D`, interaction **E** (`world/trader.gd`)
+- [x] **Troc direct data-driven** : 7 offres dans `data/trades/` (`TradeData`), ressources
+      données/reçues, offres débloquées par réputation, +1 réputation par échange
+- [x] **Quêtes d'approvisionnement data-driven** : 5 quêtes dans `data/quests/` (`QuestData`),
+      objets à fournir, récompenses, réputation minimale, quêtes non répétables
+- [x] **Réputation** : bornée 0-100, paliers Méfiant / Neutre / Amical / Allié, journalisation
+      des changements de palier, dialogues du marchand adaptés
+- [x] **Panneau du marchand** : dialogue, jauge de réputation, liste des trocs avec boutons,
+      liste des quêtes (accepter / rendre / verrouillée), statut des actions
+- [x] **Livre de bord** : panneau **J** chronologique, 120 entrées max, événements de quête,
+      rencontre, découverte de grotte, mort, respawn et paliers de réputation
+- [x] **Persistance** : bloc `npc` optionnel (réputation, quêtes, journal) + état du marchand
+      dans `world_state` (position, rencontre, compteur d'échanges) ; sauvegardes v1 acceptées
+- [x] **Tests headless** : chargement des données, bornes de réputation, trocs verrouillés,
+      acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
+      restauration de l'état du marchand → couverture ajoutée au smoke test
+
 ## À faire — corrections prioritaires (bugs actifs)
 - [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique
-      complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau)
+      complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau,
+      panneau du marchand et livre de bord)
 
 ## À faire — améliorations construction (suite)
 _(tous les items du batch 4 sont faits — voir « Fait — améliorations construction (batch 4) »)_
@@ -157,10 +177,11 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 - [ ] Compostage des fibres et débris végétaux
 
 ### 3. PNJ, campements et commerce insulaire (M6)
-- [ ] Épave de navire marchand avec survivants ou automate de troc
-- [ ] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées)
-- [ ] Monnaie locale ou troc direct d'objets rares
-- [ ] Dialogues et livre de bord / journal d'aventure
+- [x] Automate de troc (marchand itinérant) avec géométrie et collision visibles
+- [ ] Épave de navire marchand avec survivants
+- [x] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées)
+- [x] Monnaie locale ou troc direct d'objets rares
+- [x] Dialogues et livre de bord / journal d'aventure
 
 ### 4. Véhicules et exploration lointaine (M5 suite)
 - [x] Véhicule terrestre (buggy / quad tout-terrain pour parcourir les reliefs) : `world/quad.gd` (CharacterBody3D, pilotage, emboard/exit, sauvegarde) + spawn/island/save + interaction E
@@ -211,11 +232,15 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
       piste `cave` (`autoload/sfx.gd`, `Sfx.set_cave()`)
 
 ### B. PNJ, campements et commerce insulaire (M6)
-- [x] Automate de troc (marchand itinérant) — `world/trader.gd`, spawn/save island
+- [x] Automate de troc (marchand itinérant) — `world/trader.gd`, spawn/save island,
+      géométrie et collision construites en code
 - [ ] Épave de navire marchand avec survivants
-- [ ] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées)
-- [ ] Monnaie locale ou troc direct d'objets rares
-- [ ] Dialogues et livre de bord / journal d'aventure
+- [x] Système de réputation et quêtes d'approvisionnement (bois, minerai, denrées) —
+      `data/quests/`, `GameState` (accepted/completed), panneau du marchand
+- [x] Monnaie locale ou troc direct d'objets rares — `data/trades/`, offres
+      débloquées par paliers de réputation
+- [x] Dialogues et livre de bord / journal d'aventure — dialogues évolutifs,
+      panneau **J**, persistance dans le bloc `npc`
 
 ### C. Véhicules et exploration lointaine (M5 suite)
 - [x] Véhicule terrestre (buggy) — `world/quad.gd`
@@ -235,12 +260,13 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### F. Technique et architecture
 - [ ] Streaming des zones, LOD, MultiMesh, mode manette, Steam Deck, traductions
 - [x] Tests headless ciblés : cave, minerais profonds (charbon/or), streams audio (dont
-      `cave`/`music`) ajoutés au smoke test ; reste : torche, trader, carte
+      `cave`/`music`), marchand/quêtes/journal ajoutés au smoke test ; reste : torche, carte
 
 ## Prochaines étapes prioritaires (feuille de route)
 
 1. **Grotte complète** (cavités + torche + ambiance) — lot A : **fait**.
-2. **PNJ/commerce complet** (réputation/quêtes/dialogues) — lot B.
+2. **PNJ/commerce complet** (réputation/quêtes/dialogues) — lot B : **fait**, sauf
+   l'épave de navire marchand avec survivants.
 3. **Îlots secondaires** (M5) — lot C : **hors périmètre pour l'instant** (monde actuel uniquement ;
    la cartographie/boussole est faite ; biomes, plages, forêts et zone agricole du monde actuel
    sont livrés).

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = "wood_supply"
+display_name = "Planches pour la coque"
+description = "L'automate rafistole une barque. Il lui faut du bois solide."
+required_items = {
+"wood": 12
+}
+reward_items = {
+"metal": 3
+}
+reward_reputation = 6
+min_reputation = 0

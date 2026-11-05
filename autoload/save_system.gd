@@ -52,6 +52,7 @@ func save_game(player: Node3D, construction: Node = null, world: Node = null) ->
 		"inventory": GameState.inventory.duplicate(),
 		"hotbar_index": GameState.hotbar_index,
 		"player": player_data,
+		"npc": GameState.npc_save_state(),
 	}
 	var craft_state := GameState.craft_save_state()
 	if not craft_state.is_empty():
@@ -134,6 +135,12 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 	GameState.clear_craft()
 	if data.has("craft"):
 		GameState.restore_craft(data["craft"])
+
+	# Réputation, quêtes et journal du marchand (absent des sauvegardes v1).
+	if data.has("npc") and typeof(data["npc"]) == TYPE_DICTIONARY:
+		GameState.restore_npc_state(data["npc"])
+	else:
+		GameState.restore_npc_state({})
 
 	if construction != null:
 		construction.load_save_data(data.get("construction", []))
@@ -247,6 +254,15 @@ func _is_valid(data: Dictionary) -> bool:
 		return false
 	if data.has("world_state") and typeof(data["world_state"]) != TYPE_DICTIONARY:
 		return false
+	if data.has("npc"):
+		if typeof(data["npc"]) != TYPE_DICTIONARY:
+			return false
+		var npc: Dictionary = data["npc"]
+		if npc.has("reputation") and not _is_number(npc["reputation"]):
+			return false
+		for key in ["accepted_quests", "completed_quests", "journal"]:
+			if npc.has(key) and typeof(npc[key]) != TYPE_ARRAY:
+				return false
 
 	var player_data: Dictionary = data["player"]
 	if player_data.has("rotation_y") and not _is_number(player_data["rotation_y"]):

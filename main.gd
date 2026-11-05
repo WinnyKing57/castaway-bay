@@ -9,6 +9,8 @@ extends Node3D
 @onready var hud: Hud = $HUD
 @onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
 @onready var storage_panel: StoragePanel = $HUD/StoragePanel
+@onready var trader_panel: TraderPanel = $HUD/TraderPanel
+@onready var journal_panel: JournalPanel = $HUD/JournalPanel
 @onready var menu: MenuPanel = $HUD/MenuPanel
 @onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
@@ -23,6 +25,7 @@ var _in_game := false
 ## Ambiance de grotte : état courant et cadence des sons d'ambiance.
 var _cave_sound_cooldown := 0.0
 var _cave_warned := false
+var _cave_journaled := false
 
 
 func _ready() -> void:
@@ -34,6 +37,10 @@ func _ready() -> void:
 	crafting_panel.closed.connect(_on_crafting_closed)
 	storage_panel.opened.connect(_on_storage_opened)
 	storage_panel.closed.connect(_on_storage_closed)
+	trader_panel.opened.connect(_on_trader_opened)
+	trader_panel.closed.connect(_on_trader_closed)
+	journal_panel.opened.connect(_on_journal_opened)
+	journal_panel.closed.connect(_on_journal_closed)
 	menu.new_game_requested.connect(_on_menu_new_game)
 	menu.continue_requested.connect(_on_menu_continue)
 	menu.resume_requested.connect(_on_menu_resume)
@@ -94,6 +101,10 @@ func _process(delta: float) -> void:
 		_cave_sound_cooldown = 12.0
 		Sfx.play("cave", player.global_position, -6.0)
 
+	if not _cave_journaled:
+		_cave_journaled = true
+		GameState.add_journal("Découverte d'une grotte : l'air est froid, l'obscurité presque totale.")
+
 	if not _cave_warned:
 		_cave_warned = true
 		var has_torch: bool = GameState.selected_hotbar_item() == "torch" and GameState.get_item_count("torch") > 0
@@ -105,6 +116,12 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		if journal_panel.is_open():
+			journal_panel.close()
+			return
+		if trader_panel.is_open():
+			trader_panel.close()
+			return
 		if storage_panel.is_open():
 			storage_panel.close()
 			return
@@ -123,7 +140,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_respawn()
 		return
 
-	if storage_panel.is_open():
+	if event.is_action_pressed("toggle_journal"):
+		_toggle_journal()
+		return
+
+	if journal_panel.is_open() or trader_panel.is_open() or storage_panel.is_open():
 		return
 
 	if event.is_action_pressed("toggle_crafting"):
@@ -166,12 +187,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _show_start_menu() -> void:
 	_in_game = false
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
 	menu.open_start()
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _open_pause_menu() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
 	if storage_panel.is_open():
 		storage_panel.close()
 	if crafting_panel.is_open():
@@ -193,6 +222,7 @@ func _resume_game() -> void:
 
 func _on_menu_new_game() -> void:
 	GameState.reset()
+	_cave_journaled = false
 	construction.clear_all()
 	world.regenerate(randi())
 	player.exit_boat()
@@ -268,18 +298,27 @@ func _notification(what: int) -> void:
 
 
 func _on_player_died() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
 	if storage_panel.is_open():
 		storage_panel.close()
 	if crafting_panel.is_open():
 		crafting_panel.close()
 	if construction.is_active():
 		construction.toggle()
+	GameState.add_journal("Tu t'es effondré, à bout de forces. L'île a failli te garder.")
 	Sfx.play_ui("death")
 	player.set_controls_enabled(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _on_storage_opened() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
 	if construction.is_active():
 		construction.toggle()
 	if crafting_panel.is_open():
@@ -296,6 +335,10 @@ func _on_storage_closed() -> void:
 
 
 func _on_crafting_opened() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
 	if construction.is_active():
 		construction.toggle()
 	player.set_controls_enabled(false)
@@ -303,6 +346,61 @@ func _on_crafting_opened() -> void:
 
 
 func _on_crafting_closed() -> void:
+	if GameState.is_dead:
+		return
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _toggle_journal() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+		return
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if storage_panel.is_open():
+		storage_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	journal_panel.open()
+
+
+func _on_trader_opened() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if storage_panel.is_open():
+		storage_panel.close()
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_trader_closed() -> void:
+	if GameState.is_dead:
+		return
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _on_journal_opened() -> void:
+	if trader_panel.is_open():
+		trader_panel.close()
+	if storage_panel.is_open():
+		storage_panel.close()
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_journal_closed() -> void:
 	if GameState.is_dead:
 		return
 	player.set_controls_enabled(true)
@@ -317,6 +415,7 @@ func _respawn() -> void:
 	player.set_controls_enabled(true)
 	hud.hide_death()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	GameState.add_journal("Tu te réveilles sur la plage, les idées embrouillées.")
 	GameState.notify("Tu te réveilles sur la plage...")
 
 
@@ -357,6 +456,10 @@ func _run_smoke_test() -> void:
 		errors.append("recettes incomplètes (%d)" % Database.recipes.size())
 	if Database.buildables.size() < 3:
 		errors.append("constructibles incomplets (%d)" % Database.buildables.size())
+	if Database.quests.size() < 3:
+		errors.append("quêtes incomplètes (%d)" % Database.quests.size())
+	if Database.trades.size() < 3:
+		errors.append("trocs incomplets (%d)" % Database.trades.size())
 	if player != null and player.global_position.y < 0.0:
 		errors.append("joueur sous le niveau de la mer")
 
@@ -506,6 +609,24 @@ func _run_smoke_test() -> void:
 	crafting_panel.close()
 	if crafting_panel.is_open():
 		errors.append("panneau d'artisanat non fermé")
+
+	# Journal et marchand : les interfaces s'ouvrent et se referment proprement.
+	journal_panel.open()
+	if not journal_panel.is_open():
+		errors.append("journal non ouvert")
+	journal_panel.close()
+	if journal_panel.is_open():
+		errors.append("journal non fermé")
+	var trader_node: Trader = world.get_trader()
+	if trader_node == null:
+		errors.append("marchand introuvable")
+	else:
+		trader_panel.open(trader_node)
+		if not trader_panel.is_open():
+			errors.append("panneau du marchand non ouvert")
+		trader_panel.close()
+		if trader_panel.is_open():
+			errors.append("panneau du marchand non fermé")
 
 	# Mort et renaissance
 	GameState.stats.health = 0.0
@@ -686,6 +807,58 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 		errors.append("coût négatif/nul accepté")
 	if GameState.get_item_count("stone") != stone_before:
 		errors.append("coût invalide a modifié le stock")
+
+	# Marchand : réputation bornée, troc, quête et journal.
+	var trader: Trader = world.get_trader()
+	if trader == null:
+		errors.append("marchand introuvable (stabilité)")
+	else:
+		GameState.reputation = 0
+		GameState.accepted_quests.clear()
+		GameState.completed_quests.clear()
+		GameState.journal.clear()
+		GameState.add_reputation(150)
+		if GameState.reputation != 100:
+			errors.append("réputation non bornée à 100")
+		GameState.reputation = 0
+		GameState.add_reputation(-10)
+		if GameState.reputation != 0:
+			errors.append("réputation négative acceptée")
+
+		var trade: TradeData = Database.get_trade("fiber_wood")
+		GameState.inventory.clear()
+		GameState.add_item("fiber", 4)
+		if not trader.can_execute_trade(trade):
+			errors.append("troc refusé alors que les ressources sont là")
+		if not trader.execute_trade(trade):
+			errors.append("troc KO")
+		if GameState.get_item_count("wood") != 2 or GameState.get_item_count("fiber") != 0:
+			errors.append("résultat du troc incorrect")
+		if GameState.reputation < 1:
+			errors.append("réputation non gagnée par le troc")
+
+		GameState.inventory.clear()
+		GameState.add_item("wood", 12)
+		if not GameState.accept_quest("wood_supply"):
+			errors.append("acceptation de quête KO")
+		if not GameState.can_complete_quest("wood_supply"):
+			errors.append("quête prête refusée")
+		var rep_before_quest := GameState.reputation
+		if not GameState.complete_quest("wood_supply"):
+			errors.append("remise de quête KO")
+		if GameState.get_item_count("wood") != 0 or GameState.get_item_count("metal") < 3:
+			errors.append("récompense de quête incorrecte")
+		if not GameState.is_quest_completed("wood_supply") or GameState.is_quest_accepted("wood_supply"):
+			errors.append("état de quête incorrect après remise")
+		if GameState.reputation < rep_before_quest + 6:
+			errors.append("réputation de quête non gagnée")
+		if GameState.journal.is_empty():
+			errors.append("journal vide après les événements")
+
+		GameState.reputation = 0
+		var locked_trade: TradeData = Database.get_trade("crystal_electronics")
+		if trader.can_execute_trade(locked_trade):
+			errors.append("troc verrouillé accessible sans réputation")
 
 	# Construction : on se donne de quoi tout poser.
 	for item_id in Database.items.keys():
@@ -1012,6 +1185,20 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 	player.set_pitch(-0.4)
 	GameState.select_hotbar(2)
 
+	# Marchand : réputation, quête acceptée, journal et compteur d'échanges.
+	var trader: Trader = world.get_trader()
+	if trader == null:
+		errors.append("marchand introuvable (persistance)")
+	else:
+		GameState.reputation = 42
+		GameState.accepted_quests.clear()
+		GameState.completed_quests.clear()
+		GameState.journal.clear()
+		GameState.accept_quest("food_supply")
+		GameState.add_journal("Entrée de test pour le livre de bord.")
+		trader._met = true
+		trader.trade_count = 3
+
 	# Fabrication chronométrée en cours (hache : 1,5 s).
 	var axe: RecipeData = Database.get_recipe("stone_axe")
 	var axes_before := GameState.get_item_count("stone_axe")
@@ -1041,6 +1228,13 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 	GameState.clear_craft()
 	GameState.inventory.clear()
 	GameState.clear_stations()
+	GameState.reputation = 0
+	GameState.accepted_quests.clear()
+	GameState.completed_quests.clear()
+	GameState.journal.clear()
+	if trader != null:
+		trader._met = false
+		trader.trade_count = 0
 	construction.clear_all()
 
 	if not SaveSystem.load_game_into(player, world, construction):
@@ -1066,6 +1260,14 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 			errors.append("constructions non restaurées (persistance)")
 		if not (GameState.has_station("campfire") and GameState.has_station("furnace")):
 			errors.append("stations non restaurées")
+		if GameState.reputation != 42:
+			errors.append("réputation non restaurée")
+		if not GameState.is_quest_accepted("food_supply"):
+			errors.append("quête acceptée non restaurée")
+		if GameState.journal.is_empty():
+			errors.append("journal non restauré")
+		if trader != null and (not trader.has_met_player() or trader.get_trade_count() != 3):
+			errors.append("état du marchand non restauré")
 	GameState._advance_craft(10.0)
 	if GameState.get_item_count("stone_axe") != axes_before + 1 and GameState.get_item_count("stone_axe") < 1:
 		errors.append("fabrication restaurée non terminée")

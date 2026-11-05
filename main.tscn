@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
@@ -11,6 +11,8 @@
 [ext_resource type="PackedScene" path="res://ui/menu_panel.tscn" id="9_menu"]
 [ext_resource type="PackedScene" path="res://ui/settings_panel.tscn" id="10_settings"]
 [ext_resource type="PackedScene" path="res://ui/storage_panel.tscn" id="11_storage"]
+[ext_resource type="PackedScene" path="res://ui/trader_panel.tscn" id="12_trader"]
+[ext_resource type="PackedScene" path="res://ui/journal_panel.tscn" id="13_journal"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.18, 0.36, 0.62, 1)
@@ -75,3 +77,7 @@ script = ExtResource("8_construction")
 [node name="SettingsPanel" parent="HUD" instance=ExtResource("10_settings")]
 
 [node name="StoragePanel" parent="HUD" instance=ExtResource("11_storage")]
+
+[node name="TraderPanel" parent="HUD" instance=ExtResource("12_trader")]
+
+[node name="JournalPanel" parent="HUD" instance=ExtResource("13_journal")]

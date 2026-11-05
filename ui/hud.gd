@@ -30,19 +30,24 @@ var _slot_panels: Array[PanelContainer] = []
 var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
 var _compass_label: Label
+var _quest_label: Label
 
 
 func _ready() -> void:
 	GameState.inventory_changed.connect(_refresh_inventory)
 	GameState.inventory_changed.connect(_refresh_hotbar)
+	GameState.inventory_changed.connect(_refresh_quests)
 	GameState.hotbar_changed.connect(_refresh_hotbar)
+	GameState.quests_changed.connect(_refresh_quests)
 	GameState.toast.connect(_show_toast)
 	GameState.died.connect(_on_died)
 
 	_build_compass()
+	_build_quest_tracker()
 	_build_hotbar()
 	_refresh_inventory()
 	_refresh_hotbar()
+	_refresh_quests()
 	toast_label.text = ""
 
 
@@ -66,6 +71,54 @@ func _build_compass() -> void:
 	_compass_label.modulate = Color(0.7, 0.85, 1.0)
 	_compass_label.text = "↑ N"
 	$Root.add_child(_compass_label)
+
+
+## Suivi des quêtes acceptées, sous l'horloge (masqué s'il n'y en a aucune).
+func _build_quest_tracker() -> void:
+	_quest_label = Label.new()
+	_quest_label.name = "QuestTracker"
+	_quest_label.anchor_left = 1.0
+	_quest_label.anchor_top = 0.0
+	_quest_label.anchor_right = 1.0
+	_quest_label.anchor_bottom = 0.0
+	_quest_label.offset_left = -420.0
+	_quest_label.offset_top = 70.0
+	_quest_label.offset_right = -24.0
+	_quest_label.offset_bottom = 260.0
+	_quest_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_quest_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+	_quest_label.add_theme_constant_override("outline_size", 4)
+	_quest_label.add_theme_font_size_override("font_size", 15)
+	_quest_label.modulate = Color(0.95, 0.9, 0.72)
+	_quest_label.visible = false
+	$Root.add_child(_quest_label)
+
+
+func _refresh_quests() -> void:
+	if _quest_label == null:
+		return
+	var lines := PackedStringArray()
+	for quest_id in GameState.accepted_quests:
+		var quest: QuestData = Database.get_quest(str(quest_id))
+		if quest == null:
+			continue
+		lines.append("◆ %s" % quest.display_name)
+		var parts := PackedStringArray()
+		var item_ids := quest.required_items.keys()
+		item_ids.sort()
+		for item_id in item_ids:
+			parts.append("%s %d/%d" % [
+				GameState.display_name(str(item_id)),
+				GameState.get_item_count(str(item_id)),
+				int(quest.required_items[item_id]),
+			])
+		lines.append("   " + ", ".join(parts))
+	if lines.is_empty():
+		_quest_label.visible = false
+		_quest_label.text = ""
+	else:
+		_quest_label.visible = true
+		_quest_label.text = "Quêtes en cours\n" + "\n".join(lines)
 
 
 ## Branché par main.gd une fois le joueur instancié.

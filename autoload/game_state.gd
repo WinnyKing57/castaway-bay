@@ -11,11 +11,17 @@ signal toast(text: String)
 signal died
 signal craft_changed
 signal chest_opened(chest: Node)
+signal trader_opened(trader: Node)
+signal reputation_changed
+signal quests_changed
+signal journal_changed
 
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
 const SECONDS_PER_DAY := 86400.0
 const SAVE_VERSION := 2
+## Nombre maximum d'entrées conservées dans le livre de bord.
+const MAX_JOURNAL_ENTRIES := 120
 
 ## Objets accessibles depuis la barre rapide (touches 1 à 5).
 var hotbar_items: Array[String] = ["coconut", "berry", "torch", "stone_axe", "cooked"]
@@ -46,6 +52,17 @@ var craft_stations: Dictionary = {}
 ## Fabrication chronométrée en cours : {"recipe": RecipeData, "remaining": float}.
 ## Les ingrédients sont consommés au lancement ; vide si rien n'est en cours.
 var current_craft: Dictionary = {}
+
+# --- Marchand, réputation et journal ----------------------------------------
+
+## Réputation auprès du marchand itinérant (0 à 100).
+var reputation := 0
+## Quêtes acceptées mais pas encore rendues (ids de Database.quests).
+var accepted_quests: Array[String] = []
+## Quêtes déjà accomplies (une quête ne se refait pas).
+var completed_quests: Array[String] = []
+## Livre de bord : entrées {"time": secondes du monde, "text": String}.
+var journal: Array[Dictionary] = []
 
 
 func _process(delta: float) -> void:
@@ -295,6 +312,159 @@ func restore_craft(state: Dictionary) -> void:
 	craft_changed.emit()
 
 
+# --- Marchand, réputation, quêtes et journal --------------------------------
+
+## Titre lisible correspondant au palier de réputation courant.
+func reputation_title() -> String:
+	return _reputation_title_for(reputation)
+
+
+func _reputation_title_for(value: int) -> String:
+	if value >= 80:
+		return "Allié"
+	if value >= 50:
+		return "Amical"
+	if value >= 20:
+		return "Neutre"
+	return "Méfiant"
+
+
+## Ajuste la réputation en la bornant à 0-100. Un changement de palier est
+## consigné dans le journal.
+func add_reputation(amount: int) -> void:
+	if amount == 0:
+		return
+	var before := reputation
+	reputation = clampi(reputation + amount, 0, 100)
+	if reputation == before:
+		return
+	reputation_changed.emit()
+	var before_title := _reputation_title_for(before)
+	var after_title := reputation_title()
+	if before_title != after_title:
+		add_journal("Réputation : le marchand te considère désormais comme « %s »." % after_title)
+
+
+func is_quest_accepted(quest_id: String) -> bool:
+	return accepted_quests.has(quest_id)
+
+
+func is_quest_completed(quest_id: String) -> bool:
+	return completed_quests.has(quest_id)
+
+
+## Accepte une quête si elle existe, n'est pas déjà prise et que la réputation
+## est suffisante.
+func accept_quest(quest_id: String) -> bool:
+	var quest: QuestData = Database.get_quest(quest_id)
+	if quest == null or accepted_quests.has(quest_id) or completed_quests.has(quest_id):
+		return false
+	if reputation < quest.min_reputation:
+		notify("Réputation insuffisante pour cette quête (%d requise)" % quest.min_reputation)
+		return false
+	accepted_quests.append(quest_id)
+	quests_changed.emit()
+	add_journal("Quête acceptée : %s — %s" % [quest.display_name, quest.description])
+	notify("Quête acceptée : %s" % quest.display_name)
+	return true
+
+
+## Vrai si la quête acceptée peut être rendue (tous les objets sont là).
+func can_complete_quest(quest_id: String) -> bool:
+	if not accepted_quests.has(quest_id):
+		return false
+	var quest: QuestData = Database.get_quest(quest_id)
+	return quest != null and has_items(quest.required_items)
+
+
+## Rend une quête : consomme les objets, donne la récompense et la réputation.
+func complete_quest(quest_id: String) -> bool:
+	var quest: QuestData = Database.get_quest(quest_id)
+	if quest == null or not accepted_quests.has(quest_id):
+		return false
+	if not consume_items(quest.required_items):
+		return false
+	for item_id in quest.reward_items:
+		add_item(str(item_id), int(quest.reward_items[item_id]))
+	accepted_quests.erase(quest_id)
+	completed_quests.append(quest_id)
+	add_reputation(quest.reward_reputation)
+	quests_changed.emit()
+	add_journal("Quête accomplie : %s (+%d réputation)" % [quest.display_name, quest.reward_reputation])
+	notify("Quête accomplie : %s" % quest.display_name)
+	return true
+
+
+## Ajoute une entrée au livre de bord (les plus anciennes sont oubliées).
+func add_journal(text: String) -> void:
+	var clean := text.strip_edges()
+	if clean.is_empty():
+		return
+	journal.append({"time": world_time, "text": clean})
+	while journal.size() > MAX_JOURNAL_ENTRIES:
+		journal.pop_front()
+	journal_changed.emit()
+
+
+func npc_save_state() -> Dictionary:
+	return {
+		"reputation": reputation,
+		"accepted_quests": accepted_quests.duplicate(),
+		"completed_quests": completed_quests.duplicate(),
+		"journal": journal.duplicate(true),
+	}
+
+
+## Restaure la progression du marchand. Les identifiants inconnus, les doublons
+## et les entrées de journal invalides sont ignorés.
+func restore_npc_state(state: Dictionary) -> void:
+	reputation = clampi(int(_num_or(state.get("reputation"), 0.0)), 0, 100)
+
+	accepted_quests.clear()
+	completed_quests.clear()
+	var raw_completed: Variant = state.get("completed_quests", [])
+	if typeof(raw_completed) == TYPE_ARRAY:
+		for value in raw_completed:
+			var quest_id := str(value)
+			if Database.quests.has(quest_id) and not completed_quests.has(quest_id):
+				completed_quests.append(quest_id)
+	var raw_accepted: Variant = state.get("accepted_quests", [])
+	if typeof(raw_accepted) == TYPE_ARRAY:
+		for value in raw_accepted:
+			var quest_id := str(value)
+			if Database.quests.has(quest_id) and not completed_quests.has(quest_id) and not accepted_quests.has(quest_id):
+				accepted_quests.append(quest_id)
+
+	journal.clear()
+	var raw_journal: Variant = state.get("journal", [])
+	if typeof(raw_journal) == TYPE_ARRAY:
+		for entry in raw_journal:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var text := str((entry as Dictionary).get("text", "")).strip_edges()
+			if text.is_empty():
+				continue
+			var time := 0.0
+			var raw_time: Variant = (entry as Dictionary).get("time")
+			if _is_number(raw_time):
+				time = clampf(float(raw_time), 0.0, SECONDS_PER_DAY)
+			journal.append({"time": time, "text": text.left(240)})
+	while journal.size() > MAX_JOURNAL_ENTRIES:
+		journal.pop_front()
+
+	reputation_changed.emit()
+	quests_changed.emit()
+	journal_changed.emit()
+
+
+func _is_number(value: Variant) -> bool:
+	return (typeof(value) == TYPE_FLOAT or typeof(value) == TYPE_INT) and is_finite(float(value))
+
+
+func _num_or(value: Variant, fallback: float) -> float:
+	return float(value) if _is_number(value) else fallback
+
+
 # --- Mort / renaissance -----------------------------------------------------
 
 func respawn() -> void:
@@ -318,5 +488,12 @@ func reset() -> void:
 	clear_stations()
 	clear_craft()
 	is_dead = false
+	reputation = 0
+	accepted_quests.clear()
+	completed_quests.clear()
+	journal.clear()
 	inventory_changed.emit()
 	hotbar_changed.emit()
+	reputation_changed.emit()
+	quests_changed.emit()
+	add_journal("Naufragé sur une île inconnue. Survivre, explorer, construire.")

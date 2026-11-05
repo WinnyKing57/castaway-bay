@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/trade_data.gd" id="1_trade"]
+
+[resource]
+script = ExtResource("1_trade")
+id = "coal_fuel"
+display_name = "Charbon contre carburant"
+description = "Il distille le charbon en un carburant âcre pour les moteurs."
+give = {
+"coal": 2
+}
+receive = {
+"fuel": 1
+}
+min_reputation = 20

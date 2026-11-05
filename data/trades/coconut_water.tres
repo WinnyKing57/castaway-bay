@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/trade_data.gd" id="1_trade"]
+
+[resource]
+script = ExtResource("1_trade")
+id = "coconut_water"
+display_name = "Noix contre eau douce"
+description = "L'automate filtre l'eau de pluie et la troque contre des noix de coco."
+give = {
+"coconut": 2
+}
+receive = {
+"water": 1
+}
+min_reputation = 0
