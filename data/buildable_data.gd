@@ -17,3 +17,21 @@ extends Resource
 
 ## Taille d'occupation sur la grille (en cases).
 @export var grid_size: int = 1
+
+## Catégorie : fondations, murs, ouvertures, toits, escaliers, mobilier, stations, énergie, défense, extérieur.
+@export_enum("fondations", "murs", "ouvertures", "toits", "escaliers", "mobilier", "stations", "energie", "defense", "exterieur") var category: String = "murs"
+
+## Palier (bois -> pierre -> brique -> métal).
+@export var tier: int = 1
+
+## Id du palier suivant ("" si aucun).
+@export var upgrade_to: String = ""
+
+## Points de vie (défaut constructible).
+@export var health: float = 100.0
+
+## Id de la recette / quete / item qui debloque celui-ci ("" = débloqué).
+@export var unlocked_by: String = ""
+
+## Échelle de la vignette de prévisualisation (1.0 = taille normale).
+@export var preview_scale: float = 1.0
