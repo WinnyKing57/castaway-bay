@@ -120,6 +120,23 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## Fait — évolution v3, Phase 1 (données, icônes, sauvegarde)
+- [x] **`ItemData` enrichi** : `category` complet (`materiel`), `tags`, `rarity`,
+      `icon_color`, `icon_shape` (8 formes), `weight` — tous avec valeurs par défaut
+- [x] **`RecipeData` enrichi** : `category` (8 catégories), `tier`, `unlocked_by`,
+      `batch_size`
+- [x] **`BuildableData` enrichi** : `category` (10 catégories), `tier`, `upgrade_to`,
+      `health`, `unlocked_by`, `preview_scale`
+- [x] **`IconFactory`** (`ui/icon_factory.gd`) : icônes 64 × 64 procédurales par objet
+      (forme + couleur + liseré de rareté) et vignettes de constructibles, cache par `id`,
+      aucun asset externe
+- [x] **Migration des 61 `.tres`** vers les nouveaux champs + styles d'icônes cohérents
+- [x] **Cohérence des données testée** : catégories non vides, tags non vides,
+      ingrédients et sorties de recettes référencés
+- [x] **Sauvegarde v3** : `SAVE_VERSION = 3`, migration v1 et v2 → v3 (champs optionnels
+      complétés par défaut), testée avec de vraies sauvegardes v1/v2 écrites puis rechargées
+- [x] Documentation : `docs/12-donnees.md`, `docs/DECISIONS.md`, README et docs mis à jour
+
 ## À faire — corrections prioritaires (bugs actifs)
 - [ ] **Validation manuelle** (Godot avec fenêtre) : session de jeu manuelle avec rendu graphique
       complet (transparence du vitrage, bardeaux, collision escaliers, fluidité navigation bateau,

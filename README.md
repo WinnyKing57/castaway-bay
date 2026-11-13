@@ -7,14 +7,14 @@ ni code d'un jeu commercial n'est utilisé).
 > État actuel : **M0 à M7 livrés** (M0-M4 terminés, M5/M6/M7 partiels terminés,
 > île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
 > artisanat avancé, construction modulaire, véhicules, **persistance complète
-> (format v2)**, marchand/troc/quêtes/réputation/journal, musiques, **carte
+> (format v3)**, marchand/troc/quêtes/réputation/journal, musiques, **carte
 > étendue avec biomes variés, îles secondaires et épave de navire**.
 > M5 partiel (bateau et quad opérationnels, îlots secondaires à venir),
 > M6 partiel (marchand, troc, quêtes, réputation et journal livrés ; épave de
 > navire marchand à venir) et M7 partiel (réglages, export Linux) —
 > île procédurale, océan, cycle jour/nuit, joueur FPS, récolte, survie,
 > artisanat avancé, construction modulaire, véhicules, **persistance complète
-> (format v2)** et sauvegarde automatique.
+> (format v3)** et sauvegarde automatique.
 
 ---
 
@@ -226,6 +226,8 @@ La documentation complète du jeu et des mécaniques est disponible dans
 | [`docs/09-marche-repetition.md`](docs/09-marche-repetition.md) | Marchand, troc, quêtes, réputation, journal |
 | [`docs/10-sauvegarde-ui.md`](docs/10-sauvegarde-ui.md) | Sauvegarde, interface, signaux |
 | [`docs/11-tests.md`](docs/11-tests.md) | Tests, smoke test, outils |
+| [`docs/12-donnees.md`](docs/12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Journal des décisions techniques |
 
 Chaque document explique le fonctionnement d'un système : entrées, sorties,
 états et exemples.
@@ -273,9 +275,9 @@ main.tscn/.gd    assemblage de la scène de jeu
 3. **État global centralisé** : `GameState` (inventaire, jauges, horloge)
    émet des signaux ; l'UI écoute, elle ne modifie rien.
 4. **Sauvegarde en données, pas en scènes** : JSON versionné
-   (`user://savegame.json`). La version actuelle du format est **2** ; les
-   sauvegardes de version 1 restent acceptées et les champs ajoutés sont chargés
-   avec des valeurs par défaut lorsqu'ils sont absents.
+   (`user://savegame.json`). La version actuelle du format est **3** ; les
+   sauvegardes de versions 1 et 2 restent acceptées (migration automatique,
+   chaque champ ajouté a une valeur par défaut).
 
 ---
 
@@ -335,9 +337,10 @@ Garde-fous en place (voir `./run.sh --test`) :
 - **Données** : `chest`, `door`, `roof` et `window` déclarent leur `kind` (ils
   étaient auparavant construits comme des fondations).
 
-### Persistance (sauvegarde v2)
+### Persistance (sauvegarde v3)
 
-`user://savegame.json` (version 2, les sauvegardes v1 se chargent toujours) :
+`user://savegame.json` (version 3 ; les sauvegardes v1 et v2 sont migrées
+automatiquement au chargement) :
 
 | Bloc | Contenu |
 |---|---|

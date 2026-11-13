@@ -2,7 +2,7 @@
 
 ## 1. Sauvegarde (`SaveSystem`)
 
-- Format : JSON, version **2** (`user://savegame.json`), copie `.bak`.
+- Format : JSON, version **3** (`user://savegame.json`), copie `.bak`. Les versions 1 et 2 sont migrées automatiquement au chargement.
 - Bloc `player` : position, `rotation_y`, `pitch`, `in_boat`.
 - Bloc `stats` / `inventory` / `hotbar_index` / `world_time` / `world_seed`.
 - Bloc `craft` : fabrication en cours (ingrédients consommés).
@@ -17,7 +17,11 @@
 - Inventaire assaini (objets inconnus, quantités ≤ 0 ignorés).
 - Jauges bornées 0-100.
 - Positions aberrantes replacées sur la plage.
-- Sauvegardes v1 acceptées (champs manquants → valeurs par défaut).
+- Sauvegardes v1 et v2 acceptées : `SaveSystem._migrate()` complète les champs
+  optionnels manquants avec leur valeur par défaut, puis applique la version
+  courante.
+- Testé par le smoke test avec de vraies sauvegardes v1 et v2 écrites puis
+  rechargées.
 
 ## 3. Interface et commandes
 

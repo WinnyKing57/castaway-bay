@@ -1,0 +1,97 @@
+# Castaway Bay — Journal des décisions
+
+> Ce document trace les décisions techniques prises en cours de route, avec leur
+> contexte et les alternatives écartées. Il évite de « re-débattre » un choix
+> déjà tranché et explique les compromis visibles dans le code.
+
+## Format
+
+Une entrée = un titre, la décision, le pourquoi, et ce qui a été écarté.
+
+---
+
+## Phase 1 — Modèle de données, icônes, sauvegarde v3
+
+### Valeurs d'énumération sans accents
+
+**Décision** : les valeurs stockées dans les `.tres` et comparées en code
+restent en ASCII (`carre`, `buche`, `materiel`, `electricite`, `materiels`,
+`energie`, `defense`, `exterieur`). Seuls les libellés affichés sont accentués.
+
+**Pourquoi** : ces chaînes sont sérialisées dans les ressources et comparées
+dans les scripts ; l'ASCII évite tout risque d'encodage et de casse dans les
+`.tres`, les sauvegardes et les identifiants.
+
+### Champs ajoutés avec valeurs par défaut
+
+**Décision** : chaque nouveau champ (`tags`, `rarity`, `icon_color`,
+`icon_shape`, `weight`, `category`, `tier`, `unlocked_by`, `batch_size`,
+`upgrade_to`, `health`, `preview_scale`) a une valeur par défaut côté script.
+
+**Pourquoi** : une ressource `.tres` ou une sauvegarde ancienne reste lisible
+sans migration bloquante. La migration des fichiers est un nettoyage one-shot,
+pas une dépendance d'exécution.
+
+### Icônes procédurales : `Image` plutôt que `SubViewport`
+
+**Décision** : `IconFactory` dessine les icônes pixel par pixel dans une
+`Image` 64 × 64 (`set_pixel`), puis crée une `ImageTexture`. Les formes
+(cercle, carré, losange, goutte, feuille, lingot, bûche, outil), la couleur et
+le liseré de rareté sont dérivés des données de l'objet.
+
+**Pourquoi** : c'est synchrone, sans dépendance GPU et donc **testable en
+headless**. Le rendu via `SubViewport` + `Control._draw()` a été implémenté
+puis abandonné : en mode headless (`--headless`, renderer dummy)
+`SubViewport.get_texture().get_image()` renvoie `null`, ce qui rendait le smoke
+test impossible à valider.
+
+**Écarté** : texture importée depuis un asset externe (interdit), génération
+via `SubViewport` (non fiable headless), shaders (sur-dimensionné pour 64 px).
+
+### Vignettes de constructibles en 2D procédurale
+
+**Décision** : `get_buildable_icon()` produit une vignette 2D dont la forme
+dérive de `kind` et la couleur de `tier`, plutôt qu'un rendu 3D.
+
+**Pourquoi** : même contrainte headless que ci-dessus. Le visuel 3D réel reste
+disponible dans le jeu via `Buildable` ; la vignette sert d'aperçu d'interface.
+Si un rendu 3D hors-écran devient nécessaire, il sera ajouté derrière la même
+API (`get_buildable_icon`), sans changer les appelants.
+
+### Migration des `.tres` par édition textuelle
+
+**Décision** : les champs manquants ont été ajoutés aux fichiers `.tres`
+existants par une édition textuelle contrôlée (ajout / remplacement de lignes),
+puis validés par le smoke test.
+
+**Pourquoi** : `ResourceSaver.save()` sur des ressources rechargées a réécrit
+les fichiers en **supprimant des propriétés existantes** (`max_stack`, `value`,
+`grid_size`, `craft_time`…). L'édition textuelle est additive et vérifiable par
+`git diff`.
+
+**Écarté** : outil de migration `-s script.gd` + `ResourceSaver` (destructif),
+migration à l'exécution uniquement (ne satisfait pas la mise à niveau des
+fichiers).
+
+### Cohérence des données vérifiée par le smoke test
+
+**Décision** : le smoke test échoue si une catégorie est vide, si un tag est
+vide, ou si une recette référence un ingrédient / une sortie inexistante.
+
+**Pourquoi** : le contenu est data-driven ; une faute de frappe dans un `.tres`
+doit casser la CI, pas la partie.
+
+### Sauvegarde v3 avec migration v1 / v2
+
+**Décision** : `SAVE_VERSION` passe à **3**. `SaveSystem._migrate()` complète
+les sauvegardes antérieures avec les valeurs par défaut des champs optionnels
+(`hotbar_index`, `craft`, `npc`, `world_state`, `world_time`, `world_seed`)
+puis les porte à la version courante.
+
+**Pourquoi** : la règle d'architecture impose un format versionné et des
+champs nouveaux optionnels. Aucune donnée existante n'est supprimée ; un fichier
+plus récent que le jeu reste refusé.
+
+**Testé** : le smoke test écrit de vraies sauvegardes `version: 1` et
+`version: 2`, les recharge et vérifie que l'état (inventaire, jauges) est bien
+restauré.

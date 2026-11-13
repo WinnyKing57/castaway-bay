@@ -62,9 +62,9 @@ Input (E) → Player.interact() → zone/objet → interact(player)
 
 | Fichier | Type | Rôle |
 |---|---|---|
-| `data/items/*.tres` | `ItemData` | Identifiant, nom, catégorie, stack, soins (faim/soif/health/fatigue), valeur |
-| `data/recipes/*.tres` | `RecipeData` | Ingrédients (`inputs` = item → quantité), sortie (`outputs`), temps, station requise |
-| `data/buildables/*.tres` | `BuildableData` | `kind`, `grid_size`, `costs`, propriétés de collision |
+| `data/items/*.tres` | `ItemData` | Identifiant, nom, catégorie, stack, soins (faim/soif/health/fatigue), valeur, tags, rareté, style d'icône, poids |
+| `data/recipes/*.tres` | `RecipeData` | Ingrédients (`inputs` = item → quantité), sortie (`outputs`), temps, station requise, catégorie, palier, déblocage, taille de lot |
+| `data/buildables/*.tres` | `BuildableData` | `kind`, `grid_size`, `costs`, collision, catégorie, palier, `upgrade_to`, points de vie, déblocage, échelle d'aperçu |
 | `data/quests/*.tres` | `QuestData` | Objectifs (`required_items`), récompenses, réputation minimale |
 | `data/trades/*.tres` | `TradeData` | Échange (`give`/`receive`), ressources échangées, réputation requise |
 
@@ -73,7 +73,10 @@ Input (E) → Player.interact() → zone/objet → interact(player)
 1. Créer `data/items/<id>.tres` avec les champs `ItemData`.
 2. Mettre à jour le `Database` (il scanne le dossier : aucune modification de code).
 3. Utiliser le `kind` correspondant dans `world/harvestable.gd` pour la géométrie.
-4. L'UI (HUD/crafting) consomme l'`ItemData` : soins, stack, catégorie.
+4. L'UI (HUD/crafting) consomme l'`ItemData` : soins, stack, catégorie, icône
+   (`IconFactory` génère la texture à partir de `icon_color` / `icon_shape`).
+
+Détail complet des champs : [`12-donnees.md`](12-donnees.md).
 
 ## 6. État global (`GameState`)
 
