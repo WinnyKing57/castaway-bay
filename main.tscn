@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://world/day_night.gd" id="5_day_night"]
 [ext_resource type="Shader" path="res://world/water.gdshader" id="6_water"]
 [ext_resource type="PackedScene" path="res://ui/crafting_panel.tscn" id="7_crafting"]
+[ext_resource type="PackedScene" path="res://ui/construction_panel.tscn" id="14_construction"]
 [ext_resource type="Script" path="res://systems/construction.gd" id="8_construction"]
 [ext_resource type="PackedScene" path="res://ui/menu_panel.tscn" id="9_menu"]
 [ext_resource type="PackedScene" path="res://ui/settings_panel.tscn" id="10_settings"]
@@ -33,7 +34,7 @@ tonemap_mode = 3
 glow_enabled = true
 fog_enabled = true
 fog_light_color = Color(0.62, 0.72, 0.82, 1)
-fog_density = 0.0035
+fog_density = 0.0012
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_water"]
 size = Vector2(900, 900)
@@ -71,6 +72,8 @@ script = ExtResource("8_construction")
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
 
 [node name="CraftingPanel" parent="HUD" instance=ExtResource("7_crafting")]
+
+[node name="ConstructionPanel" parent="HUD" instance=ExtResource("14_construction")]
 
 [node name="MenuPanel" parent="HUD" instance=ExtResource("9_menu")]
 

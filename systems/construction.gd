@@ -233,6 +233,12 @@ func _blocked_by_player(center: Vector3, rot_y: float, kind: String, size: int) 
 			height = 2.4
 		"roof", "roof_slope", "roof_ridge":
 			height = 1.0
+		"gate":
+			height = 2.4
+		"fence":
+			height = 0.9
+		"bridge":
+			height = 1.0
 		_:
 			height = 1.0 if not is_edge else 2.4
 	var p := _player.global_position
@@ -511,6 +517,16 @@ func _update_build_info() -> void:
 	)
 
 
+## Sélectionne un élément du catalogue (panel UI) et bascule le fantôme dessus.
+func select_buildable(index: int) -> void:
+	if _catalog.is_empty():
+		return
+	_selected = wrapi(index, 0, _catalog.size())
+	_rotation_steps = 0
+	_ensure_ghost()
+	_update_build_info()
+
+
 func _try_demolish() -> bool:
 	var hit := _raycast()
 	if hit.is_empty():
@@ -621,6 +637,9 @@ const SURFACE_TOP: Dictionary = {
 	"roof":        0.12,
 	"roof_slope":  0.9,
 	"roof_ridge":  0.7,
+	"gate":        2.4,
+	"fence":       0.9,
+	"bridge":      1.0,
 }
 
 ## Calcule le Y de pose du fantôme avec snap intelligent selon le kind :

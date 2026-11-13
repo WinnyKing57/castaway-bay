@@ -32,6 +32,11 @@ const MOUNTAIN_TOP_HEIGHT := 30.0
 const CAVE_PROXIMITY := 5.0
 ## nombre maxi de grottes générées par île.
 const CAVE_COUNT := 8           # Augmenté de 6 à 8
+## Altitude minimale pour qu'une grotte soit creusée dans le massif rocheux.
+## Au-dessus de 10 m le relief commence à devenir « montagne » : les grottes
+## n'apparaissent pas en plaine, mais dans les flancs rocheux (comme un vrai
+## abîme de montagne).
+const CAVE_MIN_HEIGHT := 12.0
 
 ## Positions des grottes stockées pour la détection d'ambiance.
 var caves: Array = []
@@ -134,6 +139,9 @@ func get_height_at(x: float, z: float) -> float:
 		height = lerpf(height, 3.0, 0.85 * falloff * plateau_w)   # plateau plat
 	if mountain_w > 0.0:
 		height *= lerpf(1.0, 1.28, mountain_w)   # montagnes plus hautes
+		# Massif garanti : sans ce plancher, certaines graines n'ont aucun
+		# sommet au-dessus du seuil de biome montagne (22 m).
+		height = lerpf(height, maxf(height, MOUNTAIN_TOP_HEIGHT * falloff), mountain_w)
 
 	# Zone agricole : plateau plat garanti, fondu progressif jusqu'au bord.
 	var farm_dist := Vector2(x, z).distance_to(_farm_center)
@@ -648,8 +656,9 @@ func _generate_caves() -> void:
 		var x := cos(angle) * radius
 		var z := sin(angle) * radius
 		var height := get_height_at(x, z)
-		# Une grotte s'ouvre uniquement sur les flancs rocheux élevés.
-		if height < 10.0:
+		# Une grotte s'ouvre uniquement dans le massif rocheux (montagne), jamais
+		# en plaine ni sur un simple tertre.
+		if height < CAVE_MIN_HEIGHT:
 			continue
 		var pos := Vector3(x, height, z)
 		generated.append(pos)
@@ -749,7 +758,7 @@ func _spawn_secondary_islands() -> void:
 		match island_biome:
 			5:  # BIOME_BEACH
 				max_trees = 60
-				var props := ["palmier", "buisson", "rocher", "argile"]
+				var props: Array[String] = ["palmier", "buisson", "rocher", "argile"]
 				for j in max_trees:
 					var angle := rng.randf() * TAU
 					var radius := sqrt(rng.randf()) * island_radius * 0.3
@@ -763,7 +772,7 @@ func _spawn_secondary_islands() -> void:
 					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
 			6:  # BIOME_PLAINS_PLATEAU
 				max_trees = 100
-				var props := ["buisson", "seed", "rocher", "fer"]
+				var props: Array[String] = ["buisson", "seed", "rocher", "fer"]
 				for j in max_trees:
 					var angle := rng.randf() * TAU
 					var radius := sqrt(rng.randf()) * island_radius * 0.35
@@ -777,7 +786,7 @@ func _spawn_secondary_islands() -> void:
 					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
 			7:  # BIOME_MEADOW
 				max_trees = 80
-				var props := ["buisson", "seed", "rocher", "cristal"]
+				var props: Array[String] = ["buisson", "seed", "rocher", "cristal"]
 				for j in max_trees:
 					var angle := rng.randf() * TAU
 					var radius := sqrt(rng.randf()) * island_radius * 0.4
@@ -791,7 +800,7 @@ func _spawn_secondary_islands() -> void:
 					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
 			8:  # BIOME_MOUNTAIN
 				max_trees = 70
-				var props := ["rocher", "fer", "cristal", "or"]
+				var props: Array[String] = ["rocher", "fer", "cristal", "or"]
 				for j in max_trees:
 					var angle := rng.randf() * TAU
 					var radius := sqrt(rng.randf()) * island_radius * 0.35
@@ -804,13 +813,18 @@ func _spawn_secondary_islands() -> void:
 					var kind_str := props[int(kind_idx)]
 					_spawn_prop(scene, kind_str, Vector3(x, height, z), rng.randf() * TAU, island_spawned + j)
 	# Spawn merchant wreck and survivor
-	var wreck_scene := load("res://world/merchant_wreck.tscn")
+	const WRECK_SCENE_PATH := "res://world/merchant_wreck.tscn"
+	var wreck_scene: PackedScene = null
+	if ResourceLoader.exists(WRECK_SCENE_PATH):
+		wreck_scene = load(WRECK_SCENE_PATH)
 	if wreck_scene != null:
-		var wreck := wreck_scene.instantiate()
+		var wreck: Node3D = wreck_scene.instantiate()
+		var wreck_x := rng.randf_range(-80.0, 80.0)
+		var wreck_z := rng.randf_range(-80.0, 80.0)
 		wreck.position = Vector3(
-			rng.randf_range(-80.0, 80.0),
-			0.0,
-			rng.randf_range(-80.0, 80.0)
+			wreck_x,
+			maxf(get_height_at(wreck_x, wreck_z), 0.0),
+			wreck_z
 		)
 		wreck.rotation.y = rng.randf() * TAU
 		add_child(wreck)
@@ -864,7 +878,7 @@ func to_save_data() -> Dictionary:
 	var crops: Array = []
 	var boat_state := {}
 	var quad_state := {}
-	var trader_state := {}
+	var traders: Array = []
 	for child in get_children():
 		if child is Harvestable and child.save_id >= 0 and child.is_depleted():
 			harvested.append(child.get_save_state())
@@ -875,8 +889,19 @@ func to_save_data() -> Dictionary:
 		elif child is Quad:
 			quad_state = child.get_save_state()
 		elif child is Trader:
-			trader_state = child.get_save_state()
-	return {"harvestables": harvested, "crops": crops, "boat": boat_state, "quad": quad_state, "trader": trader_state}
+			traders.append(child.get_save_state())
+	var data := {
+		"harvestables": harvested,
+		"crops": crops,
+		"boat": boat_state,
+		"quad": quad_state,
+		"traders": traders,
+	}
+	# Compatibilité : les sauvegardes antérieures lisaient un marchand unique.
+	var first_trader := get_trader()
+	if first_trader != null:
+		data["trader"] = first_trader.get_save_state()
+	return data
 
 
 ## Applique l'état sauvegardé. Les entrées invalides sont ignorées ; tout ce qui
@@ -896,6 +921,17 @@ func apply_save_data(data: Dictionary) -> void:
 			if typeof(entry) == TYPE_DICTIONARY and _is_num(entry.get("id")):
 				planted[int(entry["id"])] = float(entry["progress"]) if _is_num(entry.get("progress")) else 0.0
 
+	# Marchands : liste ordonnée (l'ancien format unique reste accepté).
+	var legacy_trader: Variant = data.get("trader", {})
+	var trader_states: Array = []
+	var raw_traders: Variant = data.get("traders", [])
+	if typeof(raw_traders) == TYPE_ARRAY:
+		trader_states = raw_traders
+	if trader_states.is_empty() and typeof(legacy_trader) == TYPE_DICTIONARY \
+			and not (legacy_trader as Dictionary).is_empty():
+		trader_states = [legacy_trader]
+
+	var trader_index := 0
 	for child in get_children():
 		if child is Harvestable and child.save_id >= 0:
 			var is_gone: bool = harvested.has(child.save_id)
@@ -912,9 +948,14 @@ func apply_save_data(data: Dictionary) -> void:
 			if typeof(quad_state) == TYPE_DICTIONARY and not (quad_state as Dictionary).is_empty():
 				child.apply_save_state(quad_state)
 		elif child is Trader:
-			var trader_state: Variant = data.get("trader", {})
+			var trader_state: Variant = null
+			if trader_index < trader_states.size():
+				trader_state = trader_states[trader_index]
+			elif typeof(legacy_trader) == TYPE_DICTIONARY:
+				trader_state = legacy_trader
 			if typeof(trader_state) == TYPE_DICTIONARY and not (trader_state as Dictionary).is_empty():
 				child.apply_save_state(trader_state)
+			trader_index += 1
 
 
 func get_boat() -> Boat:

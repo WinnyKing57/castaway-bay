@@ -9,6 +9,7 @@ extends Node3D
 @onready var hud: Hud = $HUD
 @onready var crafting_panel: CraftingPanel = $HUD/CraftingPanel
 @onready var storage_panel: StoragePanel = $HUD/StoragePanel
+@onready var construction_panel: ConstructionPanel = $HUD/ConstructionPanel
 @onready var trader_panel: TraderPanel = $HUD/TraderPanel
 @onready var journal_panel: JournalPanel = $HUD/JournalPanel
 @onready var menu: MenuPanel = $HUD/MenuPanel
@@ -35,6 +36,8 @@ func _ready() -> void:
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
+	construction_panel.opened.connect(_on_construction_opened)
+	construction_panel.closed.connect(_on_construction_closed)
 	storage_panel.opened.connect(_on_storage_opened)
 	storage_panel.closed.connect(_on_storage_closed)
 	trader_panel.opened.connect(_on_trader_opened)
@@ -49,6 +52,7 @@ func _ready() -> void:
 	menu.main_menu_requested.connect(_on_menu_main_menu)
 	settings_panel.closed.connect(_on_settings_closed)
 	menu.quit_requested.connect(_on_menu_quit)
+	construction_panel.selection_requested.connect(_on_construction_selection_requested)
 
 	var autosave_timer := Timer.new()
 	autosave_timer.wait_time = AUTOSAVE_SECONDS
@@ -157,6 +161,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if crafting_panel.is_open():
 			crafting_panel.close()
 		construction.toggle()
+		if construction.is_active():
+			construction_panel.open()
+		else:
+			construction_panel.close()
 		return
 
 	if crafting_panel.is_open():
@@ -352,6 +360,32 @@ func _on_crafting_closed() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+func _on_construction_opened() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
+	if storage_panel.is_open():
+		storage_panel.close()
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_construction_closed() -> void:
+	if GameState.is_dead:
+		return
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _on_construction_selection_requested(index: int) -> void:
+	construction.select_buildable(index)
+
+
 func _toggle_journal() -> void:
 	if journal_panel.is_open():
 		journal_panel.close()
@@ -533,7 +567,12 @@ func _run_smoke_test() -> void:
 
 	# Nage : on place le joueur au-dessus d'un fond profond, au large.
 	var swim_point := Vector3.ZERO
-	var radii: Array[float] = [190.0, 196.0, 202.0, 208.0]
+	var radii: Array[float] = [
+		Island.ISLAND_SIZE * 0.52,
+		Island.ISLAND_SIZE * 0.54,
+		Island.ISLAND_SIZE * 0.56,
+		Island.ISLAND_SIZE * 0.58,
+	]
 	for radius in radii:
 		for i in 24:
 			var angle := i * TAU / 24.0
@@ -691,7 +730,7 @@ func _run_smoke_test() -> void:
 	construction._build_level = 0
 	construction.toggle()
 
-	construction._selected = 4
+	construction._selected = _catalog_index("foundation")
 	var stacked_cell := Vector2i(6, 6)
 	var stacked0 := construction.place_free("foundation", "foundation", Vector3(6.5, 0.0, 6.5), 0.0)
 	if stacked0 == null:

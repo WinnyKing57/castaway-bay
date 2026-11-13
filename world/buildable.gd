@@ -185,6 +185,12 @@ func _build_visuals() -> void:
 			_build_house()
 		"torch":
 			_build_torch()
+		"gate":
+			_build_gate()
+		"fence":
+			_build_fence()
+		"bridge":
+			_build_bridge()
 		_:
 			_build_foundation()
 
@@ -648,6 +654,83 @@ func _build_torch() -> void:
 	flame.material_override = _make_material(Color(1.0, 0.6, 0.2))
 	add_child(flame)
 	_add_collision_box(Vector3(0.2, 0.6, 0.2), Vector3(0.0, 0.3, 0.0))
+
+
+# ── Porte (double vantail) ────────────────────────────────────────────────────────────────────
+
+func _build_gate() -> void:
+	var frame := Color(0.42, 0.30, 0.18)
+	var leaf_mat := _make_material(Color(0.52, 0.38, 0.24))
+	_add_box(Vector3(1.0, 2.4, 0.16), Vector3(0.0, 1.2, 0.0), frame)
+	for side in [-1, 1]:
+		var leaf := MeshInstance3D.new()
+		var lm := BoxMesh.new()
+		lm.size = Vector3(0.55, 2.1, 0.08)
+		leaf.mesh = lm
+		leaf.position = Vector3(side * 0.27, 1.05, 0.0)
+		leaf.material_override = leaf_mat
+		add_child(leaf)
+	var knob := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.06
+	sphere.radial_segments = 6
+	sphere.rings = 3
+	sphere.mesh = sphere
+	knob.position = Vector3(0.0, 1.1, 0.0)
+	knob.material_override = _make_material(Color(0.8, 0.65, 0.2))
+	add_child(knob)
+	_add_collision_box(Vector3(1.0, 2.4, 0.16), Vector3(0.0, 1.2, 0.0))
+
+
+# ── Clôture (palisade) ───────────────────────────────────────────────────────────────
+
+func _build_fence() -> void:
+	var fence_mat := _make_material(Color(0.5, 0.38, 0.24))
+	for i in 4:
+		var post := MeshInstance3D.new()
+		var pm := BoxMesh.new()
+		pm.size = Vector3(0.06, 1.0, 0.06)
+		post.mesh = pm
+		post.position = Vector3(-0.42 + i * 0.28, 0.5, 0.0)
+		post.material_override = fence_mat
+		add_child(post)
+	var rail := MeshInstance3D.new()
+	var rm := BoxMesh.new()
+	rm.size = Vector3(0.96, 0.05, 0.05)
+	rail.mesh = rm
+	rail.position = Vector3(0.0, 0.85, 0.0)
+	rail.material_override = fence_mat
+	add_child(rail)
+	_add_collision_box(Vector3(0.96, 0.9, 0.05), Vector3(0.0, 0.45, 0.0))
+
+
+# ── Passerelle (planches) ────────────────────────────────────────────────────
+
+func _build_bridge() -> void:
+	var plank_mat := _make_material(Color(0.56, 0.42, 0.27))
+	for i in 3:
+		var plank := MeshInstance3D.new()
+		var pm := BoxMesh.new()
+		pm.size = Vector3(0.9, 0.04, 1.0)
+		plank.mesh = pm
+		plank.position = Vector3(-0.45 + i * 0.45, 0.35, 0.0)
+		plank.material_override = plank_mat
+		add_child(plank)
+	var rail_l := MeshInstance3D.new()
+	var lm2 := BoxMesh.new()
+	lm2.size = Vector3(0.04, 0.7, 1.0)
+	rail_l.mesh = lm2
+	rail_l.position = Vector3(0.02, 0.7, 0.0)
+	rail_l.material_override = _make_material(Color(0.42, 0.30, 0.18))
+	add_child(rail_l)
+	var rail_r := MeshInstance3D.new()
+	var rm2 := BoxMesh.new()
+	rm2.size = Vector3(0.04, 0.7, 1.0)
+	rail_r.mesh = rm2
+	rail_r.position = Vector3(0.98, 0.7, 0.0)
+	rail_r.material_override = _make_material(Color(0.42, 0.30, 0.18))
+	add_child(rail_r)
+	_add_collision_box(Vector3(0.9, 0.05, 1.0), Vector3(0.45, 0.35, 0.0))
 
 
 # ── Feu de camp ───────────────────────────────────────────────────────────────

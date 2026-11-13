@@ -1,0 +1,61 @@
+[gd_scene load_steps=9 format=3]
+
+[sub_resource type="StandardMaterial3D" id="MatHull"]
+albedo_color = Color(0.34, 0.25, 0.18, 1)
+metallic = 0.15
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="MatDark"]
+albedo_color = Color(0.15, 0.12, 0.1, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="HullMesh"]
+material = SubResource("MatHull")
+size = Vector3(8, 1.8, 3)
+
+[sub_resource type="BoxShape3D" id="HullShape"]
+size = Vector3(8, 1.8, 3)
+
+[sub_resource type="CylinderMesh" id="MastMesh"]
+material = SubResource("MatDark")
+top_radius = 0.12
+bottom_radius = 0.18
+height = 4.0
+radial_segments = 8
+rings = 2
+
+[sub_resource type="BoxMesh" id="PlankMesh"]
+material = SubResource("MatDark")
+size = Vector3(2.4, 0.18, 0.5)
+
+[sub_resource type="BoxMesh" id="CrateMesh"]
+material = SubResource("MatHull")
+size = Vector3(0.9, 0.9, 0.9)
+
+[node name="MerchantWreck" type="StaticBody3D"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Hull" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.9, 0)
+rotation = Vector3(0, 0.2, 0.1)
+mesh = SubResource("HullMesh")
+
+[node name="HullShape" type="CollisionShape3D" parent="."]
+position = Vector3(0, 0.9, 0)
+shape = SubResource("HullShape")
+
+[node name="Mast" type="MeshInstance3D" parent="."]
+position = Vector3(1.2, 2.6, 0.2)
+rotation = Vector3(0, 0, -0.45)
+mesh = SubResource("MastMesh")
+
+[node name="Plank" type="MeshInstance3D" parent="."]
+position = Vector3(-3.2, 1.1, 1.2)
+rotation = Vector3(0, 0.6, 0.22)
+mesh = SubResource("PlankMesh")
+
+[node name="Crate" type="MeshInstance3D" parent="."]
+position = Vector3(-1.0, 2.1, -0.4)
+rotation = Vector3(0, 0.4, 0)
+mesh = SubResource("CrateMesh")
