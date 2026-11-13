@@ -497,6 +497,20 @@ func _run_smoke_test() -> void:
 	if player != null and player.global_position.y < 0.0:
 		errors.append("joueur sous le niveau de la mer")
 
+	# Icônes procédurales (Phase 1) : 64x64 par item / buildable, factory en cache.
+	var icon_factory := IconFactory.new()
+	get_tree().root.add_child(icon_factory)
+	var wood_item: ItemData = Database.get_item("wood")
+	var wood_icon: Texture2D = icon_factory.get_item_icon(wood_item)
+	if wood_icon == null:
+		errors.append("icone item absente (factory)")
+	if wood_icon != null and wood_icon.get_size() != Vector2(64, 64):
+		errors.append("icone item taille KO (%s)" % str(wood_icon.get_size()))
+	var wall_buildable: BuildableData = Database.get_buildable("wall")
+	var wall_icon: Texture2D = icon_factory.get_buildable_icon(wall_buildable)
+	if wall_icon == null:
+		errors.append("icone buildable absente (factory)")
+
 	# Végétation : l'île doit contenir de quoi survivre (bois, fibres, cocos).
 	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0, "charbon": 0, "or": 0, "argile": 0}
 	for child in world.get_children():
