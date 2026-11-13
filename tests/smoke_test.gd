@@ -316,6 +316,15 @@ func run() -> void:
 	if not crafting_panel.is_recipe_unlocked(locked_recipe):
 		errors.append("recette débloquée par quête non reconnue")
 	GameState.completed_quests.erase("quete_test")
+	var level_recipe: RecipeData = Database.get_recipe("steel_ingot")
+	var saved_level := GameState.level
+	GameState.level = 1
+	if level_recipe == null or crafting_panel.is_recipe_unlocked(level_recipe):
+		errors.append("recette verrouillée par niveau considérée disponible")
+	GameState.level = 3
+	if not crafting_panel.is_recipe_unlocked(level_recipe):
+		errors.append("recette débloquée par niveau non reconnue")
+	GameState.level = saved_level
 	GameState.remove_item("gold", 1)
 	for _i in had_gold:
 		GameState.add_item("gold", 1)

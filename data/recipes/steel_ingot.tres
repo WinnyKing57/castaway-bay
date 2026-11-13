@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "steel_ingot"
+display_name = "Lingot d'acier"
+description = "Deux lingots de fer et du charbon donnent de l'acier."
+inputs = {"iron_ingot": 2, "coal": 2}
+outputs = {"steel_ingot": 1}
+craft_time = 5.0
+required_station = "furnace"
+category = "materiels"
+tier = 4
+unlocked_by = "level:3"
+batch_size = 1

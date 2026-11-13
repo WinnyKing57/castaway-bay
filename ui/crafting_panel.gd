@@ -149,6 +149,8 @@ func is_recipe_unlocked(recipe: RecipeData) -> bool:
 		return false
 	if recipe.unlocked_by.is_empty():
 		return true
+	if recipe.unlocked_by.begins_with("level:"):
+		return GameState.level >= int(recipe.unlocked_by.substr(6))
 	if GameState.has_station(recipe.unlocked_by):
 		return true
 	if GameState.completed_quests.has(recipe.unlocked_by):
@@ -538,6 +540,8 @@ func _max_craftable(recipe: RecipeData) -> int:
 ## Nom affichable de l'élément qui débloque une recette (station, objet, quête).
 func _unlock_label(recipe: RecipeData) -> String:
 	var source := recipe.unlocked_by
+	if source.begins_with("level:"):
+		return "le niveau %s" % source.substr(6)
 	if Database.buildables.has(source):
 		return Database.get_buildable(source).display_name
 	if Database.items.has(source):
