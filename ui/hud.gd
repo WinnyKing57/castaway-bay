@@ -8,6 +8,7 @@ extends CanvasLayer
 @onready var health_bar: ProgressBar = $Root/Stats/HealthRow/Bar
 @onready var hunger_bar: ProgressBar = $Root/Stats/HungerRow/Bar
 @onready var thirst_bar: ProgressBar = $Root/Stats/ThirstRow/Bar
+@onready var fatigue_bar: ProgressBar = $Root/Stats/FatigueRow/Bar
 @onready var clock_label: Label = $Root/Clock
 @onready var prompt_label: Label = $Root/Prompt
 @onready var inventory_label: Label = $Root/Inventory
@@ -240,6 +241,7 @@ func _process(delta: float) -> void:
 	health_bar.value = GameState.stats.health
 	hunger_bar.value = GameState.stats.hunger
 	thirst_bar.value = GameState.stats.thirst
+	fatigue_bar.value = GameState.stats.fatigue
 	clock_label.text = _format_time(GameState.world_time)
 
 	if _player != null:
@@ -355,16 +357,18 @@ func _refresh_hotbar() -> void:
 # --- Inventaire --------------------------------------------------------------
 
 func _refresh_inventory() -> void:
-	if GameState.inventory.is_empty():
-		inventory_label.text = "Inventaire : vide"
+	var total := 0
+	var kinds := 0
+	for item_id in GameState.inventory:
+		var count := GameState.get_item_count(str(item_id))
+		if count <= 0:
+			continue
+		kinds += 1
+		total += count
+	if kinds == 0:
+		inventory_label.text = "Inventaire : vide — I : ouvrir"
 		return
-
-	var lines := PackedStringArray(["Inventaire :"])
-	var ids := GameState.inventory.keys()
-	ids.sort()
-	for item_id in ids:
-		lines.append("  %s x%d" % [GameState.display_name(str(item_id)), GameState.get_item_count(str(item_id))])
-	inventory_label.text = "\n".join(lines)
+	inventory_label.text = "Inventaire : %d objet(s), %d type(s) — I : ouvrir" % [total, kinds]
 
 
 func _format_time(seconds: float) -> String:

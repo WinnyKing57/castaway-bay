@@ -892,6 +892,14 @@ func _run_smoke_test() -> void:
 	if hud._slot_icons.is_empty() or hud._slot_icons[0].texture == null:
 		errors.append("icône de barre rapide absente")
 
+	# Jauge de fatigue : affichée et synchronisée avec GameState.
+	var saved_fatigue: float = GameState.stats.fatigue
+	GameState.stats.fatigue = 42.0
+	await get_tree().process_frame
+	if hud.fatigue_bar == null or abs(hud.fatigue_bar.value - 42.0) > 0.01:
+		errors.append("jauge de fatigue non synchronisée")
+	GameState.stats.fatigue = saved_fatigue
+
 	# Inventaire : ouverture, filtres, recherche et dépôt vers la barre rapide.
 	if not InputMap.has_action("toggle_inventory"):
 		errors.append("action toggle_inventory absente")
