@@ -14,6 +14,7 @@ extends CanvasLayer
 @onready var toast_label: Label = $Root/Toast
 @onready var hotbar: HBoxContainer = $Root/Hotbar
 @onready var build_info: Label = $Root/BuildInfo
+@onready var build_wheel: BuildWheel = $Root/BuildWheel
 @onready var death_overlay: ColorRect = $Root/DeathOverlay
 @onready var underwater_tint: ColorRect = $Root/UnderwaterTint
 
@@ -46,11 +47,12 @@ const HELP_ROWS := [
 	["C", "Artisanat"],
 	["B", "Mode construction"],
 	["R", "Tourner l'élément en construction"],
+	["Tab", "Roue de construction (catégorie courante)"],
 	["Molette", "Changer d'élément à construire"],
 	["PgUp / PgDn", "Changer le niveau de construction"],
 	["V", "Verrouiller le niveau de construction"],
 	["Ctrl+Z", "Annuler la dernière pose"],
-	["Clic gauche / droit", "Poser / démolir"],
+	["Clic gauche / droit", "Poser (maintien : en série) / démolir"],
 	["F9 / F10", "Sauvegarder / charger"],
 	["F1", "Afficher / masquer cette aide"],
 	["Échap", "Pause"],

@@ -53,6 +53,7 @@ func _ready() -> void:
 	settings_panel.closed.connect(_on_settings_closed)
 	menu.quit_requested.connect(_on_menu_quit)
 	construction_panel.selection_requested.connect(_on_construction_selection_requested)
+	hud.build_wheel.buildable_chosen.connect(_on_construction_selection_requested)
 
 	var autosave_timer := Timer.new()
 	autosave_timer.wait_time = AUTOSAVE_SECONDS
@@ -161,6 +162,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("ui_accept"):
 			_respawn()
 		return
+
+	# Roue de construction : Tab maintenu affiche les éléments de la catégorie
+	# courante ; un clic sélectionne, relâcher ferme.
+	if construction.is_active():
+		if event.is_action_pressed("build_wheel"):
+			_open_build_wheel()
+			return
+		if event.is_action_released("build_wheel"):
+			hud.build_wheel.close()
+			return
 
 	if event.is_action_pressed("toggle_journal"):
 		_toggle_journal()
@@ -394,6 +405,7 @@ func _on_construction_opened() -> void:
 
 
 func _on_construction_closed() -> void:
+	hud.build_wheel.close()
 	if GameState.is_dead:
 		return
 	if construction.is_active():
@@ -404,6 +416,14 @@ func _on_construction_closed() -> void:
 
 func _on_construction_selection_requested(buildable_id: String) -> void:
 	construction.select_buildable_by_id(buildable_id)
+
+
+## Ouvre la roue de construction sur la catégorie de l'élément sélectionné.
+func _open_build_wheel() -> void:
+	var category := construction.current_category()
+	var entries := construction.catalog_for_category(category)
+	var label: String = ConstructionPanel.CATEGORY_LABELS.get(category, str(category).capitalize())
+	hud.build_wheel.open(entries, construction.selected_id(), label)
 
 
 func _toggle_journal() -> void:
@@ -847,6 +867,20 @@ func _run_smoke_test() -> void:
 	construction_panel.close()
 	if construction_panel.is_open():
 		errors.append("panneau de construction non fermé")
+
+	# Roue de construction : action déclarée, ouverture et fermeture.
+	if not InputMap.has_action("build_wheel"):
+		errors.append("action build_wheel absente")
+	construction.select_buildable_by_id("wall")
+	var wall_entries := construction.catalog_for_category("murs")
+	if wall_entries.is_empty():
+		errors.append("roue de construction vide")
+	hud.build_wheel.open(wall_entries, "wall", "Murs")
+	if not hud.build_wheel.is_open():
+		errors.append("roue de construction non ouverte")
+	hud.build_wheel.close()
+	if hud.build_wheel.is_open():
+		errors.append("roue de construction non fermée")
 
 	# Niveaux de construction : alignement fantome, niveau manuel, verrou.
 	var neighbor_cell := Vector2i(4, 3)

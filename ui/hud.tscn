@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://ui/build_wheel.gd" id="2_wheel"]
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -201,6 +202,7 @@ E : interagir — F : utiliser
 J : journal — C : artisanat — B : construire
 R : tourner (construction)
 F9 : sauvegarder — F10 : charger
+Tab : roue de construction
 F1 : aide — Échap : pause"
 horizontal_alignment = 2
 vertical_alignment = 2
@@ -260,3 +262,13 @@ text = "Vous êtes mort
 Espace pour réapparaître"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="BuildWheel" type="Control" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_wheel")

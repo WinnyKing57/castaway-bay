@@ -47,6 +47,11 @@ var _locked_y := 0.0
 var _ghost_y := 0.0
 var _world: Island = null
 
+## Pose en série : maintien du clic gauche + déplacement sur une nouvelle case.
+## `_last_place_cell` évite de reposer sur la même case à chaque frame.
+var _hover_cell := Vector2i.ZERO
+var _last_place_cell := Vector2i(999999, 999999)
+
 
 func setup(player: Player, hud: Hud, world: Island) -> void:
 	_player = player
@@ -93,6 +98,7 @@ func _process(_delta: float) -> void:
 
 	var position: Vector3 = hit["position"]
 	var cell := Vector2i(floori(position.x), floori(position.z))
+	_hover_cell = cell
 	var ghost_y := _compute_ghost_y(position.y, cell, _ghost.kind)
 	_ghost.visible = true
 	var shift := (maxi(1, _selected_data().grid_size) - 1) * 0.5
@@ -108,6 +114,11 @@ func _process(_delta: float) -> void:
 	if _valid and _ghost != null and _is_roof_kind(_ghost.kind):
 		if _can_assemble_roof(cell, ghost_y, _rotation_steps * PI * 0.5, _ghost.kind):
 			_ghost.set_ghost_assembly_visual(true)
+
+	# Pose en série : tant que le clic gauche est maintenu, chaque nouvelle case
+	# survolée reçoit un élément (murs, fondations, clôtures…).
+	if _valid and _hover_cell != _last_place_cell and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_place()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -279,6 +290,7 @@ func _place() -> void:
 
 	if _ghost == null:
 		return
+	_last_place_cell = _hover_cell
 	var position := _ghost.global_position
 	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_register_object(node)
@@ -531,7 +543,7 @@ func _update_build_info() -> void:
 		dims_text = "1×1"
 
 	_hud.set_build_info(
-		"%s · Construction : %s (%d/%d) [%s] — %s · Clic G : poser · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
+		"%s · Construction : %s (%d/%d) [%s] — %s · Clic G : poser (maintiens pour enchaîner) · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
 		% [level_text, data.display_name, _selected + 1, _catalog.size(), dims_text, ", ".join(costs)]
 	)
 
@@ -559,6 +571,27 @@ func select_buildable_by_id(buildable_id: String) -> bool:
 ## Données du constructible actuellement sélectionné (peut être null).
 func selected_data() -> BuildableData:
 	return _selected_data()
+
+
+## Id du constructible sélectionné ("" si catalogue vide).
+func selected_id() -> String:
+	var data := _selected_data()
+	return data.id if data != null else ""
+
+
+## Catégorie du constructible sélectionné ("" si catalogue vide).
+func current_category() -> String:
+	var data := _selected_data()
+	return str(data.category) if data != null else ""
+
+
+## Éléments du catalogue appartenant à `category` (toutes si vide).
+func catalog_for_category(category: String) -> Array[BuildableData]:
+	var result: Array[BuildableData] = []
+	for data in _catalog:
+		if category.is_empty() or str(data.category) == category:
+			result.append(data)
+	return result
 
 
 func _try_demolish() -> bool:
