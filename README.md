@@ -238,6 +238,7 @@ La documentation complète du jeu et des mécaniques est disponible dans
 | [`docs/10-sauvegarde-ui.md`](docs/10-sauvegarde-ui.md) | Sauvegarde, interface, signaux |
 | [`docs/11-tests.md`](docs/11-tests.md) | Tests, smoke test, outils |
 | [`docs/12-donnees.md`](docs/12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
+| [`docs/13-inventaire-hud.md`](docs/13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Journal des décisions techniques |
 
 Chaque document explique le fonctionnement d'un système : entrées, sorties,

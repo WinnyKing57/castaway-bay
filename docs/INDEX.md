@@ -23,6 +23,7 @@ Documentation française complète du fonctionnement du jeu et de ses systèmes.
 | 10 | [`10-sauvegarde-ui.md`](10-sauvegarde-ui.md) | Sauvegarde / persistance, interface, commandes |
 | 11 | [`11-tests.md`](11-tests.md) | Tests, smoke test, outils de développement |
 | 12 | [`12-donnees.md`](12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
+| 13 | [`13-inventaire-hud.md`](13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
 | — | [`DECISIONS.md`](DECISIONS.md) | Journal des décisions techniques |
 
 ## Comment lire cette documentation
@@ -38,6 +39,7 @@ Documentation française complète du fonctionnement du jeu et de ses systèmes.
 
 - ✅ Documentation des lots livrés (M0 → M6 + améliorations).
 - ✅ Modèle de données v3, icônes procédurales et sauvegarde v3 documentés.
+- ✅ Interface d'artisanat, ergonomie de construction, inventaire et HUD v3 documentés.
 - 🟡 Lots en cours : lots restants listés dans [`TODO.md`](../TODO.md).
 - ⬜ Lots non implémentés documentés comme pistes dans [`TODO.md`](../TODO.md).
 

@@ -95,3 +95,28 @@ plus récent que le jeu reste refusé.
 **Testé** : le smoke test écrit de vraies sauvegardes `version: 1` et
 `version: 2`, les recharge et vérifie que l'état (inventaire, jauges) est bien
 restauré.
+
+### Inventaire : glisser-déposer natif, panneau sans état
+
+**Décision** : le panneau d'inventaire utilise `_get_drag_data` /
+`_can_drop_data` / `_drop_data` de Godot et délègue toute écriture à
+`GameState.set_hotbar_item()` / `swap_hotbar_items()`.
+
+**Pourquoi** : la règle « UI à l'écoute, GameState central » reste valable, et
+le mécanisme natif évite une réimplémentation fragile (drag fantôme, seuils,
+annulation). Le test headless appelle la même méthode publique
+(`assign_hotbar`) que le dépôt, sans simuler la souris.
+
+**Écarté** : glisser-déposer maison à base de `gui_input` (plus de code pour un
+résultat moins accessible), édition directe de `GameState.hotbar_items` depuis
+l'interface (casserait les signaux et la sauvegarde).
+
+### Barre rapide : 5 cases fixes, réorganisation par échange
+
+**Décision** : `hotbar_items` reste un tableau de 5 identifiants ; assigner un
+objet le place dans la case visée et sélectionne cette case ; deux cases
+peuvent être échangées. Une case peut être vidée (`""`).
+
+**Pourquoi** : aucune abstraction de conteneur n'est nécessaire tant que
+l'inventaire n'a pas de capacité ni de poids exploité en jeu. Le format de
+sauvegarde v3 n'est pas modifié (mêmes champs).

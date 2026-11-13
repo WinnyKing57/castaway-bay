@@ -120,6 +120,20 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## Fait — évolution v3, Phase 4 (inventaire et HUD)
+- [x] **Barre rapide** : icônes procédurales, quantités, case sélectionnée
+      surlignée, infobulles ; API `set_hotbar_item` / `swap_hotbar_items` dans
+      `GameState`
+- [x] **Panneau d'inventaire (I)** : grille 6 colonnes, 7 filtres de
+      catégories, recherche, résumé, tri catégorie puis nom
+- [x] **Glisser-déposer natif** : objet → case rapide, case → case pour
+      échanger ; le panneau délègue à `GameState`, jamais d'écriture directe
+- [x] **HUD** : quatrième jauge (fatigue), résumé d'inventaire compact au lieu
+      de la liste complète, aide F1 enrichie (`I`)
+- [x] **Tests** : actions InputMap, assignation/échange/refus, icône de case,
+      ouverture/filtres/recherche/dépôt du panneau, synchronisation fatigue
+- [x] Documentation : `docs/13-inventaire-hud.md`, INDEX, README et DECISIONS
+
 ## Fait — évolution v3, Phase 3 (ergonomie de construction)
 - [x] **Panneau de construction refondu** : onglets de catégories, recherche,
       vignettes procédurales, palier, coûts `possédé/requis` colorés, sélection
