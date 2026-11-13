@@ -714,6 +714,36 @@ func _run_smoke_test() -> void:
 		errors.append("lot d'interface : %d torches au lieu de 5" % (GameState.get_item_count("torch") - torches_before_batch))
 	crafting_panel.close()
 
+	# Déblocage : `unlocked_by` peut être un objet possédé, une station
+	# disponible ou une quête accomplie (visible même verrouillée).
+	var locked_recipe := RecipeData.new()
+	locked_recipe.id = "test_locked"
+	locked_recipe.unlocked_by = "gold"
+	var had_gold := GameState.get_item_count("gold")
+	GameState.remove_item("gold", had_gold)
+	if crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette verrouillée par objet considérée disponible")
+	GameState.add_item("gold", 1)
+	if not crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette débloquée par objet non reconnue")
+	locked_recipe.unlocked_by = "station_inexistante"
+	if crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette verrouillée par station considérée disponible")
+	GameState.register_station("station_inexistante")
+	if not crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette débloquée par station non reconnue")
+	GameState.craft_stations.erase("station_inexistante")
+	locked_recipe.unlocked_by = "quete_test"
+	if crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette verrouillée par quête considérée disponible")
+	GameState.completed_quests.append("quete_test")
+	if not crafting_panel.is_recipe_unlocked(locked_recipe):
+		errors.append("recette débloquée par quête non reconnue")
+	GameState.completed_quests.erase("quete_test")
+	GameState.remove_item("gold", 1)
+	for _i in had_gold:
+		GameState.add_item("gold", 1)
+
 	# Journal et marchand : les interfaces s'ouvrent et se referment proprement.
 	journal_panel.open()
 	if not journal_panel.is_open():

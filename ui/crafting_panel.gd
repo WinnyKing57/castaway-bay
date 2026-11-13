@@ -288,7 +288,7 @@ func _rebuild() -> void:
 	_clear(recipes_box)
 	_rows.clear()
 	var ids := Database.recipes.keys()
-	ids.sort()
+	ids.sort_custom(_sort_recipes)
 	var query := _search.text.strip_edges().to_lower()
 	var first_id := ""
 	for recipe_id in ids:
@@ -312,6 +312,19 @@ func _rebuild() -> void:
 
 	_refresh_detail()
 	_highlight_rows()
+
+
+## Tri : catégorie (ordre du panneau), puis palier, puis nom d'id.
+func _sort_recipes(a: String, b: String) -> bool:
+	var recipe_a: RecipeData = Database.get_recipe(a)
+	var recipe_b: RecipeData = Database.get_recipe(b)
+	var index_a := CATEGORY_ORDER.find(str(recipe_a.category))
+	var index_b := CATEGORY_ORDER.find(str(recipe_b.category))
+	if index_a != index_b:
+		return index_a < index_b
+	if recipe_a.tier != recipe_b.tier:
+		return recipe_a.tier < recipe_b.tier
+	return a < b
 
 
 func _matches(recipe: RecipeData, query: String) -> bool:
@@ -428,6 +441,7 @@ func _refresh_detail() -> void:
 
 	if not recipe.description.is_empty():
 		_add_detail_label(recipe.description, 15, Color(0.88, 0.88, 0.88))
+	_add_detail_label("Palier : %d" % maxi(recipe.tier, 1), 15, Color(0.8, 0.85, 0.95))
 
 	_add_detail_label("Produit :", 16, Color(0.75, 0.85, 1.0))
 	for item_id in recipe.outputs:
@@ -459,7 +473,7 @@ func _refresh_detail() -> void:
 		)
 
 	if not is_recipe_unlocked(recipe):
-		_add_detail_label("Verrouillée : %s" % recipe.unlocked_by, 15, Color(0.95, 0.8, 0.5))
+		_add_detail_label("Verrouillée : nécessite %s" % _unlock_label(recipe), 15, Color(0.95, 0.8, 0.5))
 
 	if recipe.craft_time <= 0.0:
 		_detail_box.add_child(_build_batch_row())
@@ -519,6 +533,18 @@ func _max_craftable(recipe: RecipeData) -> int:
 			continue
 		max_count = mini(max_count, GameState.get_item_count(str(item_id)) / needed)
 	return maxi(max_count, 0)
+
+
+## Nom affichable de l'élément qui débloque une recette (station, objet, quête).
+func _unlock_label(recipe: RecipeData) -> String:
+	var source := recipe.unlocked_by
+	if Database.buildables.has(source):
+		return Database.get_buildable(source).display_name
+	if Database.items.has(source):
+		return GameState.display_name(source)
+	if Database.quests.has(source):
+		return Database.get_quest(source).display_name
+	return source.capitalize()
 
 
 func _category_label(category: String) -> String:
