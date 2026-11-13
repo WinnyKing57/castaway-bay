@@ -498,7 +498,7 @@ func _run_smoke_test() -> void:
 		errors.append("joueur sous le niveau de la mer")
 
 	# Végétation : l'île doit contenir de quoi survivre (bois, fibres, cocos).
-	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0, "charbon": 0, "or": 0}
+	var kinds := {"arbre": 0, "palmier": 0, "rocher": 0, "buisson": 0, "cristal": 0, "charbon": 0, "or": 0, "argile": 0}
 	for child in world.get_children():
 		if child is Harvestable:
 			kinds[child.kind] = int(kinds.get(child.kind, 0)) + 1
@@ -507,6 +507,8 @@ func _run_smoke_test() -> void:
 		errors.append("aucun palmier généré")
 	if int(kinds["arbre"]) == 0:
 		errors.append("aucun arbre généré")
+	if int(kinds["argile"]) == 0:
+		errors.append("gisement d'argile manquant")
 	if int(kinds["charbon"]) == 0 or int(kinds["or"]) == 0:
 		errors.append("minerais profonds manquants (charbon/or)")
 	if world.caves.is_empty():
@@ -729,6 +731,31 @@ func _run_smoke_test() -> void:
 	construction._level_locked = false
 	construction._build_level = 0
 	construction.toggle()
+
+	# Étape 1e : fondation + mur -> sauvegarde -> chargement -> re-placement refusé.
+	construction.clear_all()
+	GameState.add_item("wood", 30)
+	var e1_fund := construction.place_free("foundation", "foundation", Vector3(9.5, 0.0, 9.5), 0.0)
+	if e1_fund == null:
+		errors.append("pose fondation (e2e) KO")
+	construction._selected = _catalog_index("foundation")
+	var e1_wall := construction.place_free("wall", "wall", Vector3(9.5, 0.0, 10.0), 0.0)
+	if e1_wall == null:
+		errors.append("pose mur (e2e) KO")
+	if not SaveSystem.save_game(player, construction, world):
+		errors.append("sauvegarde (e2e) KO")
+	construction.clear_all()
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("chargement (e2e) KO")
+	construction._selected = _catalog_index("foundation")
+	if construction._can_place(Vector2i(9, 9), 0):
+		errors.append("fondation re-posable au même endroit après chargement")
+	construction._selected = _catalog_index("wall")
+	if construction._can_place(Vector2i(9, 9), 0, 0):
+		errors.append("mur re-posable sur le même bord après chargement")
+	if construction._can_place(Vector2i(9, 10), 0, 2):
+		errors.append("mur re-posable depuis la case voisine (rotation 2) après chargement")
+	construction.clear_all()
 
 	construction._selected = _catalog_index("foundation")
 	var stacked_cell := Vector2i(6, 6)

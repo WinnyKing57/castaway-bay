@@ -1,6 +1,6 @@
 class_name Boat
 extends Vehicle
-## Bateau du portage d'Ocean Is Home : locomotion sur l'eau.
+## Bateau : locomotion sur l'eau.
 ##
 ## Physique simple : le bateau est propulsé par l'utilisateur via les actions de
 ## la barre rapide / de deplacement, et consomme du carburant.
