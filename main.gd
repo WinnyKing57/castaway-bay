@@ -12,6 +12,7 @@ extends Node3D
 @onready var construction_panel: ConstructionPanel = $HUD/ConstructionPanel
 @onready var trader_panel: TraderPanel = $HUD/TraderPanel
 @onready var journal_panel: JournalPanel = $HUD/JournalPanel
+@onready var inventory_panel: InventoryPanel = $HUD/InventoryPanel
 @onready var menu: MenuPanel = $HUD/MenuPanel
 @onready var settings_panel: SettingsPanel = $HUD/SettingsPanel
 @onready var construction: Construction = $Construction
@@ -44,6 +45,8 @@ func _ready() -> void:
 	trader_panel.closed.connect(_on_trader_closed)
 	journal_panel.opened.connect(_on_journal_opened)
 	journal_panel.closed.connect(_on_journal_closed)
+	inventory_panel.opened.connect(_on_inventory_opened)
+	inventory_panel.closed.connect(_on_inventory_closed)
 	menu.new_game_requested.connect(_on_menu_new_game)
 	menu.continue_requested.connect(_on_menu_continue)
 	menu.resume_requested.connect(_on_menu_resume)
@@ -73,6 +76,9 @@ func _ready() -> void:
 	if "--show-crafting" in OS.get_cmdline_user_args():
 		crafting_panel.open()
 
+	if "--show-inventory" in OS.get_cmdline_user_args():
+		inventory_panel.open()
+
 	if "--smoke-test" in OS.get_cmdline_user_args():
 		await _run_smoke_test()
 
@@ -80,7 +86,8 @@ func _ready() -> void:
 ## Les outils de dev (tests, captures) démarrent directement en jeu.
 func _is_dev_run() -> bool:
 	var args := OS.get_cmdline_user_args()
-	return "--smoke-test" in args or "--overview" in args or "--show-crafting" in args
+	return ( "--smoke-test" in args or "--overview" in args
+		or "--show-crafting" in args or "--show-inventory" in args )
 
 
 ## Ambiance des grottes : obscurité progressive + sons réverbérants.
@@ -148,6 +155,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if storage_panel.is_open():
 			storage_panel.close()
 			return
+		if inventory_panel.is_open():
+			inventory_panel.close()
+			return
 		if crafting_panel.is_open():
 			crafting_panel.close()
 			return
@@ -177,7 +187,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_toggle_journal()
 		return
 
-	if journal_panel.is_open() or trader_panel.is_open() or storage_panel.is_open():
+	if journal_panel.is_open() or trader_panel.is_open() or storage_panel.is_open() or inventory_panel.is_open():
+		return
+
+	if event.is_action_pressed("toggle_inventory"):
+		if construction.is_active():
+			construction.toggle()
+		inventory_panel.toggle()
 		return
 
 	if event.is_action_pressed("toggle_crafting"):
@@ -225,6 +241,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _show_start_menu() -> void:
 	_in_game = false
 	hud.close_help()
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if journal_panel.is_open():
 		journal_panel.close()
 	if trader_panel.is_open():
@@ -236,6 +254,8 @@ func _show_start_menu() -> void:
 
 func _open_pause_menu() -> void:
 	hud.close_help()
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if journal_panel.is_open():
 		journal_panel.close()
 	if trader_panel.is_open():
@@ -337,6 +357,8 @@ func _notification(what: int) -> void:
 
 
 func _on_player_died() -> void:
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if journal_panel.is_open():
 		journal_panel.close()
 	if trader_panel.is_open():
@@ -360,6 +382,8 @@ func _on_storage_opened() -> void:
 		trader_panel.close()
 	if construction.is_active():
 		construction.toggle()
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if crafting_panel.is_open():
 		crafting_panel.close()
 	player.set_controls_enabled(false)
@@ -367,6 +391,28 @@ func _on_storage_opened() -> void:
 
 
 func _on_storage_closed() -> void:
+	if GameState.is_dead:
+		return
+	player.set_controls_enabled(true)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _on_inventory_opened() -> void:
+	if journal_panel.is_open():
+		journal_panel.close()
+	if trader_panel.is_open():
+		trader_panel.close()
+	if storage_panel.is_open():
+		storage_panel.close()
+	if crafting_panel.is_open():
+		crafting_panel.close()
+	if construction.is_active():
+		construction.toggle()
+	player.set_controls_enabled(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _on_inventory_closed() -> void:
 	if GameState.is_dead:
 		return
 	player.set_controls_enabled(true)
@@ -398,6 +444,8 @@ func _on_construction_opened() -> void:
 		trader_panel.close()
 	if storage_panel.is_open():
 		storage_panel.close()
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if crafting_panel.is_open():
 		crafting_panel.close()
 	player.set_controls_enabled(false)
@@ -436,6 +484,8 @@ func _toggle_journal() -> void:
 		storage_panel.close()
 	if trader_panel.is_open():
 		trader_panel.close()
+	if inventory_panel.is_open():
+		inventory_panel.close()
 	if construction.is_active():
 		construction.toggle()
 	journal_panel.open()
@@ -841,6 +891,39 @@ func _run_smoke_test() -> void:
 	GameState.select_hotbar(saved_hotbar_index)
 	if hud._slot_icons.is_empty() or hud._slot_icons[0].texture == null:
 		errors.append("icône de barre rapide absente")
+
+	# Inventaire : ouverture, filtres, recherche et dépôt vers la barre rapide.
+	if not InputMap.has_action("toggle_inventory"):
+		errors.append("action toggle_inventory absente")
+	var saved_inventory := GameState.inventory.duplicate()
+	GameState.add_item("wood", 5)
+	GameState.add_item("berry", 5)
+	inventory_panel.open()
+	if not inventory_panel.is_open():
+		errors.append("panneau d'inventaire non ouvert")
+	if inventory_panel.visible_item_ids().is_empty():
+		errors.append("inventaire vide alors qu'il contient des objets")
+	inventory_panel.set_category_filter("ressource")
+	if inventory_panel.visible_item_ids().is_empty():
+		errors.append("filtre de ressources KO")
+	inventory_panel.set_category_filter("")
+	inventory_panel.set_search("bois")
+	if not inventory_panel.visible_item_ids().has("wood"):
+		errors.append("recherche d'inventaire KO")
+	inventory_panel.set_search("")
+	if not inventory_panel.assign_hotbar(0, "wood"):
+		errors.append("dépôt sur la barre rapide KO")
+	if GameState.hotbar_items[0] != "wood":
+		errors.append("barre rapide non mise à jour par l'inventaire")
+	if inventory_panel.assign_hotbar(0, "objet_inexistant"):
+		errors.append("objet inconnu accepté par l'inventaire")
+	inventory_panel.close()
+	if inventory_panel.is_open():
+		errors.append("panneau d'inventaire non fermé")
+	GameState.hotbar_items = saved_hotbar
+	GameState.inventory = saved_inventory
+	GameState.inventory_changed.emit()
+	GameState.hotbar_changed.emit()
 
 	# Réglages : sauvegarde/chargement et application immédiate.
 	Settings.master_volume = 0.3

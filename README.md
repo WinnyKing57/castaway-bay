@@ -155,6 +155,7 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | 1 à 5 | sélectionner un objet de la barre rapide |
 | F | utiliser l'objet sélectionné (manger, boire) |
 | J | ouvrir / fermer le livre de bord |
+| I | ouvrir / fermer l'inventaire (glisser-déposer vers la barre rapide) |
 | C | ouvrir / fermer l'artisanat |
 | B | activer / quitter le mode construction |
 | R | tourner l'élément en cours de construction |

@@ -46,6 +46,7 @@ const HELP_ROWS := [
 	["F", "Utiliser l'objet sélectionné"],
 	["1 à 5", "Sélectionner un objet de la barre rapide"],
 	["J", "Livre de bord"],
+	["I", "Inventaire (glisser-déposer vers la barre rapide)"],
 	["C", "Artisanat"],
 	["B", "Mode construction"],
 	["R", "Tourner l'élément en construction"],
