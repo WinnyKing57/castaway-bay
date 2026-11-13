@@ -665,32 +665,27 @@ func _run_smoke_test() -> void:
 	if GameState.get_item_count("torch") < 1:
 		errors.append("objet fabriqué absent")
 
-	# Interface d'artisanat : ouverture, bouton actif, fabrication, fermeture.
+	# Interface d'artisanat : ouverture, filtres, sélection, fabrication, fermeture.
 	GameState.add_item("wood", 4)
 	GameState.add_item("fiber", 4)
 	var torches_before_ui := GameState.get_item_count("torch")
 	crafting_panel.open()
 	if not crafting_panel.is_open():
 		errors.append("panneau d'artisanat non ouvert")
-	var ui_button: Button = null
-	for child in crafting_panel.recipes_box.get_children():
-		if child is Button and not (child as Button).disabled:
-			var txt := (child as Button).text
-			if txt.contains("Torch") or txt.contains("Torche"):
-				ui_button = child
-				break
-	if ui_button == null:
-		# Fallback : premier bouton actif.
-		for child in crafting_panel.recipes_box.get_children():
-			if child is Button and not (child as Button).disabled:
-				ui_button = child
-				break
-	if ui_button == null:
-		errors.append("aucun bouton d'artisanat actif")
-	else:
-		ui_button.pressed.emit()
-		if GameState.get_item_count("torch") <= torches_before_ui:
-			errors.append("bouton d'artisanat sans effet")
+	if crafting_panel.recipes_box.get_child_count() < 2:
+		errors.append("liste d'artisanat vide")
+	if not crafting_panel.select_recipe("torch"):
+		errors.append("sélection de recette KO")
+	crafting_panel.set_category_filter("outils")
+	if crafting_panel.current_category_filter() != "outils":
+		errors.append("filtre de catégorie KO")
+	if not crafting_panel.select_recipe("torch"):
+		errors.append("recette filtrée absente")
+	crafting_panel.set_category_filter("")
+	if not crafting_panel.craft_selected(1):
+		errors.append("fabrication via l'interface KO")
+	if GameState.get_item_count("torch") <= torches_before_ui:
+		errors.append("bouton d'artisanat sans effet")
 	crafting_panel.close()
 	if crafting_panel.is_open():
 		errors.append("panneau d'artisanat non fermé")
