@@ -163,6 +163,7 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | PgUp / PgDn | changer le niveau de construction |
 | V | verrouiller le niveau de construction |
 | Ctrl+Z | annuler la dernière pose (mode construction) |
+| Ctrl+Y | rétablir la dernière pose annulée (mode construction) |
 | Clic gauche | poser l'élément (maintien : poser en série) |
 | Clic droit | démolir l'élément (mode construction) |
 | F9 | sauvegarder |

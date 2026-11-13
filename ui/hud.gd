@@ -52,6 +52,7 @@ const HELP_ROWS := [
 	["PgUp / PgDn", "Changer le niveau de construction"],
 	["V", "Verrouiller le niveau de construction"],
 	["Ctrl+Z", "Annuler la dernière pose"],
+	["Ctrl+Y", "Rétablir la dernière pose annulée"],
 	["Clic gauche / droit", "Poser (maintien : en série) / démolir"],
 	["F9 / F10", "Sauvegarder / charger"],
 	["F1", "Afficher / masquer cette aide"],

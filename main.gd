@@ -907,6 +907,27 @@ func _run_smoke_test() -> void:
 	construction._build_level = 0
 	construction.toggle()
 
+	# Annulation (Ctrl+Z) et rétablissement (Ctrl+Y) d'une pose.
+	if not InputMap.has_action("redo_build"):
+		errors.append("action redo_build absente")
+	GameState.add_item("wood", 10)
+	var undo_wall := construction.place_free("wall", "wall", Vector3(40.5, 0.0, 40.5), 0.0)
+	if undo_wall == null:
+		errors.append("pose avant annulation KO")
+	else:
+		var count_before_undo := construction._objects.size()
+		construction._undo_stack.append(undo_wall)
+		construction._undo()
+		if construction._objects.size() != count_before_undo - 1:
+			errors.append("annulation de construction KO")
+		if construction._redo_stack.is_empty():
+			errors.append("rétablissement non mémorisé")
+		else:
+			var count_after_undo := construction._objects.size()
+			construction._redo()
+			if construction._objects.size() != count_after_undo + 1:
+				errors.append("rétablissement de construction KO")
+
 	# Étape 1e : fondation + mur -> sauvegarde -> chargement -> re-placement refusé.
 	construction.clear_all()
 	GameState.add_item("wood", 30)

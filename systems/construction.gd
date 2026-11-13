@@ -36,6 +36,9 @@ var _objects: Array[Buildable] = []
 ## Limitée à UNDO_LIMIT pour éviter une fuite mémoire.
 const UNDO_LIMIT := 20
 var _undo_stack: Array[Buildable] = []
+## Pile de rétablissement (Ctrl+Y) : description des éléments annulés.
+const REDO_LIMIT := 20
+var _redo_stack: Array[Dictionary] = []
 
 ## Pas de niveau de construction : 1 niveau = LEVEL_STEP (0.2 m, = 1 fondation).
 const LEVEL_STEP := 0.2
@@ -79,6 +82,7 @@ func toggle() -> void:
 		_level_locked = false
 		_build_level = 0
 		_undo_stack.clear()
+		_redo_stack.clear()
 	GameState.notify("Mode construction %s" % ("activé" if active else "désactivé"))
 
 
@@ -140,6 +144,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("undo_build"):
 		_undo()
+		return
+	if event.is_action_pressed("redo_build"):
+		_redo()
 		return
 
 	if event is InputEventMouseButton and event.pressed:
@@ -291,6 +298,7 @@ func _place() -> void:
 	if _ghost == null:
 		return
 	_last_place_cell = _hover_cell
+	_redo_stack.clear()
 	var position := _ghost.global_position
 	var node := _spawn(data.kind, data.id, position, _ghost.rotation.y)
 	_register_object(node)
@@ -322,6 +330,14 @@ func _undo() -> void:
 	if not is_instance_valid(node) or not _objects.has(node):
 		GameState.notify("Rien à annuler")
 		return
+	_redo_stack.push_back({
+		"kind": node.kind,
+		"data_id": node.data_id,
+		"position": node.position,
+		"rotation": node.rotation.y,
+	})
+	if _redo_stack.size() > REDO_LIMIT:
+		_redo_stack.pop_front()
 	# Remboursement intégral.
 	var b_data: Variant = Database.buildables.get(node.data_id)
 	if b_data is BuildableData:
@@ -333,6 +349,35 @@ func _undo() -> void:
 	demolish_silent(node)
 	Sfx.play("harvest", Vector3.ZERO)
 	GameState.notify("Annulé")
+
+
+## Rétablit la dernière pose annulée (Ctrl+Y), en reconsommant son coût.
+func _redo() -> void:
+	if _redo_stack.is_empty():
+		GameState.notify("Rien à rétablir")
+		return
+	var entry: Dictionary = _redo_stack.back()
+	var data: BuildableData = Database.get_buildable(str(entry.get("data_id", "")))
+	if data == null:
+		_redo_stack.pop_back()
+		return
+	if not GameState.consume_items(data.costs):
+		GameState.notify("Ressources insuffisantes")
+		return
+	_redo_stack.pop_back()
+	var node := place_free(
+		str(entry.get("kind", "")),
+		str(entry.get("data_id", "")),
+		entry.get("position", Vector3.ZERO) as Vector3,
+		float(entry.get("rotation", 0.0))
+	)
+	if node == null:
+		return
+	_undo_stack.push_back(node)
+	if _undo_stack.size() > UNDO_LIMIT:
+		_undo_stack.pop_front()
+	Sfx.play("build", node.position)
+	GameState.notify("Rétabli : %s" % data.display_name)
 
 
 ## Démolit sans remboursement ni message (usage interne : undo, tests).
@@ -543,7 +588,7 @@ func _update_build_info() -> void:
 		dims_text = "1×1"
 
 	_hud.set_build_info(
-		"%s · Construction : %s (%d/%d) [%s] — %s · Clic G : poser (maintiens pour enchaîner) · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler"
+		"%s · Construction : %s (%d/%d) [%s] — %s · Clic G : poser (maintiens pour enchaîner) · Clic D : démolir · R : tourner · Molette : changer · B : quitter · PgUp/PgDn : niveau · V : verrouiller · Ctrl+Z : annuler · Ctrl+Y : rétablir"
 		% [level_text, data.display_name, _selected + 1, _catalog.size(), dims_text, ", ".join(costs)]
 	)
 
@@ -960,6 +1005,7 @@ func clear_all() -> void:
 	_objects.clear()
 	_occupied.clear()
 	_undo_stack.clear()
+	_redo_stack.clear()
 	# Supprime toutes les poutres d'angle.
 	for beam_node in _corner_beams.values():
 		if is_instance_valid(beam_node):
