@@ -822,6 +822,26 @@ func _run_smoke_test() -> void:
 	if GameState.is_dead:
 		errors.append("renaissance KO")
 
+	# Barre rapide : assignation, échange, refus des entrées invalides, icônes.
+	var saved_hotbar: Array[String] = GameState.hotbar_items.duplicate()
+	var saved_hotbar_index := GameState.hotbar_index
+	if not GameState.set_hotbar_item(0, "wood"):
+		errors.append("assignation de barre rapide KO")
+	if GameState.hotbar_items[0] != "wood":
+		errors.append("objet de barre rapide non assigné")
+	if GameState.set_hotbar_item(0, "objet_inexistant"):
+		errors.append("objet inconnu accepté dans la barre rapide")
+	if GameState.set_hotbar_item(99, "wood"):
+		errors.append("index de barre rapide hors bornes accepté")
+	if not GameState.swap_hotbar_items(0, 1):
+		errors.append("échange de barre rapide KO")
+	if GameState.hotbar_items[1] != "wood":
+		errors.append("échange de barre rapide incorrect")
+	GameState.hotbar_items = saved_hotbar
+	GameState.select_hotbar(saved_hotbar_index)
+	if hud._slot_icons.is_empty() or hud._slot_icons[0].texture == null:
+		errors.append("icône de barre rapide absente")
+
 	# Réglages : sauvegarde/chargement et application immédiate.
 	Settings.master_volume = 0.3
 	Settings.mouse_sensitivity = 1.5

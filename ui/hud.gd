@@ -28,8 +28,10 @@ const SLOT_COLORS := {
 var _toast_time_left := 0.0
 var _player: Player
 var _slot_panels: Array[PanelContainer] = []
+var _slot_icons: Array[TextureRect] = []
 var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
+var _icon_factory: IconFactory
 var _compass_label: Label
 var _quest_label: Label
 var _help_overlay: Control
@@ -69,6 +71,8 @@ func _ready() -> void:
 	GameState.toast.connect(_show_toast)
 	GameState.died.connect(_on_died)
 
+	_icon_factory = IconFactory.new()
+	add_child(_icon_factory)
 	_build_compass()
 	_build_quest_tracker()
 	_build_hotbar()
@@ -289,16 +293,23 @@ func _build_hotbar() -> void:
 	for child in hotbar.get_children():
 		child.queue_free()
 	_slot_panels.clear()
+	_slot_icons.clear()
 	_slot_names.clear()
 	_slot_counts.clear()
 
 	for index in GameState.hotbar_items.size():
 		var panel := PanelContainer.new()
-		panel.custom_minimum_size = Vector2(104, 58)
+		panel.custom_minimum_size = Vector2(112, 82)
 
 		var column := VBoxContainer.new()
 		column.add_theme_constant_override("separation", 0)
 		panel.add_child(column)
+
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(32, 30)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		column.add_child(icon)
 
 		var name_label := Label.new()
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -314,6 +325,7 @@ func _build_hotbar() -> void:
 
 		hotbar.add_child(panel)
 		_slot_panels.append(panel)
+		_slot_icons.append(icon)
 		_slot_names.append(name_label)
 		_slot_counts.append(count_label)
 
@@ -324,8 +336,13 @@ func _refresh_hotbar() -> void:
 			continue
 		var item_id := GameState.hotbar_items[index]
 		var count := GameState.get_item_count(item_id)
-		_slot_names[index].text = "%d. %s" % [index + 1, GameState.display_name(item_id)]
-		_slot_counts[index].text = "x%d" % count
+		var item: ItemData = Database.get_item(item_id)
+		_slot_icons[index].texture = _icon_factory.get_item_icon(item) if item != null else null
+		_slot_icons[index].visible = item != null
+		_slot_names[index].text = "%d. %s" % [index + 1, GameState.display_name(item_id) if not item_id.is_empty() else "—"]
+		_slot_counts[index].text = "x%d" % count if count > 0 else ""
+		_slot_panels[index].tooltip_text = item.description if item != null else "Case vide"
+		_slot_panels[index].visible = true
 		if index == GameState.hotbar_index:
 			_slot_panels[index].modulate = SLOT_COLORS.selected
 		elif count > 0:

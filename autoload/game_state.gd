@@ -169,6 +169,31 @@ func selected_hotbar_item() -> String:
 	return hotbar_items[hotbar_index]
 
 
+## Assigne un objet à une case de la barre rapide ("" pour vider la case).
+func set_hotbar_item(index: int, item_id: String) -> bool:
+	if index < 0 or index >= hotbar_items.size():
+		return false
+	if not item_id.is_empty() and not Database.items.has(item_id):
+		return false
+	hotbar_items[index] = item_id
+	hotbar_index = index
+	hotbar_changed.emit()
+	return true
+
+
+## Échange deux cases de la barre rapide (réorganisation par glisser-déposer).
+func swap_hotbar_items(a: int, b: int) -> bool:
+	if a < 0 or b < 0 or a >= hotbar_items.size() or b >= hotbar_items.size():
+		return false
+	if a == b:
+		return true
+	var tmp := hotbar_items[a]
+	hotbar_items[a] = hotbar_items[b]
+	hotbar_items[b] = tmp
+	hotbar_changed.emit()
+	return true
+
+
 ## Utilise l'objet de la case sélectionnée (manger, boire...).
 func use_selected_item() -> bool:
 	var item_id := selected_hotbar_item()
