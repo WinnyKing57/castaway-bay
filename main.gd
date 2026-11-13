@@ -119,6 +119,24 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Aide (F1) : superposée au jeu, bloque les contrôles tant qu'elle est ouverte.
+	if event.is_action_pressed("toggle_help") and _in_game and not GameState.is_dead:
+		if hud.is_help_open():
+			hud.close_help()
+			player.set_controls_enabled(true)
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		else:
+			hud.toggle_help()
+			player.set_controls_enabled(false)
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
+	if hud.is_help_open():
+		if event.is_action_pressed("ui_cancel"):
+			hud.close_help()
+			player.set_controls_enabled(true)
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		return
+
 	if event.is_action_pressed("ui_cancel"):
 		if journal_panel.is_open():
 			journal_panel.close()
@@ -195,6 +213,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _show_start_menu() -> void:
 	_in_game = false
+	hud.close_help()
 	if journal_panel.is_open():
 		journal_panel.close()
 	if trader_panel.is_open():
@@ -205,6 +224,7 @@ func _show_start_menu() -> void:
 
 
 func _open_pause_menu() -> void:
+	hud.close_help()
 	if journal_panel.is_open():
 		journal_panel.close()
 	if trader_panel.is_open():
@@ -761,6 +781,16 @@ func _run_smoke_test() -> void:
 		trader_panel.close()
 		if trader_panel.is_open():
 			errors.append("panneau du marchand non fermé")
+
+	# Aide (F1) : panneau superposé, action déclarée dans l'InputMap.
+	if not InputMap.has_action("toggle_help"):
+		errors.append("action toggle_help absente")
+	hud.toggle_help()
+	if not hud.is_help_open():
+		errors.append("aide non ouverte")
+	hud.close_help()
+	if hud.is_help_open():
+		errors.append("aide non fermée")
 
 	# Mort et renaissance
 	GameState.stats.health = 0.0

@@ -155,10 +155,12 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | Molette | changer d'élément à construire |
 | PgUp / PgDn | changer le niveau de construction |
 | V | verrouiller le niveau de construction |
+| Ctrl+Z | annuler la dernière pose (mode construction) |
 | Clic gauche | poser l'élément (mode construction) |
 | Clic droit | démolir l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
+| F1 | afficher / masquer l'aide (toutes les commandes) |
 | Échap | pause (reprendre, sauvegarder, réglages, menu principal) |
 | Espace | réapparaître après la mort |
 

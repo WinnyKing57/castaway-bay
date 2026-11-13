@@ -201,7 +201,7 @@ E : interagir — F : utiliser
 J : journal — C : artisanat — B : construire
 R : tourner (construction)
 F9 : sauvegarder — F10 : charger
-Échap : pause"
+F1 : aide — Échap : pause"
 horizontal_alignment = 2
 vertical_alignment = 2
 

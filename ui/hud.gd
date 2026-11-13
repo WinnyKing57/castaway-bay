@@ -31,6 +31,30 @@ var _slot_names: Array[Label] = []
 var _slot_counts: Array[Label] = []
 var _compass_label: Label
 var _quest_label: Label
+var _help_overlay: Control
+
+## Commandes affichées par le panneau d'aide (F1).
+const HELP_ROWS := [
+	["ZQSD / WASD", "Se déplacer"],
+	["Souris", "Regarder"],
+	["Maj", "Courir"],
+	["Espace", "Sauter / réapparaître"],
+	["E", "Interagir / récolter"],
+	["F", "Utiliser l'objet sélectionné"],
+	["1 à 5", "Sélectionner un objet de la barre rapide"],
+	["J", "Livre de bord"],
+	["C", "Artisanat"],
+	["B", "Mode construction"],
+	["R", "Tourner l'élément en construction"],
+	["Molette", "Changer d'élément à construire"],
+	["PgUp / PgDn", "Changer le niveau de construction"],
+	["V", "Verrouiller le niveau de construction"],
+	["Ctrl+Z", "Annuler la dernière pose"],
+	["Clic gauche / droit", "Poser / démolir"],
+	["F9 / F10", "Sauvegarder / charger"],
+	["F1", "Afficher / masquer cette aide"],
+	["Échap", "Pause"],
+]
 
 
 func _ready() -> void:
@@ -45,6 +69,7 @@ func _ready() -> void:
 	_build_compass()
 	_build_quest_tracker()
 	_build_hotbar()
+	_build_help()
 	_refresh_inventory()
 	_refresh_hotbar()
 	_refresh_quests()
@@ -92,6 +117,82 @@ func _build_quest_tracker() -> void:
 	_quest_label.modulate = Color(0.95, 0.9, 0.72)
 	_quest_label.visible = false
 	$Root.add_child(_quest_label)
+
+
+## Panneau d'aide (F1) : liste des commandes, sans asset ni dépendance.
+func _build_help() -> void:
+	var overlay := ColorRect.new()
+	overlay.name = "HelpOverlay"
+	overlay.color = Color(0.02, 0.03, 0.05, 0.82)
+	overlay.anchor_right = 1.0
+	overlay.anchor_bottom = 1.0
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.visible = false
+	overlay.z_index = 10
+	$Root.add_child(overlay)
+	_help_overlay = overlay
+
+	var center := CenterContainer.new()
+	center.anchor_right = 1.0
+	center.anchor_bottom = 1.0
+	overlay.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(780, 0)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	margin.add_child(box)
+
+	var title := Label.new()
+	title.text = "Aide — commandes"
+	title.add_theme_font_size_override("font_size", 28)
+	box.add_child(title)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 26)
+	grid.add_theme_constant_override("v_separation", 6)
+	box.add_child(grid)
+
+	for row in HELP_ROWS:
+		var key_label := Label.new()
+		key_label.text = str(row[0])
+		key_label.custom_minimum_size = Vector2(190, 0)
+		key_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
+		grid.add_child(key_label)
+		var action_label := Label.new()
+		action_label.text = str(row[1])
+		grid.add_child(action_label)
+
+	var hint := Label.new()
+	hint.text = "F1 ou Échap : fermer l'aide"
+	hint.modulate = Color(0.8, 0.8, 0.8)
+	hint.add_theme_font_size_override("font_size", 14)
+	box.add_child(hint)
+
+
+func is_help_open() -> bool:
+	return _help_overlay != null and _help_overlay.visible
+
+
+func toggle_help() -> void:
+	if _help_overlay == null:
+		return
+	_help_overlay.visible = not _help_overlay.visible
+
+
+func close_help() -> void:
+	if _help_overlay != null:
+		_help_overlay.visible = false
 
 
 func _refresh_quests() -> void:
