@@ -120,6 +120,26 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## Fait — évolution v3, Phase 2 (interface d'artisanat)
+- [x] **Refonte du panneau d'artisanat** : onglets de catégories, recherche,
+      liste avec icônes procédurales, détail complet de la recette
+- [x] **Détail riche** : ingrédients `possédé/requis` en couleur, station
+      disponible ou absente, palier, durée, condition de déblocage
+- [x] **Fabrication par lot** : `×1`, `×5`, `×10`, `Max` pour les recettes
+      instantanées ; `batch_size` multiplie la production
+- [x] **Tri et verrouillage** : tri catégorie puis palier puis nom ; recettes
+      verrouillées visibles avec leur condition (`unlocked_by` = objet, station
+      ou quête)
+- [x] **Progression** : barre de progression et bouton d'annulation dans le
+      panneau
+- [x] **Aide F1** : panneau des commandes superposé, action `toggle_help` dans
+      l'InputMap, contrôles suspendus, README mis à jour
+- [x] **Contenu** : 34 nouvelles recettes et 34 nouveaux objets (45 recettes,
+      61 objets au total, 8 catégories, paliers 1 à 3)
+- [x] **Tests** : sélection, filtres, recherche, lot, déblocage, aide, seuils de
+      contenu (≥ 40 recettes, ≥ 50 objets)
+- [x] Documentation : `docs/05-artisanat.md`, README et TODO mis à jour
+
 ## Fait — évolution v3, Phase 1 (données, icônes, sauvegarde)
 - [x] **`ItemData` enrichi** : `category` complet (`materiel`), `tags`, `rarity`,
       `icon_color`, `icon_shape` (8 formes), `weight` — tous avec valeurs par défaut

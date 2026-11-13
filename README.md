@@ -28,10 +28,12 @@ ni code d'un jeu commercial n'est utilisé).
    Maintiens tes jauges au-dessus de 60 pour régénérer la fatigue. Plante des
    graines sur les parcelles agricoles : la culture grandit, vire au rouge à
    maturité et fournit 2 récoltes + 1 graine pour pérenniser les plantations.
-3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (hache en
-   pierre qui double le rendement du bois, torches, planches, cordes, briques
-   cuites, composants électroniques et carburant). Les fabrications peuvent être
-   chronométrées et continuent en arrière-plan.
+3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (**45 recettes**
+   réparties en 8 catégories, recherche, détail des coûts et fabrication par
+   lot) : outils en pierre et en fer, planches, cordes, poutres, mortier, béton,
+   briques cuites, composants électroniques, batteries, plats cuisinés, voiles
+   et boussole. Les fabrications peuvent être chronométrées et continuent en
+   arrière-plan.
 4. **Construire son abri** : **B** active le mode construction (fondations,
    murs, portes, fenêtres, toits, coffres, feux de camp, tentes, lits, fours et
    générateurs). Clic gauche pose, **Clic droit** démolit (remboursement 75 % des
@@ -114,7 +116,11 @@ sauvegarde) **et** des tests de non-régression de stabilité :
 - inventaire : retraits et coûts négatifs/nuls refusés ;
 - persistance : position/regard du joueur, ressources, cultures, bateau,
   fabrication en cours, stations, copie de secours `.bak` ;
-- artisanat : fabrication chronométrée, annulation avec remboursement ;
+- artisanat : fabrication chronométrée, annulation avec remboursement,
+  `batch_size`, filtres catégories, recherche, sélection/détail et déblocage
+  par objet / station / quête ;
+- aide **F1** : action `toggle_help` déclarée dans l'InputMap, panneau ouvert et
+  fermé ;
 - construction : chevauchements entre catégories (coffre/feu/toit sur une
   fondation), bords de murs/portes, empreintes conservées après chargement,
   fondation + mur → sauvegarde → chargement → re-placement refusé (doublon) ;
@@ -360,6 +366,22 @@ une graine). Ce qui n'est pas listé est remis à neuf au chargement.
 `savegame.json.bak`, restaurée si l'écriture échoue ; si le fichier principal est
 illisible, « Continuer » utilise la copie de secours. La sauvegarde automatique
 n'écrit jamais depuis le menu principal ni pendant la mort.
+
+### Interface d'artisanat
+
+Le panneau **C** est séparé en trois zones : filtres (onglets de catégories +
+recherche), liste des recettes (icône, sortie, coût, couleur d'état) et détail
+de la recette sélectionnée (ingrédients `possédé/requis`, station, palier,
+durée, déblocage). Les recettes sont triées par catégorie puis palier ; les
+recettes verrouillées restent visibles avec leur condition. Pour les recettes
+instantanées, la quantité se choisit en `×1`, `×5`, `×10` ou `Max` et
+`batch_size` multiplie la production.
+
+### Aide (F1)
+
+**F1** superpose la liste complète des commandes (déclarées dans l'InputMap et
+documentées ci-dessus) sans quitter la partie ; les contrôles du joueur sont
+suspendus tant que l'aide est ouverte, `F1` ou `Échap` la referme.
 
 ### Artisanat chronométré
 
