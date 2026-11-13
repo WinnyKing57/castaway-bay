@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "compass"
+display_name = "Boussole"
+description = "Aiguille aimantée qui indique toujours le nord."
+category = "outil"
+max_stack = 1
+tags = []
+rarity = "rare"
+icon_color = Color(0.85, 0.72, 0.30, 1)
+icon_shape = "cercle"
+weight = 0.0

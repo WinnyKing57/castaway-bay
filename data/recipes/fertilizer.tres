@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "fertilizer"
+display_name = "Engrais"
+description = "Compost enrichi de charbon pour les cultures."
+inputs = {"compost": 2, "coal": 1}
+outputs = {"fertilizer": 2}
+craft_time = 1.0
+required_station = ""
+category = "agriculture"
+tier = 1
+unlocked_by = ""
+batch_size = 1

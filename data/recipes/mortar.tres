@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "mortar"
+display_name = "Mortier"
+description = "Terre, pierre et eau forment un mortier de maçon."
+inputs = {"clay": 2, "stone": 1, "water": 1}
+outputs = {"mortar": 2}
+craft_time = 1.0
+required_station = "campfire"
+category = "materiels"
+tier = 2
+unlocked_by = ""
+batch_size = 1

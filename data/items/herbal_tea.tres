@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "herbal_tea"
+display_name = "Infusion"
+description = "Tisane d'herbes qui repose et désaltère."
+category = "nourriture"
+max_stack = 10
+is_consumable = true
+hunger_restore = 2.0
+thirst_restore = 30.0
+health_restore = 3.0
+fatigue_restore = 15.0
+tags = []
+rarity = "commun"
+icon_color = Color(0.55, 0.78, 0.45, 1)
+icon_shape = "goutte"
+weight = 0.0

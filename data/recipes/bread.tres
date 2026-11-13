@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "bread"
+display_name = "Pain"
+description = "Farine et eau cuites sur la pierre du feu."
+inputs = {"flour": 2, "water": 1}
+outputs = {"bread": 2}
+craft_time = 5.0
+required_station = "campfire"
+category = "cuisine"
+tier = 1
+unlocked_by = ""
+batch_size = 1

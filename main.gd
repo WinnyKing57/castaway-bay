@@ -504,9 +504,9 @@ func _run_smoke_test() -> void:
 		errors.append("HUD absent")
 	if menu == null:
 		errors.append("menu absent")
-	if Database.items.size() < 5:
+	if Database.items.size() < 50:
 		errors.append("base d'objets incomplète (%d)" % Database.items.size())
-	if Database.recipes.size() < 2:
+	if Database.recipes.size() < 40:
 		errors.append("recettes incomplètes (%d)" % Database.recipes.size())
 	if Database.buildables.size() < 3:
 		errors.append("constructibles incomplets (%d)" % Database.buildables.size())

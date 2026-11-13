@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "compass"
+display_name = "Boussole"
+description = "Cristal, or et métal pour une aiguille aimantée."
+inputs = {"metal": 1, "crystal": 1, "gold": 1}
+outputs = {"compass": 1}
+craft_time = 2.0
+required_station = ""
+category = "navigation"
+tier = 3
+unlocked_by = ""
+batch_size = 1

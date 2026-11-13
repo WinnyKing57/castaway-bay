@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "lantern"
+display_name = "Lanterne"
+description = "Métal, bougie et corde pour une lanterne portative."
+inputs = {"metal": 2, "candle": 1, "rope": 1}
+outputs = {"lantern": 1}
+craft_time = 2.0
+required_station = ""
+category = "outils"
+tier = 2
+unlocked_by = ""
+batch_size = 1

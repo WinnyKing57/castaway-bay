@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "candle"
+display_name = "Bougies"
+description = "Carburant et fibres tressées forment deux bougies."
+inputs = {"fuel": 1, "fiber": 2}
+outputs = {"candle": 2}
+craft_time = 0.0
+required_station = ""
+category = "materiels"
+tier = 1
+unlocked_by = ""
+batch_size = 1

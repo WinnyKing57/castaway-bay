@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "iron_ingot"
+display_name = "Lingot de fer"
+description = "Fonte du minerai de fer au four."
+inputs = {"metal": 2, "coal": 1}
+outputs = {"iron_ingot": 1}
+craft_time = 4.0
+required_station = "furnace"
+category = "materiels"
+tier = 2
+unlocked_by = ""
+batch_size = 1

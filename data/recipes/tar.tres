@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "tar"
+display_name = "Goudron"
+description = "Charbon et terre fondus donnent un goudron noir."
+inputs = {"coal": 2, "clay": 1}
+outputs = {"tar": 2}
+craft_time = 2.0
+required_station = "campfire"
+category = "materiels"
+tier = 2
+unlocked_by = ""
+batch_size = 1

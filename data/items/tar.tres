@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "tar"
+display_name = "Goudron"
+description = "Résine noire imperméable, utile pour calfater."
+category = "materiel"
+max_stack = 99
+tags = []
+rarity = "commun"
+icon_color = Color(0.20, 0.18, 0.16, 1)
+icon_shape = "goutte"
+weight = 0.0
