@@ -183,8 +183,33 @@ func _read_save() -> Dictionary:
 		if not data.is_empty():
 			if path == BACKUP_PATH:
 				push_warning("[SaveSystem] Sauvegarde principale illisible : copie de secours utilisée")
-			return data
+			return _migrate(data)
 	return {}
+
+
+## Migration des versions antérieures vers la version courante (v3) : les
+## anciennes sauvegardes sont complétées avec les valeurs par défaut des champs
+## optionnels, puis portées à la version courante. Tout champ nouveau est
+## optionnel côté lecteur, la migration ne fait que remplir les absents.
+func _migrate(data: Dictionary) -> Dictionary:
+	var version := int(_num(data.get("version", 0.0), 0.0))
+	var migrated: Dictionary = data.duplicate()
+	if version < 2:
+		# Sauvegardes v1 : champs introduits en v2 absents -> valeurs par défaut.
+		if not migrated.has("hotbar_index"):
+			migrated["hotbar_index"] = 0
+		if not migrated.has("craft"):
+			migrated["craft"] = {}
+		if not migrated.has("npc"):
+			migrated["npc"] = {}
+		if not migrated.has("world_state"):
+			migrated["world_state"] = {}
+	if version < 3:
+		# Sauvegardes v2 : champs introduits en v3 absents -> valeurs par défaut.
+		if not migrated.has("craft"):
+			migrated["craft"] = {}
+	migrated["version"] = GameState.SAVE_VERSION
+	return migrated
 
 
 func _read_file(path: String) -> Dictionary:

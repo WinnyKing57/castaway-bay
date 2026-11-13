@@ -19,7 +19,7 @@ signal journal_changed
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
 const SECONDS_PER_DAY := 86400.0
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 ## Nombre maximum d'entrées conservées dans le livre de bord.
 const MAX_JOURNAL_ENTRIES := 120
 

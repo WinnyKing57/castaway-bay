@@ -1070,6 +1070,18 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 		if GameState.stats.health > 100.0 or GameState.stats.hunger < 0.0:
 			errors.append("jauges non bornées au chargement")
 
+	# Migration v1/v2 -> v3 : des vraies sauvegardes anciennes doivent charger.
+	_write_raw_save('{"version": 2, "stats": {"health": 80.0}, "inventory": {"wood": 3}, "player": {"position": [10, 0, 10], "rotation_y": 0.0}}')
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde v2 refusee (migration)")
+	if GameState.get_item_count("wood") != 3:
+		errors.append("sauvegarde v2 non restauree (migration)")
+	_write_raw_save('{"version": 1, "stats": {"health": 80.0}, "inventory": {"wood": 3}, "player": {"position": [10, 0, 10], "rotation_y": 0.0}}')
+	if not SaveSystem.load_game_into(player, world, construction):
+		errors.append("sauvegarde v1 refusee (migration)")
+	if GameState.get_item_count("wood") != 3:
+		errors.append("sauvegarde v1 non restauree (migration)")
+
 	# Bateau : un chargement ou un respawn doit libérer le joueur.
 	var boat: Boat = null
 	for child in world.get_children():
