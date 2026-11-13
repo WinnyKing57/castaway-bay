@@ -690,6 +690,30 @@ func _run_smoke_test() -> void:
 	if crafting_panel.is_open():
 		errors.append("panneau d'artisanat non fermé")
 
+	# Fabrication par lot : `batch_size` multiplie la production, et l'interface
+	# enchaîne les fabrications instantanées (quantité choisie).
+	var batch_recipe := RecipeData.new()
+	batch_recipe.id = "test_batch"
+	batch_recipe.display_name = "Lot test"
+	batch_recipe.inputs = {"wood": 1}
+	batch_recipe.outputs = {"plank": 1}
+	batch_recipe.batch_size = 3
+	GameState.add_item("wood", 10)
+	var plank_before := GameState.get_item_count("plank")
+	if not GameState.craft(batch_recipe):
+		errors.append("fabrication par lot KO")
+	if GameState.get_item_count("plank") != plank_before + 3:
+		errors.append("batch_size non appliqué (%d)" % (GameState.get_item_count("plank") - plank_before))
+	crafting_panel.open()
+	GameState.add_item("wood", 10)
+	GameState.add_item("fiber", 10)
+	var torches_before_batch := GameState.get_item_count("torch")
+	if not crafting_panel.select_recipe("torch") or not crafting_panel.craft_selected(5):
+		errors.append("fabrication par lot via l'interface KO")
+	if GameState.get_item_count("torch") != torches_before_batch + 5:
+		errors.append("lot d'interface : %d torches au lieu de 5" % (GameState.get_item_count("torch") - torches_before_batch))
+	crafting_panel.close()
+
 	# Journal et marchand : les interfaces s'ouvrent et se referment proprement.
 	journal_panel.open()
 	if not journal_panel.is_open():

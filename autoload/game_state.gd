@@ -248,8 +248,9 @@ func craft(recipe: RecipeData) -> bool:
 
 
 func _finish_craft(recipe: RecipeData) -> void:
+	var batch := maxi(recipe.batch_size, 1)
 	for item_id in recipe.outputs:
-		add_item(str(item_id), int(recipe.outputs[item_id]))
+		add_item(str(item_id), int(recipe.outputs[item_id]) * batch)
 	Sfx.play_ui("craft")
 	notify("Fabriqué : %s" % recipe.display_name)
 
