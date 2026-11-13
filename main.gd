@@ -402,8 +402,8 @@ func _on_construction_closed() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-func _on_construction_selection_requested(index: int) -> void:
-	construction.select_buildable(index)
+func _on_construction_selection_requested(buildable_id: String) -> void:
+	construction.select_buildable_by_id(buildable_id)
 
 
 func _toggle_journal() -> void:
@@ -823,6 +823,30 @@ func _run_smoke_test() -> void:
 	var placed := construction.place_free("foundation", "foundation", Vector3(3.5, 0.0, 3.5), 0.0)
 	if placed == null:
 		errors.append("pose de construction KO")
+
+	# Panneau de construction : catégories, recherche, sélection par id.
+	construction_panel.open()
+	if not construction_panel.is_open():
+		errors.append("panneau de construction non ouvert")
+	if construction_panel.buildables_box.get_child_count() < 5:
+		errors.append("catalogue de construction vide")
+	construction_panel.set_category_filter("murs")
+	if construction_panel.current_category_filter() != "murs":
+		errors.append("filtre de construction KO")
+	if not construction_panel.select_buildable("wall"):
+		errors.append("sélection de construction KO")
+	if construction.selected_data() == null or construction.selected_data().id != "wall":
+		errors.append("sélection de construction non transmise")
+	if construction_panel.select_buildable("inexistant"):
+		errors.append("sélection d'un constructible inconnu acceptée")
+	construction_panel.set_category_filter("")
+	construction_panel.set_search("toit")
+	if construction_panel.buildables_box.get_child_count() < 2:
+		errors.append("recherche de construction KO")
+	construction_panel.set_search("")
+	construction_panel.close()
+	if construction_panel.is_open():
+		errors.append("panneau de construction non fermé")
 
 	# Niveaux de construction : alignement fantome, niveau manuel, verrou.
 	var neighbor_cell := Vector2i(4, 3)

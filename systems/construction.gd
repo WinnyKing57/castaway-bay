@@ -546,6 +546,21 @@ func select_buildable(index: int) -> void:
 	_update_build_info()
 
 
+## Sélectionne un élément par identifiant (le panneau reste synchronisé même
+## si l'ordre du catalogue change).
+func select_buildable_by_id(buildable_id: String) -> bool:
+	for i in _catalog.size():
+		if _catalog[i].id == buildable_id:
+			select_buildable(i)
+			return true
+	return false
+
+
+## Données du constructible actuellement sélectionné (peut être null).
+func selected_data() -> BuildableData:
+	return _selected_data()
+
+
 func _try_demolish() -> bool:
 	var hit := _raycast()
 	if hit.is_empty():
