@@ -120,6 +120,22 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## Fait — évolution v3, Phase 5 (survie et progression)
+- [x] **XP et niveaux** : récolte (4), artisanat (8), construction (12),
+      quêtes (60) ; courbe `60 + 40 × (niveau − 1)`, plafond 20 ; montée de
+      niveau = fatigue restaurée + notification + journal
+- [x] **Jauge HUD** : « Niv. N » et barre d'XP synchronisées chaque image
+- [x] **Déblocage par niveau** : `unlocked_by = "level:N"` reconnu par le
+      panneau d'artisanat ; `steel_ingot` (3), `steel_pickaxe` (4),
+      `steel_axe` (5), avec 3 objets et 3 recettes d'acier
+- [x] **Sommeil** : `GameState.sleep_until_morning()` (nuit 19 h → 6 h,
+      fatigue 100, vie +30), branché sur le lit ; `hour_of_day()` / `is_night()`
+- [x] **Sauvegarde** : bloc optionnel `progression {level, xp}`, validé,
+      borné, rétrocompatible avec les sauvegardes v1/v2/v3 sans ce bloc
+- [x] **Tests** : gain d'XP, montée de niveau, courbe, jauge, sommeil jour/nuit,
+      verrouillage par niveau, persistance, reset
+- [x] Documentation : `docs/14-progression.md`, INDEX, README, artisanat, DECISIONS
+
 ## En cours — évolution v3, Phase 7.1 (découpage du code)
 
 - [x] **`main.gd`** : le smoke test (≈ 1 200 lignes) est extrait dans

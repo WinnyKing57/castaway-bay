@@ -120,3 +120,36 @@ peuvent être échangées. Une case peut être vidée (`""`).
 **Pourquoi** : aucune abstraction de conteneur n'est nécessaire tant que
 l'inventaire n'a pas de capacité ni de poids exploité en jeu. Le format de
 sauvegarde v3 n'est pas modifié (mêmes champs).
+
+### Progression : XP globale et portes de contenu par niveau
+
+**Décision** : une seule progression globale (`level`, `xp`) alimentée par les
+actions existantes (récolte, artisanat, construction, quêtes). Les niveaux ne
+donnent pas de points à répartir : ils débloquent des recettes via
+`unlocked_by = "level:N"` et restaurent la fatigue.
+
+**Pourquoi** : c'est la plus petite mécanique qui rend la boucle « récolter →
+fabriquer → construire » cumulative, sans introduire d'arbre de talents ni de
+seconde monnaie. Le rétablissement d'une pose (Ctrl+Y) ne donne pas d'XP pour
+éviter le farming.
+
+**Écarté** : compétences séparées par métier (trop de contenu à équilibrer),
+bonus permanents aux jauges (les jauges sont bornées à 100 partout).
+
+### Sommeil centralisé dans GameState
+
+**Décision** : le lit appelle `GameState.sleep_until_morning()` ; `hour_of_day()`
+et `is_night()` vivent aussi dans GameState (nuit 19 h → 6 h).
+
+**Pourquoi** : l'heure, la fatigue et la vie sont déjà centralisées et
+sauvegardées. Le test headless peut ainsi vérifier le sommeil sans instancier de
+lit ni simuler une interaction.
+
+### Champ de sauvegarde optionnel sans changement de version
+
+**Décision** : `progression {level, xp}` est ajouté au format v3 en champ
+optionnel, avec valeurs par défaut et validation ; `SAVE_VERSION` reste 3.
+
+**Pourquoi** : la règle impose des champs nouveaux optionnels. Un ancien
+binaire ignore le bloc ; un nouveau binaire lit les anciennes sauvegardes. Une
+montée de version n'apporterait aucune migration supplémentaire.

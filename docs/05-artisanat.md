@@ -14,16 +14,18 @@ Le contenu est **data-driven** : ajouter une recette = créer un `.tres`, aucun 
 | `required_station` | Station requise (`""` = nulle, `campfire`, `furnace`) |
 | `category` | `survie`, `outils`, `cuisine`, `materiels`, `construction`, `electricite`, `agriculture`, `navigation` |
 | `tier` | Palier de progression (1 → 4) |
-| `unlocked_by` | Objet possédé, station disponible ou quête accomplie qui débloque la recette (`""` = connue) |
+| `unlocked_by` | Objet possédé, station disponible, quête accomplie ou `level:N` qui débloque la recette (`""` = connue) |
 | `batch_size` | Multiplicateur de production (1 = normal) |
 
-Le jeu contient **45 recettes** pour **61 objets**, réparties sur les huit
+Le jeu contient **48 recettes** pour **64 objets**, réparties sur les huit
 catégories. Chaînes de progression notables :
 
 - **Bois** : `stick` → `handle` → `stone_pickaxe` / `fishing_rod` ;
 - **Métal** : `iron_ingot` (four) → `nail` / `gear` / `iron_axe` ;
 - **Électricité** : `wire` → `circuit` → `battery` / `lamp` ;
 - **Construction** : `mortar` → `concrete`, `plank` → `beam`, `canvas` → `sail` ;
+- **Acier** (paliers 4, verrouillés par niveau) : `iron_ingot` + charbon →
+  `steel_ingot`, puis `steel_axe` / `steel_pickaxe` ;
 - **Cuisine** : `bread`, `soup`, `grilled_corn`, `herbal_tea`, `dried_meat`,
   `fruit_salad` (objets consommables : faim / soif / vie / fatigue).
 

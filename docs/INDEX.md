@@ -24,6 +24,7 @@ Documentation française complète du fonctionnement du jeu et de ses systèmes.
 | 11 | [`11-tests.md`](11-tests.md) | Tests, smoke test, outils de développement |
 | 12 | [`12-donnees.md`](12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
 | 13 | [`13-inventaire-hud.md`](13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
+| 14 | [`14-progression.md`](14-progression.md) | XP, niveaux, déblocage par niveau et sommeil |
 | — | [`DECISIONS.md`](DECISIONS.md) | Journal des décisions techniques |
 
 ## Comment lire cette documentation

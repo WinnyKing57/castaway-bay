@@ -28,11 +28,11 @@ ni code d'un jeu commercial n'est utilisé).
    Maintiens tes jauges au-dessus de 60 pour régénérer la fatigue. Plante des
    graines sur les parcelles agricoles : la culture grandit, vire au rouge à
    maturité et fournit 2 récoltes + 1 graine pour pérenniser les plantations.
-3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (**45 recettes**
+3. **Fabriquer & Transformer** : **C** ouvre l'artisanat complet (**48 recettes**
    réparties en 8 catégories, recherche, détail des coûts et fabrication par
    lot) : outils en pierre et en fer, planches, cordes, poutres, mortier, béton,
-   briques cuites, composants électroniques, batteries, plats cuisinés, voiles
-   et boussole. Les fabrications peuvent être chronométrées et continuent en
+   briques cuites, composants électroniques, batteries, plats cuisinés, voiles,
+   boussole et acier (recettes débloquées par niveau). Les fabrications peuvent être chronométrées et continuent en
    arrière-plan.
 4. **Construire son abri** : **B** active le mode construction (fondations,
    murs, portes, fenêtres, toits, coffres, feux de camp, tentes, lits, fours et
@@ -239,6 +239,7 @@ La documentation complète du jeu et des mécaniques est disponible dans
 | [`docs/11-tests.md`](docs/11-tests.md) | Tests, smoke test, outils |
 | [`docs/12-donnees.md`](docs/12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
 | [`docs/13-inventaire-hud.md`](docs/13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
+| [`docs/14-progression.md`](docs/14-progression.md) | XP, niveaux, déblocage par niveau et sommeil |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Journal des décisions techniques |
 
 Chaque document explique le fonctionnement d'un système : entrées, sorties,
