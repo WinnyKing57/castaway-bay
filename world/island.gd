@@ -7,7 +7,8 @@ extends Node3D
 ## qu'un chargement retrouve exactement le même relief.
 
 const ISLAND_SIZE := 520.0          # Île principale agrandie (~520 m de diamètre)
-const GRID_RES := 240               # Grille de terrain plus détaillée
+const CHUNK_SIZE := 64.0            # Taille d'un chunk de terrain (m)
+const GRID_RES := 48                # Résolution de la grille par chunk (~1,3 m/cellule)
 const SEA_LEVEL := 0.0
 
 ## Biomes de surface. La plage et les sommets sont déterminés par l'altitude,
@@ -51,6 +52,7 @@ var _biome_noise: FastNoiseLite
 var _biome_phase := 0.0
 var _farm_center := Vector2.ZERO
 var _mesh_instance: MeshInstance3D
+var _terrain_material: StandardMaterial3D
 var _generated := false
 
 
@@ -233,58 +235,64 @@ func get_mesh_instance() -> MeshInstance3D:
 # --- Construction du terrain -------------------------------------------------
 
 func _build_terrain() -> void:
-	var step := ISLAND_SIZE / float(GRID_RES)
-	var vertices_per_side := GRID_RES + 1
+	var chunk_count := int(floor(ISLAND_SIZE / CHUNK_SIZE)) + 1
+	var start := -ISLAND_SIZE * 0.5
+	if _terrain_material == null:
+		_terrain_material = StandardMaterial3D.new()
+		_terrain_material.vertex_color_use_as_albedo = true
+		_terrain_material.roughness = 1.0
+		_terrain_material.metallic = 0.0
 
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for cz in chunk_count:
+		for cx in chunk_count:
+			var c0 := start + cx * CHUNK_SIZE
+			var surface := SurfaceTool.new()
+			surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+			var step := CHUNK_SIZE / float(GRID_RES)
+			var vertices_per_side := GRID_RES + 1
 
-	for gz in vertices_per_side:
-		for gx in vertices_per_side:
-			var x := -ISLAND_SIZE * 0.5 + gx * step
-			var z := -ISLAND_SIZE * 0.5 + gz * step
-			var height := get_height_at(x, z)
-			var biome := _biome_at(x, z)
-			surface.set_color(_color_for(biome, height))
-			surface.set_normal(_normal_at(x, z, step))
-			surface.set_uv(Vector2(gx, gz) / float(GRID_RES))
-			surface.add_vertex(Vector3(x, height, z))
+			for gz in vertices_per_side:
+				for gx in vertices_per_side:
+					var x := c0 + gx * step
+					var z := c0 + gz * step
+					var height := get_height_at(x, z)
+					var biome := _biome_at(x, z)
+					surface.set_color(_color_for(biome, height))
+					surface.set_normal(_normal_at(x, z, step))
+					surface.set_uv(Vector2(gx, gz) / float(GRID_RES))
+					surface.add_vertex(Vector3(x, height, z))
 
-	for gz in GRID_RES:
-		for gx in GRID_RES:
-			var i0 := gz * vertices_per_side + gx
-			var i1 := i0 + 1
-			var i2 := i0 + vertices_per_side
-			var i3 := i2 + 1
-			# Ordre horaire (sens des faces avant dans Godot), vu du dessus.
-			surface.add_index(i0)
-			surface.add_index(i1)
-			surface.add_index(i2)
-			surface.add_index(i1)
-			surface.add_index(i3)
-			surface.add_index(i2)
+			for gz in GRID_RES:
+				for gx in GRID_RES:
+					var i0 := gz * vertices_per_side + gx
+					var i1 := i0 + 1
+					var i2 := i0 + vertices_per_side
+					var i3 := i2 + 1
+					# Ordre horaire (sens des faces avant dans Godot), vu du dessus.
+					surface.add_index(i0)
+					surface.add_index(i1)
+					surface.add_index(i2)
+					surface.add_index(i1)
+					surface.add_index(i3)
+					surface.add_index(i2)
 
-	var mesh: ArrayMesh = surface.commit()
+			var mesh: ArrayMesh = surface.commit()
 
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.roughness = 1.0
-	material.metallic = 0.0
+			var mesh_instance := MeshInstance3D.new()
+			mesh_instance.name = "Terrain"
+			mesh_instance.mesh = mesh
+			mesh_instance.material_override = _terrain_material
+			add_child(mesh_instance)
+			_mesh_instance = mesh_instance
 
-	_mesh_instance = MeshInstance3D.new()
-	_mesh_instance.name = "Terrain"
-	_mesh_instance.mesh = mesh
-	_mesh_instance.material_override = material
-	add_child(_mesh_instance)
-
-	var body := StaticBody3D.new()
-	body.name = "TerrainBody"
-	body.collision_layer = 1
-	body.collision_mask = 0
-	var collision := CollisionShape3D.new()
-	collision.shape = mesh.create_trimesh_shape()
-	body.add_child(collision)
-	add_child(body)
+			var body := StaticBody3D.new()
+			body.name = "TerrainBody"
+			body.collision_layer = 1
+			body.collision_mask = 0
+			var collision := CollisionShape3D.new()
+			collision.shape = mesh.create_trimesh_shape()
+			body.add_child(collision)
+			add_child(body)
 
 
 func _normal_at(x: float, z: float, step: float) -> Vector3:
