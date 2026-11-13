@@ -53,6 +53,10 @@ var _biome_phase := 0.0
 var _farm_center := Vector2.ZERO
 var _mesh_instance: MeshInstance3D
 var _terrain_material: StandardMaterial3D
+var _prop_mm_groups: Dictionary = {}   # "kind|part" -> Array[Harvestable]
+var _prop_mm_resources: Dictionary = {} # "kind|part" -> MultiMesh
+var _prop_mm_part_index: Dictionary = {} # "kind|part" -> int
+var _prop_mm_keys_by_kind: Dictionary = {} # kind -> Array[String]
 var _generated := false
 
 
@@ -112,6 +116,10 @@ func regenerate(seed_value: int) -> void:
 		child.queue_free()
 	_generated = false
 	_mesh_instance = null
+	_prop_mm_groups.clear()
+	_prop_mm_resources.clear()
+	_prop_mm_part_index.clear()
+	_prop_mm_keys_by_kind.clear()
 	generate(seed_value)
 
 
@@ -482,7 +490,51 @@ func _spawn_prop(scene: PackedScene, kind: String, pos: Vector3, yaw: float, sav
 	prop.position = pos
 	prop.rotation.y = yaw
 	prop.save_id = save_id
+	_register_prop_mm(kind, prop)
 	add_child(prop)
+
+
+## Enregistre un prop dans le batching MultiMesh (une instance par élément
+## visuel), puis rattache les signaux de récolte (déploiement / repousse).
+func _register_prop_mm(kind: String, prop: Harvestable) -> void:
+	var parts: Array = prop.get_visual_parts()
+	for i in range(parts.size()):
+		var key := "%s|%d" % [kind, i]
+		if not _prop_mm_groups.has(key):
+			var mesh: Mesh = parts[i]["mesh"]
+			var mm := MultiMesh.new()
+			mm.mesh = mesh
+			_prop_mm_resources[key] = mm
+			_prop_mm_groups[key] = []
+			_prop_mm_part_index[key] = i
+			if not _prop_mm_keys_by_kind.has(kind):
+				_prop_mm_keys_by_kind[kind] = []
+			if not _prop_mm_keys_by_kind[kind].has(key):
+				_prop_mm_keys_by_kind[kind].append(key)
+		if not _prop_mm_groups[key].has(prop):
+			_prop_mm_groups[key].append(prop)
+		_rebuild_prop_mm(key)
+	var depleted_cb := func(): _rebuild_prop_mm_keys(kind)
+	prop.resource_depleted.connect(depleted_cb)
+	prop.resource_regrown.connect(depleted_cb)
+
+
+func _rebuild_prop_mm(key: String) -> void:
+	var mm: MultiMesh = _prop_mm_resources.get(key)
+	if mm == null:
+		return
+	mm.clear()
+	var i: int = _prop_mm_part_index[key]
+	for prop: Harvestable in _prop_mm_groups.get(key, []):
+		if prop.is_depleted():
+			continue
+		var parts: Array = prop.get_visual_parts()
+		mm.add_item(prop.global_transform * parts[i]["transform"])
+
+
+func _rebuild_prop_mm_keys(kind: String) -> void:
+	for key in _prop_mm_keys_by_kind.get(kind, []):
+		_rebuild_prop_mm(key)
 
 
 ## Choisit une ressource cohérente avec le biome et l'altitude.

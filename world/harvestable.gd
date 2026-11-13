@@ -21,6 +21,9 @@ var _loot: Dictionary = {}
 var _depleted := false
 var _regrow_left := 0.0
 
+signal resource_depleted
+signal resource_regrown
+
 
 func _ready() -> void:
 	collision_layer = 1
@@ -90,6 +93,17 @@ func is_depleted() -> bool:
 	return _depleted
 
 
+## Retourne les éléments visuels d'un prop (mesh + transform local), dans
+## l'ordre d'ajout. Utilisé pour le batching MultiMesh (une instance par élément).
+func get_visual_parts() -> Array:
+	var parts: Array = []
+	for child in get_children():
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh is Mesh:
+			var mi := child as MeshInstance3D
+			parts.append({"mesh": mi.mesh, "transform": mi.transform})
+	return parts
+
+
 func get_save_state() -> Dictionary:
 	return {"id": save_id, "regrow_left": _regrow_left}
 
@@ -102,8 +116,10 @@ func apply_save_state(depleted: bool, regrow_left: float) -> void:
 		_regrow_left = clampf(regrow_left, 0.0, REGROW_SECONDS)
 		visible = false
 		collision_layer = 0
+		resource_depleted.emit()
 	elif _depleted:
 		_regrow()
+		resource_regrown.emit()
 
 
 func _start_regrow() -> void:
@@ -111,12 +127,14 @@ func _start_regrow() -> void:
 	_regrow_left = REGROW_SECONDS if kind != "seed" else 30.0
 	visible = false
 	collision_layer = 0
+	resource_depleted.emit()
 
 
 func _regrow() -> void:
 	_depleted = false
 	visible = true
 	collision_layer = 1
+	resource_regrown.emit()
 
 
 ## La hache en pierre double le bois récolté : elle donne un intérêt concret
