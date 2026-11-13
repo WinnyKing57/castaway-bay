@@ -259,7 +259,8 @@ func _build_terrain() -> void:
 
 	for cz in chunk_count:
 		for cx in chunk_count:
-			var c0 := start + cx * CHUNK_SIZE
+			var c0_x := start + cx * CHUNK_SIZE
+			var c0_z := start + cz * CHUNK_SIZE
 			var surface := SurfaceTool.new()
 			surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 			var step := CHUNK_SIZE / float(GRID_RES)
@@ -267,8 +268,8 @@ func _build_terrain() -> void:
 
 			for gz in vertices_per_side:
 				for gx in vertices_per_side:
-					var x := c0 + gx * step
-					var z := c0 + gz * step
+					var x := c0_x + gx * step
+					var z := c0_z + gz * step
 					var height := get_height_at(x, z)
 					var biome := _biome_at(x, z)
 					surface.set_color(_color_for(biome, height, _humidity_at(x, z)))
@@ -293,7 +294,7 @@ func _build_terrain() -> void:
 			var mesh: ArrayMesh = surface.commit()
 
 			var mesh_instance := MeshInstance3D.new()
-			mesh_instance.name = "Terrain"
+			mesh_instance.name = "TerrainC%dC%d" % [cx, cz]
 			mesh_instance.mesh = mesh
 			mesh_instance.material_override = _terrain_material
 			add_child(mesh_instance)

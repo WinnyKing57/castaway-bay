@@ -1440,3 +1440,11 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 	# Nettoyage : monde remis à neuf pour la suite.
 	world.apply_save_data({})
 	construction.clear_all()
+
+	# Chunks de terrain : 9x9 de 64 m attendus (GRID_RES 48 par chunk).
+	var terrain_chunks := 0
+	for child in world.get_children():
+		if child is MeshInstance3D and child.name.begins_with("Terrain"):
+			terrain_chunks += 1
+	if terrain_chunks != 81:
+		errors.append("chunks de terrain: %d au lieu de 81" % terrain_chunks)
