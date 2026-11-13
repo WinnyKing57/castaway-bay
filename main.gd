@@ -32,7 +32,7 @@ var _cave_journaled := false
 func _ready() -> void:
 	player.global_position = world.find_spawn_point()
 	hud.setup(player)
-	construction.setup(player, hud)
+	construction.setup(player, hud, world)
 	GameState.died.connect(_on_player_died)
 	crafting_panel.opened.connect(_on_crafting_opened)
 	crafting_panel.closed.connect(_on_crafting_closed)
@@ -757,6 +757,17 @@ func _run_smoke_test() -> void:
 		errors.append("mur re-posable depuis la case voisine (rotation 2) après chargement")
 	construction.clear_all()
 
+	# Fondation sur pente : terrain plat accepte, terrain trop pentu refuse.
+	if construction._world == null:
+		errors.append("monde inaccessible pour le test de pente")
+	else:
+		var flat_cell := Vector2i(30, 30)
+		var flat_terrain := construction._world.get_height_at(30.5, 30.5)
+		if not construction._foundation_flat(flat_cell, flat_terrain):
+			errors.append("terrain plat refuse pour fondation (a tort)")
+		if construction._foundation_flat(flat_cell, flat_terrain + 5.0):
+			errors.append("terrain trop pentu accepte pour fondation")
+
 	construction._selected = _catalog_index("foundation")
 	var stacked_cell := Vector2i(6, 6)
 	var stacked0 := construction.place_free("foundation", "foundation", Vector3(6.5, 0.0, 6.5), 0.0)
@@ -1215,6 +1226,18 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 		var beams_after_demolish := construction._corner_beams.size()
 		if beams_after_demolish >= 1:
 			errors.append("poutre d'angle non retirée après démolition du mur")
+
+	# Générateur : allume sa lumière à la pose, l'éteint à la démolition.
+	construction.clear_all()
+	var gen_node := construction.place_free("generator", "generator", Vector3(50.5, 0.0, 50.5), 0.0)
+	if gen_node == null:
+		errors.append("pose generateur KO")
+	else:
+		if not gen_node.is_powered():
+			errors.append("generateur non allume")
+		construction.demolish(gen_node)
+		if gen_node.is_powered():
+			errors.append("generateur allume après démolition")
 	construction.clear_all()
 ## Tests de persistance : « rien de ce que fait le joueur ne doit se perdre ».
 func _run_persistence_tests(errors: PackedStringArray) -> void:

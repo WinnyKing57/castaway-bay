@@ -39,16 +39,20 @@ var _undo_stack: Array[Buildable] = []
 
 ## Pas de niveau de construction : 1 niveau = LEVEL_STEP (0.2 m, = 1 fondation).
 const LEVEL_STEP := 0.2
+## Dénivelé maximal toléré sous une fondation (le terrain plus raide est refusé).
+const MAX_FOUNDATION_SLOPE := 0.5
 var _build_level := 0
 var _level_locked := false
 var _locked_y := 0.0
 var _ghost_y := 0.0
+var _world: Island = null
 
 
-func setup(player: Player, hud: Hud) -> void:
+func setup(player: Player, hud: Hud, world: Island) -> void:
 	_player = player
 	_hud = hud
 	_camera = player.get_node("Head/Camera3D")
+	_world = world
 
 	_catalog.clear()
 	var ids := Database.buildables.keys()
@@ -183,9 +187,20 @@ func _placement_ok(hit: Dictionary, cell: Vector2i, ghost_y: float) -> bool:
 		var normal: Vector3 = hit["normal"]
 		if normal.y < 0.8:
 			return false
+	if _build_level == 0 and not _foundation_flat(cell, ghost_y - _build_level * LEVEL_STEP):
+		return false
 	if not _can_place(cell, int(round(ghost_y / LEVEL_STEP)), _rotation_steps):
 		return false
 	return not _ghost_blocked_by_player()
+
+
+## Vrai si le terrain est assez plat (dénivelé <= MAX_FOUNDATION_SLOPE) sous la
+## cellule pour supporter une fondation de la hauteur `base_y`.
+func _foundation_flat(cell: Vector2i, base_y: float) -> bool:
+	if _world == null or not _world.has_method("get_height_at"):
+		return true
+	var terrain := _world.get_height_at(cell.x + 0.5, cell.y + 0.5)
+	return absf(base_y - terrain) <= MAX_FOUNDATION_SLOPE
 
 
 func _is_roof_kind(kind: String) -> bool:
@@ -323,6 +338,8 @@ func demolish_silent(obj: Buildable) -> void:
 				break
 		if not still:
 			GameState.craft_stations.erase(obj.kind)
+	if obj.kind == "generator":
+		obj.set_powered(false)
 	obj.queue_free()
 
 
@@ -335,6 +352,8 @@ func _register_object(node: Buildable) -> void:
 		_occupied[key] = true
 	if node.kind == "campfire" or node.kind == "furnace":
 		GameState.register_station(node.kind)
+	if node.kind == "generator":
+		node.set_powered(true)
 
 
 # --- Poutres d'angle ---------------------------------------------------------
@@ -576,6 +595,9 @@ func demolish(obj: Buildable) -> bool:
 	# Retire les poutres d'angle liées à ce mur avant de le supprimer.
 	if obj.kind == "wall" or obj.kind == "half_wall":
 		_remove_corner_beams_for(obj)
+
+	if obj.kind == "generator":
+		obj.set_powered(false)
 
 	Sfx.play("harvest", obj.global_position)
 	obj.queue_free()

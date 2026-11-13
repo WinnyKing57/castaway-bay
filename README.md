@@ -34,7 +34,8 @@ ni code d'un jeu commercial n'est utilisé).
    chronométrées et continuent en arrière-plan.
 4. **Construire son abri** : **B** active le mode construction (fondations,
    murs, portes, fenêtres, toits, coffres, feux de camp, tentes, lits, fours et
-   générateurs). Clic gauche pose, **R** fait pivoter, la molette change
+   générateurs). Clic gauche pose, **Clic droit** démolit (remboursement 75 % des
+   matériaux), **R** fait pivoter, la molette change
    d'élément, **PgUp / PgDn** changent d'étage et **V** verrouille l'altitude.
 5. **Naviguer** : repère le bateau échoué au large, répare sa coque avec du
    métal, fais le plein de carburant et navigue pour explorer les pourtours de
@@ -151,6 +152,7 @@ Le test sauvegarde puis restaure `user://savegame.json` et
 | PgUp / PgDn | changer le niveau de construction |
 | V | verrouiller le niveau de construction |
 | Clic gauche | poser l'élément (mode construction) |
+| Clic droit | démolir l'élément (mode construction) |
 | F9 | sauvegarder |
 | F10 | charger |
 | Échap | pause (reprendre, sauvegarder, réglages, menu principal) |

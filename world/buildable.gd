@@ -18,6 +18,8 @@ var _door_shape: CollisionShape3D = null
 var _window_pivot: Node3D = null
 var _window_shape: CollisionShape3D = null
 var _ghost_material: StandardMaterial3D
+## Lumière du générateur (allumée à la pose, éteinte à la démolition).
+var _generator_light: OmniLight3D = null
 
 ## Cache de matériaux partagés (couleur hex → StandardMaterial3D).
 ## Évite de créer une nouvelle ressource par élément posé.
@@ -861,13 +863,26 @@ func _build_generator() -> void:
 	pole.position = Vector3(0.4, 1.1, 0.0)
 	pole.material_override = _make_material(Color(0.35, 0.34, 0.32))
 	add_child(pole)
-	var light := OmniLight3D.new()
-	light.light_color = Color(1.0, 0.9, 0.7)
-	light.light_energy = 2.0
-	light.omni_range = 6.0
-	light.position = Vector3(0.0, 1.2, 0.0)
-	add_child(light)
+	var gen_light := OmniLight3D.new()
+	gen_light.light_color = Color(1.0, 0.9, 0.7)
+	gen_light.light_energy = 2.0
+	gen_light.omni_range = 6.0
+	gen_light.position = Vector3(0.0, 1.2, 0.0)
+	add_child(gen_light)
+	_generator_light = gen_light
 	_add_collision_box(Vector3(1.0, 1.0, 0.8), Vector3(0.0, 0.5, 0.0))
+
+
+## Allume/éteint la lumière du générateur (le générateur fournit la lumière).
+func set_powered(enabled: bool) -> void:
+	if _generator_light == null:
+		return
+	_generator_light.visible = enabled
+	_generator_light.light_energy = 3.0 if enabled else 0.0
+
+
+func is_powered() -> bool:
+	return _generator_light != null and _generator_light.visible
 
 
 # ── Coffre ────────────────────────────────────────────────────────────────────
