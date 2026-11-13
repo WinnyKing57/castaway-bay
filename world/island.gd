@@ -191,6 +191,12 @@ func _biome_at(x: float, z: float) -> int:
 	return BIOME_HIGHLANDS
 
 
+func _humidity_at(x: float, z: float) -> float:
+	if _noise2 == null:
+		return 0.5
+	return _noise2.get_noise_2d(x, z) * 0.5 + 0.5
+
+
 ## Coordonnée continue de biome (0..4) : secteurs angulaires déformés par un
 ## bruit basse fréquence. Garantit de grandes régions variées sur chaque île.
 func _sector_value(x: float, z: float) -> float:
@@ -257,7 +263,7 @@ func _build_terrain() -> void:
 					var z := c0 + gz * step
 					var height := get_height_at(x, z)
 					var biome := _biome_at(x, z)
-					surface.set_color(_color_for(biome, height))
+					surface.set_color(_color_for(biome, height, _humidity_at(x, z)))
 					surface.set_normal(_normal_at(x, z, step))
 					surface.set_uv(Vector2(gx, gz) / float(GRID_RES))
 					surface.add_vertex(Vector3(x, height, z))
@@ -303,7 +309,7 @@ func _normal_at(x: float, z: float, step: float) -> Vector3:
 	return Vector3(left - right, 2.0 * step, back - front).normalized()
 
 
-func _color_for(biome: int, height: float) -> Color:
+func _color_for(biome: int, height: float, humidity: float) -> Color:
 	# Plage et fonds marins.
 	if height < -1.0:
 		return Color(0.34, 0.40, 0.30)
@@ -324,13 +330,22 @@ func _color_for(biome: int, height: float) -> Color:
 		BIOME_FARM:
 			return Color(0.40, 0.31, 0.19)
 		BIOME_FOREST:
-			return Color(0.13, 0.30, 0.13)
+			var forest := Color(0.13, 0.30, 0.13)
+			if humidity > 0.6:
+				forest = Color(0.10, 0.26, 0.10)  # forêt humide -> sous-bois dense
+			return forest
 		BIOME_PLAINS:
 			return Color(0.46, 0.64, 0.27)
 		BIOME_WOODLAND:
-			return Color(0.24, 0.42, 0.19)
+			var woodland := Color(0.24, 0.42, 0.19)
+			if humidity > 0.6:
+				woodland = Color(0.20, 0.36, 0.15)  # boisement humide -> plus dense
+			return woodland
 		BIOME_MEADOW:
-			return Color(0.38, 0.58, 0.22)      # Vert plus clair, pré fleuri
+			var meadow := Color(0.38, 0.58, 0.22)      # Vert plus clair, pré fleuri
+			if humidity > 0.6:
+				meadow = Color(0.31, 0.51, 0.18)
+			return meadow
 		BIOME_PLAINS_PLATEAU:
 			return Color(0.42, 0.48, 0.24)      # Plateau agricole plus foncé
 		BIOME_HIGHLANDS:
@@ -429,7 +444,7 @@ func _scatter_biome(scene: PackedScene, rng: RandomNumberGenerator, biome: int, 
 			continue
 		if _biome_at(x, z) != biome:
 			continue
-		var kind := _pick_prop(biome, height, rng)
+		var kind := _pick_prop(biome, height, rng, _humidity_at(x, z))
 		if kind.is_empty():
 			continue
 		_spawn_prop(scene, kind, Vector3(x, height, z), rng.randf() * TAU, id_start + placed)
@@ -471,7 +486,7 @@ func _spawn_prop(scene: PackedScene, kind: String, pos: Vector3, yaw: float, sav
 
 
 ## Choisit une ressource cohérente avec le biome et l'altitude.
-func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator) -> String:
+func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator, humidity: float) -> String:
 	if height > 14.0:
 		return "or" if rng.randf() < 0.3 else "charbon"
 	if height > 12.0:
@@ -484,11 +499,14 @@ func _pick_prop(biome: int, height: float, rng: RandomNumberGenerator) -> String
 	var r := rng.randf()
 	match biome:
 		BIOME_FOREST:
-			if r < 0.78:
+			var tree_chance := 0.78 + (humidity - 0.5) * 0.4
+			if r < tree_chance:
 				return "arbre"
-			if r < 0.90:
+			r = rng.randf()
+			var bush_chance := 0.12 + (humidity - 0.5) * 0.4
+			if r < bush_chance:
 				return "buisson"
-			if r < 0.97:
+			if r < bush_chance + 0.10:
 				return "seed"
 			return "rocher"
 		BIOME_PLAINS:
