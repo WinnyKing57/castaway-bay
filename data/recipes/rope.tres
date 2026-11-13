@@ -9,3 +9,7 @@ display_name = "Corde"
 description = "4 fibres -> 3 cordes."
 inputs = {"fiber": 4}
 outputs = {"rope": 3}
+category = "construction"
+tier = 1
+unlocked_by = ""
+batch_size = 1

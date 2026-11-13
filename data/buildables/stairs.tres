@@ -7,7 +7,7 @@ script = ExtResource("1_build")
 id = "stairs"
 display_name = "Escalier"
 description = "Escalier en bois permettant d'accéder facilement aux étages supérieurs."
-category = "maison"
+category = "escaliers"
 collision_layer = 8
 kind = "stairs"
 costs = {
@@ -16,3 +16,8 @@ costs = {
 }
 grid_size = 2
 visual_tag = "stairs"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

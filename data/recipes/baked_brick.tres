@@ -11,3 +11,7 @@ inputs = {"clay": 2}
 outputs = {"brick": 2}
 craft_time = 3.0
 required_station = "campfire"
+category = "construction"
+tier = 1
+unlocked_by = ""
+batch_size = 1

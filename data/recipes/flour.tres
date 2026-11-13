@@ -9,3 +9,7 @@ display_name = "Farine"
 description = "Moud 3 blés en 2 farines."
 inputs = {"wheat": 3}
 outputs = {"flour": 2}
+category = "cuisine"
+tier = 1
+unlocked_by = ""
+batch_size = 1

@@ -9,3 +9,7 @@ display_name = "Planche"
 description = "Transformation 2 bois -> 4 planches."
 inputs = {"wood": 2}
 outputs = {"plank": 4}
+category = "construction"
+tier = 1
+unlocked_by = ""
+batch_size = 1

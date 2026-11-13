@@ -7,7 +7,7 @@ script = ExtResource("1_build")
 id = "house"
 display_name = "Maison"
 description = "Kit de maison complet : fondation, murs et toit plat."
-category = "maison"
+category = "murs"
 collision_layer = 8
 kind = "house"
 costs = {
@@ -16,3 +16,8 @@ costs = {
 }
 grid_size = 1
 visual_tag = "house"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

@@ -497,6 +497,30 @@ func _run_smoke_test() -> void:
 	if player != null and player.global_position.y < 0.0:
 		errors.append("joueur sous le niveau de la mer")
 
+	# Phase 1.5 : définitions cohérentes (catégories renseignées, références croisées valides).
+	for item_id in Database.items:
+		var item: ItemData = Database.items[item_id]
+		if item.category == "":
+			errors.append("objet %s sans catégorie" % str(item_id))
+		for tag in item.tags:
+			if str(tag).strip_edges() == "":
+				errors.append("objet %s : tag vide" % str(item_id))
+	for recipe_id in Database.recipes:
+		var recipe: RecipeData = Database.recipes[recipe_id]
+		if recipe.category == "":
+			errors.append("recette %s sans catégorie" % str(recipe_id))
+		for ingredient in recipe.inputs:
+			if not Database.items.has(str(ingredient)):
+				errors.append("recette %s : ingrédient inconnu %s" % [str(recipe_id), str(ingredient)])
+		for output in recipe.outputs:
+			var output_id := str(output)
+			if not Database.items.has(output_id) and not Database.buildables.has(output_id):
+				errors.append("recette %s : sortie inconnue %s" % [str(recipe_id), output_id])
+	for buildable_id in Database.buildables:
+		var buildable: BuildableData = Database.buildables[buildable_id]
+		if buildable.category == "":
+			errors.append("constructible %s sans catégorie" % str(buildable_id))
+
 	# Icônes procédurales (Phase 1) : 64x64 par item / buildable, factory en cache.
 	var icon_factory := IconFactory.new()
 	get_tree().root.add_child(icon_factory)

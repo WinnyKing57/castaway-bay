@@ -12,3 +12,9 @@ costs = {
 "wood": 2
 }
 grid_size = 1
+category = "murs"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

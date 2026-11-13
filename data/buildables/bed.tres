@@ -13,3 +13,9 @@ costs = {
 "fiber": 2
 }
 grid_size = 2
+category = "mobilier"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

@@ -9,3 +9,7 @@ display_name = "Brique"
 description = "2 bois + 1 pierre -> 2 briques."
 inputs = {"wood": 2, "stone": 1}
 outputs = {"brick": 2}
+category = "construction"
+tier = 1
+unlocked_by = ""
+batch_size = 1
