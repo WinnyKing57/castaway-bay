@@ -6,6 +6,10 @@
 ./run.sh --test   # doit afficher : SMOKE_TEST OK
 ```
 
+Le test est implémenté dans `tests/smoke_test.gd` (classe `SmokeTest`) depuis
+la phase 7.1 : `main.gd` ne garde que le branchement et la restauration des
+fichiers `user://`.
+
 Couverture (headless) :
 
 - Socle : île, nage, récolte, artisanat, construction, sauvegarde.
@@ -22,6 +26,7 @@ Couverture (headless) :
 
 - `--overview` : vue aérienne de l'île générée (vérification du terrain).
 - `--show-crafting` : ouvre l'artisanat directement.
+- `--show-inventory` : ouvre l'inventaire directement.
 
 ## 3. CI
 

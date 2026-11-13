@@ -271,7 +271,8 @@ data/            définitions de données : ItemData, RecipeData, BuildableData,
 player/          contrôleur joueur (scène + script)
 world/           île procédurale, ressources, cultures, véhicules, océan, marchand
 systems/         mode construction (grille, aperçu fantôme, sauvegarde)
-ui/              HUD, artisanat, coffres, marchand, journal, menus
+ui/              HUD, artisanat, coffres, marchand, journal, inventaire, menus
+tests/           smoke test headless (extrait de main.gd, phase 7.1)
 main.tscn/.gd    assemblage de la scène de jeu
 ```
 

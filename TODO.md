@@ -120,6 +120,27 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## En cours — évolution v3, Phase 7.1 (découpage du code)
+
+- [x] **`main.gd`** : le smoke test (≈ 1 200 lignes) est extrait dans
+      `tests/smoke_test.gd` (classe `SmokeTest`, mêmes champs que `main.gd`,
+      branchement par `setup()`). `main.gd` passe de 1 769 à 562 lignes.
+- [ ] **`world/buildable.gd`** (983 lignes) : extraire les constructeurs de
+      visuels (`_build_*`) dans une classe hôte (`host`) — plan : une classe
+      `BuildableVisuals` avec `host` non typé, helpers déplacés, `ROOF_Y`
+      référencé via `Buildable.ROOF_Y` ; découper en deux fichiers si > 600.
+- [ ] **`world/island.gd`** (1 062 lignes) : extraire le scattering de props et
+      les MultiMesh dans un `world/prop_scatter.gd` (état `_prop_mm_*`).
+- [ ] **`systems/construction.gd`** (1 014 lignes) : extraire les poutres
+      d'angle et les clés de grille (`_keys_for`, `_key_for_object`,
+      `_grid_size_of`) dans `systems/build_grid.gd`.
+- [ ] **`tests/smoke_test.gd`** (1 255 lignes) : séparer stabilité et
+      persistance dans deux fichiers partageant une base commune.
+
+Raison : les quatre fichiers dépassent la cible de ~600 lignes ; les extractions
+sont mécaniques mais touchent le rendu (non couvert par le smoke test), donc
+elles se font par petits pas, test après chaque extraction.
+
 ## Fait — évolution v3, Phase 4 (inventaire et HUD)
 - [x] **Barre rapide** : icônes procédurales, quantités, case sélectionnée
       surlignée, infobulles ; API `set_hotbar_item` / `swap_hotbar_items` dans
