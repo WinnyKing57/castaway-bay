@@ -36,6 +36,11 @@
 - [x] Tests de non-régression : `./run.sh --test` → `SMOKE_TEST OK`
 - [x] Export autonome Linux x86_64 en place et testé en mode headless
 - [x] **Bugfix** : retour en jeu après les paramètres (le menu ne réapparaissait plus)
+- [x] Construction : refus d'une fondation sur terrain trop pentu (dénivelé > 0,5 m)
+- [x] Générateur : lumière allumée à la pose, éteinte à la démolition
+- [x] Carte : chunks de terrain (64 m, GRID_RES 48 par chunk), bruit d'humidité
+      pour les biomes, végétation en MultiMeshInstance3D, îles secondaires
+      accessibles en bateau
 
 ## Fait — améliorations construction (batch 1)
 - [x] **Fenêtres fonctionnelles et transparentes** : vitrage `TRANSPARENCY_ALPHA` (alpha 0.22,

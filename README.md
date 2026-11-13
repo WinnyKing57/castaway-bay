@@ -37,6 +37,8 @@ ni code d'un jeu commercial n'est utilisé).
    générateurs). Clic gauche pose, **Clic droit** démolit (remboursement 75 % des
    matériaux), **R** fait pivoter, la molette change
    d'élément, **PgUp / PgDn** changent d'étage et **V** verrouille l'altitude.
+   Une fondation ne se pose que sur un terrain assez plat (dénivelé ≤ 0,5 m), et le
+   générateur allume sa lumière.
 5. **Naviguer** : repère le bateau échoué au large, répare sa coque avec du
    métal, fais le plein de carburant et navigue pour explorer les pourtours de
    l'océan. Un quad tout-terrain permet aussi de parcourir les reliefs.
@@ -114,7 +116,9 @@ sauvegarde) **et** des tests de non-régression de stabilité :
   fabrication en cours, stations, copie de secours `.bak` ;
 - artisanat : fabrication chronométrée, annulation avec remboursement ;
 - construction : chevauchements entre catégories (coffre/feu/toit sur une
-  fondation), bords de murs/portes, empreintes conservées après chargement ;
+  fondation), bords de murs/portes, empreintes conservées après chargement,
+  fondation + mur → sauvegarde → chargement → re-placement refusé (doublon) ;
+  refus de fondation sur terrain trop pentu ; générateur (allumage) ; tente.
 - sauvegarde : fichiers malformés rejetés sans toucher à l'état, quantités et
   objets invalides assainis, doublons de constructions ignorés ;
 - marchand : bornes de réputation, troc verrouillé/déverrouillé, gain de
@@ -170,6 +174,8 @@ réalistes :
      la terre ferme (hors des abysses marins).
    - Les fondations et structures suivantes peuvent s'étendre au-dessus de l'eau
      à condition d'être adjacentes à un élément déjà posé.
+   - Le terrain ne doit pas être trop pentu : une fondation est refusée si le
+     dénivelé sous la cellule dépasse 0,5 m.
 2. **Gestion des étages & support vertical** :
    - La hauteur d'élévation se règle par paliers (**PgUp / PgDn**).
    - Pour poser un élément en hauteur (étage ≥ 1), la cellule doit impérativement
