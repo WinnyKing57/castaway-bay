@@ -120,6 +120,20 @@
       acceptation/remise de quête, récompenses, journal, ouverture/fermeture des panneaux,
       restauration de l'état du marchand → couverture ajoutée au smoke test
 
+## Fait — évolution v3, Phase 3 (ergonomie de construction)
+- [x] **Panneau de construction refondu** : onglets de catégories, recherche,
+      vignettes procédurales, palier, coûts `possédé/requis` colorés, sélection
+      par identifiant (stable même si l'ordre du catalogue change)
+- [x] **Pose en série** : maintenir le clic gauche et survoler de nouvelles
+      cases enchaîne les poses sans doublon
+- [x] **Roue de construction (Tab)** : éléments de la catégorie courante
+      disposés en cercle, sélection au clic, action `build_wheel` dans l'InputMap
+- [x] **Rétablissement (Ctrl+Y)** : après une annulation, repose l'élément en
+      reconsommant son coût ; pile limitée et vidée à la première nouvelle pose
+- [x] **Tests** : panneau (filtres, recherche, sélection, refus d'id inconnu),
+      roue (ouverture/fermeture), annulation + rétablissement, actions InputMap
+- [x] Documentation : `docs/06-construction.md`, README (Tab, Ctrl+Y) et aide F1
+
 ## Fait — évolution v3, Phase 2 (interface d'artisanat)
 - [x] **Refonte du panneau d'artisanat** : onglets de catégories, recherche,
       liste avec icônes procédurales, détail complet de la recette
