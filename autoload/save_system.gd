@@ -49,6 +49,7 @@ func save_game(player: Node3D, construction: Node = null, world: Node = null) ->
 		"world_time": GameState.world_time,
 		"world_seed": GameState.world_seed,
 		"stats": GameState.stats.duplicate(),
+		"progression": {"level": GameState.level, "xp": GameState.xp},
 		"inventory": GameState.inventory.duplicate(),
 		"hotbar_index": GameState.hotbar_index,
 		"player": player_data,
@@ -128,6 +129,17 @@ func load_game_into(player: Node3D, world: Node = null, construction: Node = nul
 			continue
 		GameState.inventory[item_id] = mini(amount, MAX_STACK)
 	GameState.inventory_changed.emit()
+
+	# Progression (optionnelle : absente des sauvegardes v1/v2 et du début v3).
+	if data.has("progression") and typeof(data["progression"]) == TYPE_DICTIONARY:
+		var progression: Dictionary = data["progression"]
+		GameState.level = clampi(int(_num(progression.get("level"), 1.0)), 1, GameState.MAX_LEVEL)
+		GameState.xp = maxi(0, int(_num(progression.get("xp"), 0.0)))
+	else:
+		GameState.level = 1
+		GameState.xp = 0
+	GameState.level_changed.emit()
+
 	if data.has("hotbar_index"):
 		GameState.select_hotbar(int(_num(data["hotbar_index"], 0.0)))
 
@@ -208,6 +220,8 @@ func _migrate(data: Dictionary) -> Dictionary:
 		# Sauvegardes v2 : champs introduits en v3 absents -> valeurs par défaut.
 		if not migrated.has("craft"):
 			migrated["craft"] = {}
+		if not migrated.has("progression"):
+			migrated["progression"] = {"level": 1, "xp": 0}
 	migrated["version"] = GameState.SAVE_VERSION
 	return migrated
 
@@ -279,6 +293,13 @@ func _is_valid(data: Dictionary) -> bool:
 		return false
 	if data.has("world_state") and typeof(data["world_state"]) != TYPE_DICTIONARY:
 		return false
+	if data.has("progression"):
+		if typeof(data["progression"]) != TYPE_DICTIONARY:
+			return false
+		var progression: Dictionary = data["progression"]
+		for key in ["level", "xp"]:
+			if progression.has(key) and not _is_number(progression[key]):
+				return false
 	if data.has("npc"):
 		if typeof(data["npc"]) != TYPE_DICTIONARY:
 			return false

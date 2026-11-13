@@ -9,6 +9,8 @@ extends CanvasLayer
 @onready var hunger_bar: ProgressBar = $Root/Stats/HungerRow/Bar
 @onready var thirst_bar: ProgressBar = $Root/Stats/ThirstRow/Bar
 @onready var fatigue_bar: ProgressBar = $Root/Stats/FatigueRow/Bar
+@onready var level_label: Label = $Root/Stats/LevelRow/Name
+@onready var xp_bar: ProgressBar = $Root/Stats/LevelRow/Bar
 @onready var clock_label: Label = $Root/Clock
 @onready var prompt_label: Label = $Root/Prompt
 @onready var inventory_label: Label = $Root/Inventory
@@ -242,6 +244,9 @@ func _process(delta: float) -> void:
 	hunger_bar.value = GameState.stats.hunger
 	thirst_bar.value = GameState.stats.thirst
 	fatigue_bar.value = GameState.stats.fatigue
+	level_label.text = "Niv. %d" % GameState.level
+	xp_bar.max_value = float(GameState.xp_for_next_level())
+	xp_bar.value = float(GameState.xp)
 	clock_label.text = _format_time(GameState.world_time)
 
 	if _player != null:

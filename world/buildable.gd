@@ -92,16 +92,8 @@ func _apply_window_state() -> void:
 
 
 func _use_bed() -> void:
-	var hour := (int(GameState.world_time) / 3600) % 24
-	var is_night := hour >= 19 or hour < 6
-	if is_night:
-		GameState.world_time = 6.0 * 3600.0
-		GameState.stats.fatigue = 100.0
-		GameState.stats.health = minf(100.0, GameState.stats.health + 30.0)
+	if GameState.sleep_until_morning():
 		Sfx.play_ui("eat")
-		GameState.notify("Tu te réveilles reposé au lever du jour.")
-	else:
-		GameState.notify("Le soleil brille encore, impossible de dormir.")
 
 
 func _ready() -> void:

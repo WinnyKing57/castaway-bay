@@ -311,6 +311,7 @@ func _place() -> void:
 		_undo_stack.pop_front()
 	Sfx.play("build", position)
 	GameState.notify("Construit : %s" % data.display_name)
+	GameState.add_xp(GameState.XP_PER_BUILD)
 
 
 ## Pose un élément sans vérifier ni consommer de ressources.

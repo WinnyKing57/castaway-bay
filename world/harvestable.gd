@@ -78,6 +78,7 @@ func interact(_player: Node) -> void:
 	Sfx.play("harvest", global_position)
 	for item_id in _loot:
 		GameState.add_item(str(item_id), _amount_for(str(item_id)))
+	GameState.add_xp(GameState.XP_PER_HARVEST)
 	_start_regrow()
 
 

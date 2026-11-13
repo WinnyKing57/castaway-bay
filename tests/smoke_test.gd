@@ -378,6 +378,40 @@ func run() -> void:
 	if hud._slot_icons.is_empty() or hud._slot_icons[0].texture == null:
 		errors.append("icône de barre rapide absente")
 
+	# Progression : XP, montée de niveau, jauge HUD et sommeil.
+	GameState.level = 1
+	GameState.xp = 0
+	GameState.add_xp(GameState.XP_PER_HARVEST)
+	if GameState.level != 1 or GameState.xp != GameState.XP_PER_HARVEST:
+		errors.append("XP de récolte mal comptée")
+	GameState.add_xp(GameState.xp_for_next_level() - GameState.xp)
+	if GameState.level != 2 or GameState.xp != 0:
+		errors.append("montée de niveau KO")
+	if GameState.xp_for_next_level() <= 60:
+		errors.append("courbe d'XP non croissante")
+	await get_tree().process_frame
+	if hud.level_label.text != "Niv. 2" or abs(hud.xp_bar.value) > 0.01:
+		errors.append("jauge de niveau non synchronisée")
+	if abs(GameState.level_progress()) > 0.01:
+		errors.append("progression de niveau incorrecte")
+
+	# Sommeil : refusé le jour, effectif la nuit.
+	GameState.world_time = 12.0 * 3600.0
+	GameState.stats.fatigue = 40.0
+	if GameState.sleep_until_morning():
+		errors.append("sommeil accepté en plein jour")
+	if abs(GameState.stats.fatigue - 40.0) > 0.01:
+		errors.append("sommeil diurne a modifié la fatigue")
+	GameState.world_time = 23.0 * 3600.0
+	if not GameState.is_night():
+		errors.append("détection de nuit KO")
+	if not GameState.sleep_until_morning():
+		errors.append("sommeil nocturne refusé")
+	if abs(GameState.stats.fatigue - 100.0) > 0.01:
+		errors.append("fatigue non restaurée par le sommeil")
+	if abs(GameState.world_time - 6.0 * 3600.0) > 0.01:
+		errors.append("heure de réveil incorrecte")
+
 	# Jauge de fatigue : affichée et synchronisée avec GameState.
 	var saved_fatigue: float = GameState.stats.fatigue
 	GameState.stats.fatigue = 42.0
@@ -1114,6 +1148,10 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 		errors.append("deux stations ne coexistent pas")
 	var buildings := construction.to_save_data().size()
 
+	# Progression : niveau et XP courants.
+	GameState.level = 4
+	GameState.xp = 17
+
 	if not SaveSystem.save_game(player, construction, world):
 		errors.append("sauvegarde complète KO")
 
@@ -1129,6 +1167,8 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 	GameState.inventory.clear()
 	GameState.clear_stations()
 	GameState.reputation = 0
+	GameState.level = 1
+	GameState.xp = 0
 	GameState.accepted_quests.clear()
 	GameState.completed_quests.clear()
 	GameState.journal.clear()
@@ -1162,6 +1202,8 @@ func _run_persistence_tests(errors: PackedStringArray) -> void:
 			errors.append("stations non restaurées")
 		if GameState.reputation != 42:
 			errors.append("réputation non restaurée")
+		if GameState.level != 4 or GameState.xp != 17:
+			errors.append("progression non restaurée")
 		if not GameState.is_quest_accepted("food_supply"):
 			errors.append("quête acceptée non restaurée")
 		if GameState.journal.is_empty():

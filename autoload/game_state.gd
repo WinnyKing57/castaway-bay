@@ -15,6 +15,14 @@ signal trader_opened(trader: Node)
 signal reputation_changed
 signal quests_changed
 signal journal_changed
+signal level_changed
+
+## Progression : XP gagnée par action, paliers de niveau.
+const XP_PER_HARVEST := 4
+const XP_PER_CRAFT := 8
+const XP_PER_BUILD := 12
+const XP_PER_QUEST := 60
+const MAX_LEVEL := 20
 
 ## Durée d'un jour complet en secondes réelles (10 min).
 const DAY_LENGTH_SECONDS := 600.0
@@ -39,6 +47,10 @@ var stats := {
 
 ## Secondes écoulées depuis minuit dans le monde du jeu.
 var world_time := 8.0 * 3600.0
+
+## Niveau courant et XP accumulée vers le niveau suivant.
+var level := 1
+var xp := 0
 
 ## Graine de génération de l'île : sauvegardée pour retrouver le même monde.
 var world_seed := 0
@@ -146,6 +158,62 @@ func consume_items(costs: Dictionary) -> bool:
 		return true
 	for item_id in costs:
 		remove_item(str(item_id), int(costs[item_id]))
+	return true
+
+
+# --- Progression -------------------------------------------------------------
+
+## XP nécessaire pour passer au niveau suivant.
+func xp_for_next_level() -> int:
+	return 60 + 40 * (level - 1)
+
+
+## Progression dans le niveau courant (0 → 1).
+func level_progress() -> float:
+	var needed := float(xp_for_next_level())
+	if needed <= 0.0:
+		return 1.0
+	return clampf(float(xp) / needed, 0.0, 1.0)
+
+
+## Ajoute de l'XP et gère les montées de niveau (fatigue restaurée, journal).
+func add_xp(amount: int) -> void:
+	if amount <= 0 or level >= MAX_LEVEL:
+		return
+	xp += amount
+	var leveled := false
+	while level < MAX_LEVEL and xp >= xp_for_next_level():
+		xp -= xp_for_next_level()
+		level += 1
+		leveled = true
+		stats.fatigue = 100.0
+		notify("Niveau %d !" % level)
+		add_journal("Niveau %d atteint : tu te sens plus aguerri." % level)
+	if leveled:
+		level_changed.emit()
+
+
+## Heure du monde (0 → 24).
+func hour_of_day() -> float:
+	return fposmod(world_time / 3600.0, 24.0)
+
+
+## Vrai la nuit (19 h → 6 h), cohérent avec le lit et l'éclairage.
+func is_night() -> bool:
+	var hour := hour_of_day()
+	return hour >= 19.0 or hour < 6.0
+
+
+## Dort jusqu'au matin : restaure la fatigue et une partie de la vie.
+func sleep_until_morning() -> bool:
+	if not is_night():
+		notify("Le soleil brille encore, impossible de dormir.")
+		return false
+	world_time = 6.0 * 3600.0
+	stats.fatigue = 100.0
+	stats.health = minf(100.0, stats.health + 30.0)
+	add_journal("Nuit de sommeil : réveil au lever du jour.")
+	notify("Tu te réveilles reposé au lever du jour.")
 	return true
 
 
@@ -278,6 +346,7 @@ func _finish_craft(recipe: RecipeData) -> void:
 		add_item(str(item_id), int(recipe.outputs[item_id]) * batch)
 	Sfx.play_ui("craft")
 	notify("Fabriqué : %s" % recipe.display_name)
+	add_xp(XP_PER_CRAFT)
 
 
 func _advance_craft(delta: float) -> void:
@@ -416,6 +485,7 @@ func complete_quest(quest_id: String) -> bool:
 	completed_quests.append(quest_id)
 	add_reputation(quest.reward_reputation)
 	quests_changed.emit()
+	add_xp(XP_PER_QUEST)
 	add_journal("Quête accomplie : %s (+%d réputation)" % [quest.display_name, quest.reward_reputation])
 	notify("Quête accomplie : %s" % quest.display_name)
 	return true
@@ -510,6 +580,8 @@ func reset() -> void:
 	inventory.clear()
 	stats = {"health": 100.0, "hunger": 100.0, "thirst": 100.0, "fatigue": 100.0}
 	world_time = 8.0 * 3600.0
+	level = 1
+	xp = 0
 	hotbar_index = 0
 	clear_stations()
 	clear_craft()
