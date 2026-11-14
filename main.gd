@@ -205,11 +205,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_build"):
 		if crafting_panel.is_open():
 			crafting_panel.close()
+		var entering := not construction.is_active()
 		construction.toggle()
-		if construction.is_active():
-			construction_panel.open()
-		else:
-			construction_panel.close()
+		# Mode construction : on n'ouvre PAS le catalogue. L'aperçu (ghost) et les
+		# infos de sélection (HUD BuildInfo) affichent ce qui sera construit ; la
+		# roue de sélection (Tab) reste disponible pour changer d'élément.
+		construction_panel.close()
 		return
 
 	if crafting_panel.is_open():
