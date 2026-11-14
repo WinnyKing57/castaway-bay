@@ -430,6 +430,12 @@ Doit afficher : `SMOKE_TEST OK`.
 Côté projet, `./run.sh --test` passe aussi : `SMOKE_TEST OK`, 0 erreur
 (validé en local et sur le device).
 
+### Distribution itch.io et packaging
+
+- **Itch.io** : créer un compte, télécharger le fichier `.zip` contenant le dossier `build/linux/`, l'uploader, et ajouter une description (inclure le lien vers la documentation officielle).
+- **Packaging** : le projet est déjà configuré pour exporter en Linux x86_64 avec le preset Godot. Pour d'autres plateformes (Windows, macOS, Android, iOS), sélectionner le preset correspondant dans **Exportation** et exporter dans le dossier `build/`.
+- **Builds multi-plateformes** : le script `run.sh` inclut des vérifications de base pour chaque plateforme. Pour une distribution itch.io, créer un zip contenant le dossier `build/` correspondant à la plateforme cible, puis uploader sur la page du projet itch.io.
+
 ---
 
 ## Crédits et licence

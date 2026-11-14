@@ -156,8 +156,8 @@ montée de version n'apporterait aucune migration supplémentaire.
 ### Survivant de l'épave (kind = "survivor")
 
 **Décision** : le Trader créé dans `_spawn_trader()` (position 60,0,60) est un marchand
-de l'île ; le Trader créé pour le survivant après la destruction de l'épave (`_spawn_crops`)
-(Position wreck + Vector3(0,0.5,0)) reçoit `kind = "survivor"`. Le même mécanisme de
+de l'île ; le Trader créé pour le survivant près de l'épave (`_spawn_secondary_islands`,
+position wreck + Vector3(0,0.5,0)) reçoit `kind = "survivor"`. Le même mécanisme de
 troc et de quêtes s'applique, mais son premier dialogue et sa journalisation diffèrent.
 
 **Pourquoi** : éviter une duplication de logique de dialogue et de journal entre deux instances
@@ -165,3 +165,32 @@ identiques de `Trader`. La sauvegarde v3 transmet le champ `kind` via `get_save_
 → `apply_save_state()`.
 
 **Écarté** : donner des comportements physiques différents au survivant (pas fait ici).
+
+### Découpage du code (Phase 7.1)
+
+**Décision** : `main.gd` ne garde que l'assemblage de la scène, les commandes
+globales et le branchement du smoke test. Le smoke test (≈ 1 200 lignes) est
+extrait dans `tests/smoke_test.gd` (classe `SmokeTest`, mêmes champs que
+`main.gd`, branchement par `setup()`).
+
+**Pourquoi** : `main.gd` dépassait 1 700 lignes ; le smoke test est le plus gros
+bloc et le plus facile à isoler sans toucher au gameplay. Les autres fichiers
+surdimensionnés (`world/buildable.gd`, `world/island.gd`,
+`systems/construction.gd`) restent à découper par petits pas, test après chaque
+extraction, car ils touchent au rendu (non couvert par le smoke test).
+
+**Écarté** : tout découper d'un coup (risque de régression non couverte par les
+tests headless).
+
+### Distribution itch.io et packaging
+
+**Décision** : la distribution se fait par un export Linux x86_64 autonome (PCK
+intégré) testé en headless, avec des instructions de packaging et d'upload
+itch.io dans `README.md`.
+
+**Pourquoi** : le projet n'a pas d'assets externes ni de dépendances, donc un
+seul binaire autonome suffit pour la distribution. Les autres plateformes
+(Windows, macOS, Android, iOS) utilisent les presets Godot existants.
+
+**Écarté** : les builds multi-plateformes automatisés (hors périmètre pour
+l'instant, lot F).

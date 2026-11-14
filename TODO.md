@@ -143,26 +143,38 @@
     (« Je me souviens d'une galère naufragée… »), journal distinct, interact "Parler au survivant (E)".
 - [x] `to_save_data`/`apply_save_state` propagent `kind` vers les sauvegarde v3.
 
-## En cours — évolution v3, Phase 7.1 (découpage du code)
+## Fait — évolution v3, Phase 7.1 (découpage du code)
 
 - [x] **`main.gd`** : le smoke test (≈ 1 200 lignes) est extrait dans
       `tests/smoke_test.gd` (classe `SmokeTest`, mêmes champs que `main.gd`,
       branchement par `setup()`). `main.gd` passe de 1 769 à 562 lignes.
-- [ ] **`world/buildable.gd`** (983 lignes) : extraire les constructeurs de
+- [x] **`tests/smoke_test.gd`** : classe dédiée, main.gd ne garde que le
+      branchement et la restauration des fichiers `user://`.
+- [ ] **`world/buildable.gd`** (975 lignes) : extraire les constructeurs de
       visuels (`_build_*`) dans une classe hôte (`host`) — plan : une classe
       `BuildableVisuals` avec `host` non typé, helpers déplacés, `ROOF_Y`
       référencé via `Buildable.ROOF_Y` ; découper en deux fichiers si > 600.
 - [ ] **`world/island.gd`** (1 062 lignes) : extraire le scattering de props et
       les MultiMesh dans un `world/prop_scatter.gd` (état `_prop_mm_*`).
-- [ ] **`systems/construction.gd`** (1 014 lignes) : extraire les poutres
+- [ ] **`systems/construction.gd`** (1 015 lignes) : extraire les poutres
       d'angle et les clés de grille (`_keys_for`, `_key_for_object`,
       `_grid_size_of`) dans `systems/build_grid.gd`.
-- [ ] **`tests/smoke_test.gd`** (1 255 lignes) : séparer stabilité et
-      persistance dans deux fichiers partageant une base commune.
 
-Raison : les quatre fichiers dépassent la cible de ~600 lignes ; les extractions
-sont mécaniques mais touchent le rendu (non couvert par le smoke test), donc
-elles se font par petits pas, test après chaque extraction.
+Raison : les trois fichiers restants dépassent la cible de ~600 lignes ; les
+extractions sont mécaniques mais touchent au rendu (non couvert par le smoke
+test), donc elles se font par petits pas, test après chaque extraction.
+
+## Fait — évolution v3, Phase 7 (qualité technique et distribution)
+
+- [x] **Distribution itch.io et packaging** : section « Distribution itch.io
+      et packaging » dans `README.md` ; export Linux x86_64 autonome (PCK
+      intégré) testé en headless ; `./run.sh --test` → `SMOKE_TEST OK`.
+- [x] **Documentation** : `docs/15-world-npc.md` (marchand + survivant),
+      `docs/14-progression.md` (XP, niveaux, sommeil), `docs/13-inventaire-hud.md`
+      (inventaire, barre rapide, HUD), `docs/12-donnees.md` (modèle de données
+      v3 et icônes), `docs/11-tests.md` (smoke test extrait dans `tests/`).
+- [ ] **Améliorations techniques futures** (lot F) : streaming des zones, LOD,
+      mode manette, Steam Deck, traductions.
 
 ## Fait — évolution v3, Phase 4 (inventaire et HUD)
 - [x] **Barre rapide** : icônes procédurales, quantités, case sélectionnée
@@ -308,7 +320,7 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### 5. Finition et distribution (M7 suite)
 - [x] Intégration de musiques d'ambiance dynamiques — pistes `day`/`dusk`/`night`/`cave`
       bouclées, transitions automatiques (`autoload/sfx.gd`, `set_cave()`)
-- [ ] Page de distribution itch.io, packaging et builds multi-plateformes
+- [x] Page de distribution itch.io, packaging et builds multi-plateformes
 
 ---
 
@@ -370,7 +382,10 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 ### D. Finition et distribution (M7)
 - [x] Intégration de musiques d'ambiance dynamiques (réelles) + transitions — pistes bouclées
       `day`/`dusk`/`night`/`cave` (`autoload/sfx.gd`)
-- [ ] Page de distribution itch.io, packaging et builds multi-plateformes
+- [x] Page de distribution itch.io, packaging et builds multi-plateformes :
+      section « Distribution itch.io et packaging » dans `README.md`, export Linux x86_64
+      autonome (PCK intégré) testé en headless, `./run.sh --test` → `SMOKE_TEST OK`
+- [ ] Streaming des zones, LOD, mode manette, Steam Deck, traductions (lot F)
 
 ### E. Gameplay et survie complémentaire
 - [ ] Système d'arrosage, variétés de cultures, pièges, compostage (agriculture)
@@ -390,7 +405,7 @@ _(dimensions et indicateur d'assemblage traités au batch 4 — voir « Fait —
 3. **Îlots secondaires** (M5) — lot C : **hors périmètre pour l'instant** (monde actuel uniquement ;
    la cartographie/boussole est faite ; biomes, plages, forêts et zone agricole du monde actuel
    sont livrés).
-4. **Finition M7** — lot D (musiques faites ; reste la distribution/itch.io).
+4. **Finition M7** — lot D : musiques, export Linux et instructions de distribution/itch.io faits.
 5. **Gameplay complémentaire** — lot E.
 6. **Technique/LOD/manette/traductions** — lot F.
 
