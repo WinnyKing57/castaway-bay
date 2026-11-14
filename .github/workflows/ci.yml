@@ -19,10 +19,10 @@ jobs:
           sudo apt-get update -qq
           # Les noms de paquets changent selon la version d'Ubuntu
           # (libasound2 -> libasound2t64, libxrandr1 -> libxrandr3 sur 24.04+).
-          # On n'installe que ceux disponibles sur l'image du runner.
+          # On n'installe que ceux qui ont un candidat sur l'image du runner.
           PKGS=""
           for pkg in libasound2 libasound2t64 libgl1 libxcursor1 libxinerama1 libxrandr1 libxrandr3 libxi6; do
-            if apt-cache show "$pkg" >/dev/null 2>&1; then
+            if apt-cache policy "$pkg" 2>/dev/null | grep -q "Candidate: [0-9]"; then
               PKGS="$PKGS $pkg"
             fi
           done
