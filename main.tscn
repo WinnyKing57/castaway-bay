@@ -1,20 +1,21 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene format=3 uid="uid://bxa5rrfbij16o"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://8f1a4wrsx4le" path="res://main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://player/player.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://ui/hud.tscn" id="3_hud"]
-[ext_resource type="Script" path="res://world/island.gd" id="4_island"]
-[ext_resource type="Script" path="res://world/day_night.gd" id="5_day_night"]
-[ext_resource type="Shader" path="res://world/water.gdshader" id="6_water"]
+[ext_resource type="Script" uid="uid://bay5k7n0yfi7k" path="res://world/island.gd" id="4_island"]
+[ext_resource type="Script" uid="uid://2r0l8qtv608r" path="res://world/day_night.gd" id="5_day_night"]
+[ext_resource type="Shader" uid="uid://dhbx1kswqd11q" path="res://world/water.gdshader" id="6_water"]
 [ext_resource type="PackedScene" path="res://ui/crafting_panel.tscn" id="7_crafting"]
-[ext_resource type="PackedScene" path="res://ui/construction_panel.tscn" id="14_construction"]
-[ext_resource type="Script" path="res://systems/construction.gd" id="8_construction"]
+[ext_resource type="Script" uid="uid://dg7kluuuqpbxk" path="res://systems/construction.gd" id="8_construction"]
 [ext_resource type="PackedScene" path="res://ui/menu_panel.tscn" id="9_menu"]
 [ext_resource type="PackedScene" path="res://ui/settings_panel.tscn" id="10_settings"]
 [ext_resource type="PackedScene" path="res://ui/storage_panel.tscn" id="11_storage"]
 [ext_resource type="PackedScene" path="res://ui/trader_panel.tscn" id="12_trader"]
 [ext_resource type="PackedScene" path="res://ui/journal_panel.tscn" id="13_journal"]
+[ext_resource type="PackedScene" path="res://ui/construction_panel.tscn" id="14_construction"]
 [ext_resource type="PackedScene" path="res://ui/inventory_panel.tscn" id="15_inventory"]
+[ext_resource type="Script" uid="uid://dbndw8p05yam7" path="res://addons/terrain_3d/utils/terrain_3d_objects.gd" id="16_2cqfq"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.18, 0.36, 0.62, 1)
@@ -37,53 +38,113 @@ fog_enabled = true
 fog_light_color = Color(0.62, 0.72, 0.82, 1)
 fog_density = 0.0012
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_water"]
+render_priority = 0
+shader = ExtResource("6_water")
+shader_parameter/shallow_color = Color(0.16, 0.55, 0.62, 1)
+shader_parameter/deep_color = Color(0.02, 0.16, 0.3, 1)
+shader_parameter/sky_tint = Color(0.75, 0.88, 0.95, 1)
+shader_parameter/wave_speed = 0.9
+shader_parameter/wave_height = 0.22
+shader_parameter/wave_scale = 0.35
+shader_parameter/transparency = 0.86
+
 [sub_resource type="PlaneMesh" id="PlaneMesh_water"]
 size = Vector2(900, 900)
 subdivide_width = 64
 subdivide_depth = 64
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_water"]
-shader = ExtResource("6_water")
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_y255x"]
+_shader_parameters = {
+&"bias_distance": null,
+&"blend_sharpness": null,
+&"depth_blur": null,
+&"distant_normal_scale": null,
+&"flat_terrain_normals": null,
+&"general_uniforms": null,
+&"ground_level": null,
+&"mipmap_bias": null,
+&"mipmaps": null,
+&"private": null,
+&"region_blend": null
+}
+show_checkered = true
+resource_local_to_scene = true
 
-[node name="Main" type="Node3D"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2cqfq"]
+transparency = 4
+cull_mode = 2
+vertex_color_use_as_albedo = true
+backlight_enabled = true
+backlight = Color(0.5, 0.5, 0.5, 1)
+distance_fade_mode = 1
+distance_fade_min_distance = 128.0
+distance_fade_max_distance = 96.0
+metadata/terrain3d_generated_material = true
+
+[sub_resource type="Terrain3DMeshAsset" id="Terrain3DMeshAsset_yaehf"]
+generated_type = 1
+height_offset = 0.5
+density = 10.0
+material_override = SubResource("StandardMaterial3D_2cqfq")
+last_lod = 0
+last_shadow_lod = 0
+lod0_range = 128.0
+
+[sub_resource type="Terrain3DAssets" id="Terrain3DAssets_1ggnd"]
+mesh_list = Array[Terrain3DMeshAsset]([SubResource("Terrain3DMeshAsset_yaehf")])
+
+[node name="Main" type="Node3D" unique_id=662177233]
 script = ExtResource("1_main")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=298935328]
 environment = SubResource("Environment_main")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1336973150]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 40, 0)
 shadow_enabled = true
 directional_shadow_max_distance = 220.0
 script = ExtResource("5_day_night")
 
-[node name="World" type="Node3D" parent="."]
+[node name="World" type="Node3D" parent="." unique_id=1425661056]
 script = ExtResource("4_island")
 
-[node name="Water" type="MeshInstance3D" parent="."]
-mesh = SubResource("PlaneMesh_water")
+[node name="Water" type="MeshInstance3D" parent="." unique_id=723783282]
 material_override = SubResource("ShaderMaterial_water")
 cast_shadow = 0
+mesh = SubResource("PlaneMesh_water")
 
-[node name="Player" parent="." instance=ExtResource("2_player")]
+[node name="Player" parent="." unique_id=123944513 instance=ExtResource("2_player")]
 
-[node name="Construction" type="Node3D" parent="."]
+[node name="Construction" type="Node3D" parent="." unique_id=506353555]
 script = ExtResource("8_construction")
 
-[node name="HUD" parent="." instance=ExtResource("3_hud")]
+[node name="HUD" parent="." unique_id=2002405082 instance=ExtResource("3_hud")]
 
-[node name="CraftingPanel" parent="HUD" instance=ExtResource("7_crafting")]
+[node name="CraftingPanel" parent="HUD" unique_id=47612134 instance=ExtResource("7_crafting")]
 
-[node name="ConstructionPanel" parent="HUD" instance=ExtResource("14_construction")]
+[node name="ConstructionPanel" parent="HUD" unique_id=1444350631 instance=ExtResource("14_construction")]
 
-[node name="MenuPanel" parent="HUD" instance=ExtResource("9_menu")]
+[node name="MenuPanel" parent="HUD" unique_id=585929995 instance=ExtResource("9_menu")]
 
-[node name="SettingsPanel" parent="HUD" instance=ExtResource("10_settings")]
+[node name="SettingsPanel" parent="HUD" unique_id=1157323573 instance=ExtResource("10_settings")]
 
-[node name="StoragePanel" parent="HUD" instance=ExtResource("11_storage")]
+[node name="StoragePanel" parent="HUD" unique_id=503598462 instance=ExtResource("11_storage")]
 
-[node name="TraderPanel" parent="HUD" instance=ExtResource("12_trader")]
+[node name="TraderPanel" parent="HUD" unique_id=986597909 instance=ExtResource("12_trader")]
 
-[node name="JournalPanel" parent="HUD" instance=ExtResource("13_journal")]
+[node name="JournalPanel" parent="HUD" unique_id=1084638907 instance=ExtResource("13_journal")]
 
-[node name="InventoryPanel" parent="HUD" instance=ExtResource("15_inventory")]
+[node name="InventoryPanel" parent="HUD" unique_id=1547887914 instance=ExtResource("15_inventory")]
+
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=495107633]
+material = SubResource("Terrain3DMaterial_y255x")
+assets = SubResource("Terrain3DAssets_1ggnd")
+displacement_sharpness = 0.5
+show_checkered = true
+top_level = true
+metadata/_edit_lock_ = true
+
+[node name="Terrain3DObjects" type="Node3D" parent="." unique_id=912044506]
+script = ExtResource("16_2cqfq")
+metadata/_custom_type_script = "uid://dbndw8p05yam7"
