@@ -1,21 +1,28 @@
 class_name Harvestable
 extends StaticBody3D
-## Ressource récoltable : arbre, palmier, rocher ou buisson.
+## Ressource récoltable : arbre, palmier, rocher, buisson, minéral ou cristal.
 ##
 ## Le visuel et la collision sont construits en code selon `kind`, ce qui
 ## évite quatre scènes quasi identiques. La scène ne contient que ce script.
 ## Le butin est un dictionnaire item_id -> quantité, pour pouvoir donner
 ## plusieurs objets d'un coup (un palmier donne du bois ET une noix de coco).
 
-@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile") var kind: String = "arbre"
+@export_enum("arbre", "palmier", "rocher", "buisson", "seed", "fer", "argile", "cristal", "charbon", "or") var kind: String = "arbre"
 
 ## Temps de repousse : une ressource récoltée redevient disponible après
 ## ce délai, ce qui évite d'épuiser l'île lors d'une longue partie.
 const REGROW_SECONDS := 120.0
 
+## Identifiant stable (ordre de génération, déterministe pour une graine donnée) :
+## sert à retrouver cette ressource dans une sauvegarde. -1 = non sauvegardée.
+var save_id := -1
+
 var _loot: Dictionary = {}
 var _depleted := false
 var _regrow_left := 0.0
+
+signal resource_depleted
+signal resource_regrown
 
 
 func _ready() -> void:
@@ -42,6 +49,15 @@ func _ready() -> void:
 		"argile":
 			_loot = {"clay": 3}
 			_build_clay()
+		"cristal":
+			_loot = {"crystal": 2}
+			_build_crystal()
+		"charbon":
+			_loot = {"coal": 3}
+			_build_charbon()
+		"or":
+			_loot = {"gold": 4}
+			_build_or()
 		_:
 			_loot = {"wood": 4}
 			_build_tree()
@@ -62,6 +78,7 @@ func interact(_player: Node) -> void:
 	Sfx.play("harvest", global_position)
 	for item_id in _loot:
 		GameState.add_item(str(item_id), _amount_for(str(item_id)))
+	GameState.add_xp(GameState.XP_PER_HARVEST)
 	_start_regrow()
 
 
@@ -73,17 +90,52 @@ func _process(delta: float) -> void:
 		_regrow()
 
 
+func is_depleted() -> bool:
+	return _depleted
+
+
+## Retourne les éléments visuels d'un prop (mesh + transform local), dans
+## l'ordre d'ajout. Utilisé pour le batching MultiMesh (une instance par élément).
+func get_visual_parts() -> Array:
+	var parts: Array = []
+	for child in get_children():
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh is Mesh:
+			var mi := child as MeshInstance3D
+			parts.append({"mesh": mi.mesh, "transform": mi.transform})
+	return parts
+
+
+func get_save_state() -> Dictionary:
+	return {"id": save_id, "regrow_left": _regrow_left}
+
+
+## Replace la ressource dans l'état sauvegardé (épuisée avec son délai restant,
+## ou de nouveau disponible).
+func apply_save_state(depleted: bool, regrow_left: float) -> void:
+	if depleted:
+		_depleted = true
+		_regrow_left = clampf(regrow_left, 0.0, REGROW_SECONDS)
+		visible = false
+		collision_layer = 0
+		resource_depleted.emit()
+	elif _depleted:
+		_regrow()
+		resource_regrown.emit()
+
+
 func _start_regrow() -> void:
 	_depleted = true
 	_regrow_left = REGROW_SECONDS if kind != "seed" else 30.0
 	visible = false
 	collision_layer = 0
+	resource_depleted.emit()
 
 
 func _regrow() -> void:
 	_depleted = false
 	visible = true
 	collision_layer = 1
+	resource_regrown.emit()
 
 
 ## La hache en pierre double le bois récolté : elle donne un intérêt concret
@@ -199,6 +251,48 @@ func _build_clay() -> void:
 	patch.material_override = _make_material(Color(0.6, 0.55, 0.45))
 	add_child(patch)
 	_add_box_collision(Vector3(1.6, 0.5, 1.6), Vector3(0.0, 0.25, 0.0))
+
+
+func _build_crystal() -> void:
+	var gem := MeshInstance3D.new()
+	var gem_mesh := BoxMesh.new()
+	gem_mesh.size = Vector3(0.7, 1.4, 0.7)
+	gem.mesh = gem_mesh
+	gem.position.y = 0.7
+	gem.material_override = _make_material(Color(0.55, 0.8, 0.95))
+	add_child(gem)
+	_add_box_collision(Vector3(0.8, 1.6, 0.8), Vector3(0.0, 0.8, 0.0))
+
+
+func _build_charbon() -> void:
+	# Charbon : roche noire fine, minéral rare en profondeur.
+	var rock := MeshInstance3D.new()
+	var rock_mesh := BoxMesh.new()
+	rock_mesh.size = Vector3(0.5, 0.8, 0.5)
+	rock.mesh = rock_mesh
+	rock.position.y = 0.4
+	rock.material_override = _make_material(Color(0.12, 0.11, 0.10))
+	add_child(rock)
+	_add_box_collision(Vector3(0.5, 0.8, 0.5), Vector3(0.0, 0.4, 0.0))
+
+
+func _build_or() -> void:
+	# Or : bloc métallique brillant, mine précieuse.
+	var ore := MeshInstance3D.new()
+	var ore_mesh := BoxMesh.new()
+	ore_mesh.size = Vector3(0.45, 0.9, 0.45)
+	ore.mesh = ore_mesh
+	ore.position.y = 0.45
+	ore.material_override = _make_material(Color(0.85, 0.65, 0.2))
+	add_child(ore)
+	var metal := MeshInstance3D.new()
+	var metal_mesh := BoxMesh.new()
+	metal_mesh.size = Vector3(0.1, 0.95, 0.1)
+	metal.mesh = metal_mesh
+	metal.position = Vector3(0.0, 0.45, 0.0)
+	metal.material_override = _make_material(Color(1.0, 0.85, 0.4))
+	add_child(metal)
+	_add_box_collision(Vector3(0.45, 0.9, 0.45), Vector3(0.0, 0.45, 0.0))
 
 
 func _add_trunk(height: float, top_radius: float, bottom_radius: float) -> void:

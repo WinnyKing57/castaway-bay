@@ -8,6 +8,8 @@ extends Node
 const ITEMS_DIR := "res://data/items"
 const RECIPES_DIR := "res://data/recipes"
 const BUILDABLES_DIR := "res://data/buildables"
+const QUESTS_DIR := "res://data/quests"
+const TRADES_DIR := "res://data/trades"
 
 ## item_id -> ItemData
 var items: Dictionary = {}
@@ -15,14 +17,20 @@ var items: Dictionary = {}
 var recipes: Dictionary = {}
 ## buildable_id -> BuildableData
 var buildables: Dictionary = {}
+## quest_id -> QuestData
+var quests: Dictionary = {}
+## trade_id -> TradeData
+var trades: Dictionary = {}
 
 
 func _ready() -> void:
 	_load_dir(ITEMS_DIR, items)
 	_load_dir(RECIPES_DIR, recipes)
 	_load_dir(BUILDABLES_DIR, buildables)
-	print("[Database] %d objets, %d recettes, %d constructions chargés" % [
-		items.size(), recipes.size(), buildables.size()
+	_load_dir(QUESTS_DIR, quests)
+	_load_dir(TRADES_DIR, trades)
+	print("[Database] %d objets, %d recettes, %d constructions, %d quêtes, %d trocs chargés" % [
+		items.size(), recipes.size(), buildables.size(), quests.size(), trades.size()
 	])
 
 
@@ -36,6 +44,14 @@ func get_recipe(recipe_id: String) -> Resource:
 
 func get_buildable(buildable_id: String) -> Resource:
 	return buildables.get(buildable_id)
+
+
+func get_quest(quest_id: String) -> Resource:
+	return quests.get(quest_id)
+
+
+func get_trade(trade_id: String) -> Resource:
+	return trades.get(trade_id)
 
 
 func _load_dir(dir_path: String, target: Dictionary) -> void:

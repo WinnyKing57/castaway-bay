@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "iron_pickaxe"
+display_name = "Pioche en fer"
+description = "Pointe de fer sur un manche renforcé."
+inputs = {"iron_ingot": 3, "handle": 1}
+outputs = {"iron_pickaxe": 1}
+craft_time = 2.0
+required_station = ""
+category = "outils"
+tier = 2
+unlocked_by = ""
+batch_size = 1

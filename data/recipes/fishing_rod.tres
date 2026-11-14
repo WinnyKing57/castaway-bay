@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "fishing_rod"
+display_name = "Canne à pêche"
+description = "Bâtons, corde et fibres pour une canne simple."
+inputs = {"stick": 2, "rope": 2, "fiber": 2}
+outputs = {"fishing_rod": 1}
+craft_time = 1.0
+required_station = ""
+category = "outils"
+tier = 1
+unlocked_by = ""
+batch_size = 1

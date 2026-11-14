@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "candle"
+display_name = "Bougie"
+description = "Bougie de fortune qui éclaire sans feu de camp."
+category = "materiel"
+max_stack = 50
+tags = []
+rarity = "commun"
+icon_color = Color(0.95, 0.88, 0.55, 1)
+icon_shape = "cercle"
+weight = 0.0

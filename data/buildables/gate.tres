@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BuildableData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/buildable_data.gd" id="1_buildable"]
+
+[resource]
+script = ExtResource("1_buildable")
+id = "gate"
+display_name = "Porte"
+description = "Porte double en bois avec vantails et poignée, pour l'entrée de la maison."
+kind = "gate"
+costs = {
+"wood": 4,
+"fiber": 2
+}
+grid_size = 1
+visual_tag = "gate"
+category = "defense"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

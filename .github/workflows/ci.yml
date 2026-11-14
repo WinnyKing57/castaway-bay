@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "feature/**", "fix/**" ]
+  pull_request:
+    branches: [ "main", "feature/**", "fix/**" ]
+
+jobs:
+  test:
+    name: Smoke Test (Godot Headless)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux runtime libraries
+        run: |
+          sudo apt-get update -qq
+          # Les noms de paquets changent selon la version d'Ubuntu
+          # (libasound2 -> libasound2t64, libxrandr1 -> libxrandr3 sur 24.04+).
+          # On n'installe que ceux qui ont un candidat sur l'image du runner.
+          PKGS=""
+          for pkg in libasound2 libasound2t64 libgl1 libxcursor1 libxinerama1 libxrandr1 libxrandr3 libxi6; do
+            if apt-cache policy "$pkg" 2>/dev/null | grep -q "Candidate: [0-9]"; then
+              PKGS="$PKGS $pkg"
+            fi
+          done
+          if [ -n "$PKGS" ]; then
+            sudo apt-get install -y -qq $PKGS
+          fi
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+
+      - name: Run Smoke Test
+        run: |
+          ./run.sh --test

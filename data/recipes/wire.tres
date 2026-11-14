@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "wire"
+display_name = "Fil électrique"
+description = "Le métal étiré devient fil conducteur."
+inputs = {"metal": 1}
+outputs = {"wire": 2}
+craft_time = 0.0
+required_station = ""
+category = "materiels"
+tier = 3
+unlocked_by = ""
+batch_size = 1

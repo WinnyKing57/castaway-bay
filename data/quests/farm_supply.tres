@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = "farm_supply"
+display_name = "Graines pour la relève"
+description = "Le marchand prépare un potager. Fibres et graines feront l'affaire."
+required_items = {
+"seed": 6,
+"fiber": 10
+}
+reward_items = {
+"compost": 3,
+"herb": 1
+}
+reward_reputation = 8
+min_reputation = 10

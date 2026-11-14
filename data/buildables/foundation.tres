@@ -12,3 +12,9 @@ costs = {
 "wood": 4
 }
 grid_size = 1
+category = "fondations"
+tier = 1
+upgrade_to = ""
+health = 100.0
+unlocked_by = ""
+preview_scale = 1.0

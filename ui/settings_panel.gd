@@ -10,6 +10,8 @@ signal closed
 @onready var volume_slider: HSlider = $Center/Panel/Margin/VBox/VolumeRow/Slider
 @onready var sensitivity_slider: HSlider = $Center/Panel/Margin/VBox/SensitivityRow/Slider
 @onready var fullscreen_check: CheckButton = $Center/Panel/Margin/VBox/FullscreenRow/Check
+@onready var infinite_check: CheckButton = $Center/Panel/Margin/VBox/InfiniteRow/Check
+@onready var always_day_check: CheckButton = $Center/Panel/Margin/VBox/AlwaysDayRow/Check
 @onready var back_button: Button = $Center/Panel/Margin/VBox/Back
 
 
@@ -28,6 +30,8 @@ func _ready() -> void:
 	volume_slider.value_changed.connect(_on_volume_changed)
 	sensitivity_slider.value_changed.connect(_on_sensitivity_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
+	infinite_check.toggled.connect(_on_infinite_toggled)
+	always_day_check.toggled.connect(_on_always_day_toggled)
 	back_button.pressed.connect(close)
 
 
@@ -36,6 +40,8 @@ func open() -> void:
 	volume_slider.set_value_no_signal(Settings.master_volume)
 	sensitivity_slider.set_value_no_signal(Settings.mouse_sensitivity)
 	fullscreen_check.set_pressed_no_signal(Settings.fullscreen)
+	infinite_check.set_pressed_no_signal(Settings.infinite_resources)
+	always_day_check.set_pressed_no_signal(Settings.always_day)
 	visible = true
 
 
@@ -69,3 +75,17 @@ func _on_sensitivity_changed(value: float) -> void:
 func _on_fullscreen_toggled(pressed: bool) -> void:
 	Settings.fullscreen = pressed
 	Settings.apply()
+
+
+func _on_infinite_toggled(pressed: bool) -> void:
+	Settings.infinite_resources = pressed
+	# Sauvegarde immédiate : le mode créatif doit être effectif tout de suite
+	# (has_items/consume_items lisent Settings en direct).
+	Settings.save_settings()
+	GameState.notify("Matériaux infinis : %s" % ("activé" if pressed else "désactivé"))
+
+
+func _on_always_day_toggled(pressed: bool) -> void:
+	Settings.always_day = pressed
+	Settings.save_settings()
+	GameState.notify("Jour constant : %s" % ("activé" if pressed else "désactivé"))

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "gear"
+display_name = "Engrenage"
+description = "Fer et métal façonnés au four en roue dentée."
+inputs = {"metal": 2, "iron_ingot": 1}
+outputs = {"gear": 1}
+craft_time = 2.0
+required_station = "furnace"
+category = "materiels"
+tier = 3
+unlocked_by = ""
+batch_size = 1

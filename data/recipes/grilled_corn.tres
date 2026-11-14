@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "grilled_corn"
+display_name = "Maïs grillé"
+description = "Un épi de maïs grillé à point."
+inputs = {"corn": 1}
+outputs = {"grilled_corn": 1}
+craft_time = 3.0
+required_station = "campfire"
+category = "cuisine"
+tier = 1
+unlocked_by = ""
+batch_size = 1

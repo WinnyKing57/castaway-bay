@@ -16,6 +16,9 @@ const UI_POOL_SIZE := 4
 var _players: Array[AudioStreamPlayer3D] = []
 var _ui_players: Array[AudioStreamPlayer] = []
 var _streams: Dictionary = {}
+var _music_player: AudioStreamPlayer = null
+var _music_track := "day"
+var _in_cave := false
 
 
 func _ready() -> void:
@@ -42,6 +45,13 @@ func _ready() -> void:
 	_streams["splash"] = _make_splash()
 	_streams["death"] = _make_death()
 	_streams["ui"] = _make_ui()
+	_streams["cave"] = _make_cave()
+	_streams["music"] = _make_music(_music_track)
+	if DisplayServer.get_name() != "headless":
+		var music_player := AudioStreamPlayer.new()
+		music_player.volume_db = -12.0
+		add_child(music_player)
+		_music_player = music_player
 
 	# Applique le volume général (réglages persistants) dès le démarrage.
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(Settings.master_volume, 0.0001)))
@@ -71,6 +81,8 @@ func stop_all() -> void:
 		player.stop()
 	for player in _ui_players:
 		player.stop()
+	if _music_player != null:
+		_music_player.stop()
 
 
 ## Joue un son non spatialisé (interface, retour d'action).
@@ -90,6 +102,50 @@ func play_ui(sound: String, volume_db: float = 0.0) -> void:
 	_ui_players[0].stream = stream
 	_ui_players[0].volume_db = volume_db
 	_ui_players[0].play()
+
+
+# --- Musique d'ambiance dynamique -------------------------------------------
+
+func play_music(track: String) -> void:
+	_music_track = track
+	_streams["music"] = _make_music(track)
+	_start_music()
+
+
+func stop_music() -> void:
+	play_music("day")
+
+
+## Bascule l'ambiance musicale entre extérieur et grotte.
+func set_cave(in_cave: bool) -> void:
+	if _in_cave == in_cave:
+		return
+	_in_cave = in_cave
+	play_music("cave" if in_cave else "day")
+
+
+func _start_music() -> void:
+	if _music_player == null:
+		return
+	var stream: AudioStream = _streams.get("music")
+	if stream == null:
+		return
+	_music_player.stream = stream
+	_music_player.play()
+
+
+func _process(_delta: float) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	# En grotte, la musique est forcée par set_cave().
+	if _in_cave:
+		return
+	var ratio := GameState.world_time / GameState.SECONDS_PER_DAY
+	var track := "night"
+	if ratio >= 0.25 and ratio < 0.75:
+		track = "day" if ratio < 0.5 else "dusk"
+	if track != _music_track:
+		play_music(track)
 
 
 # --- Synthèse ----------------------------------------------------------------
@@ -161,7 +217,69 @@ func _to_wav(samples: PackedFloat32Array) -> AudioStreamWAV:
 	return stream
 
 
+# --- Musique ----------------------------------------------------------------
+
+func _make_music(track: String) -> AudioStreamWAV:
+	# Boucle de 8 s : accord de trois sinus + respiration lente. Chaque ambiance
+	# a sa propre tonalité (jour clair, crépuscule chaud, nuit grave, grotte très
+	# grave) et la boucle se fond sur elle-même.
+	var duration := 8.0
+	var count := int(duration * SAMPLE_RATE)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+
+	var base := 130.81
+	var third := 164.81
+	var fifth := 196.0
+	match track:
+		"night":
+			base = 82.41
+			third = 98.0
+			fifth = 123.47
+		"dusk":
+			base = 98.0
+			third = 123.47
+			fifth = 146.83
+		"cave":
+			base = 55.0
+			third = 65.41
+			fifth = 82.41
+
+	for i in count:
+		var t := float(i) / SAMPLE_RATE
+		var fade := minf(t / 1.5, 1.0) * minf((duration - t) / 1.5, 1.0)
+		var wave := sin(TAU * base * t) * 0.09
+		wave += sin(TAU * third * t + 0.5) * 0.05
+		wave += sin(TAU * fifth * t + 1.0) * 0.04
+		wave *= 0.55 + 0.45 * sin(TAU * 0.12 * t)
+		samples[i] = wave * fade
+
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = SAMPLE_RATE
+	stream.stereo = false
+	var data := PackedByteArray()
+	data.resize(samples.size() * 2)
+	for i in samples.size():
+		data.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32000.0))
+	stream.data = data
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = samples.size()
+	return stream
+
+
 # --- Sons --------------------------------------------------------------------
+
+func _make_cave() -> AudioStreamWAV:
+	# Ambiance de grotte : souffle sourd et lointain + gouttes d'eau espacées.
+	var amb := _noise(2.0, 3.0, 0.5, 0.045)
+	var drop1 := _sweep(1500.0, 320.0, 0.13, 17.0, 0.12)
+	var drop2 := _sweep(1150.0, 260.0, 0.11, 20.0, 0.09)
+	var out := _mix(amb, _delay(drop1, 0.65))
+	out = _mix(out, _delay(drop2, 1.4))
+	return _to_wav(out)
+
 
 func _make_harvest() -> AudioStreamWAV:
 	# Craquement de bois : bruit sec + petit "toc" grave.

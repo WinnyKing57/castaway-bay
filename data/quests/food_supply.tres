@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = "food_supply"
+display_name = "Réserve de bouche"
+description = "Le marchand troque des vivres contre des baies et des noix fraîches."
+required_items = {
+"berry": 8,
+"coconut": 4
+}
+reward_items = {
+"cooked": 2,
+"herb": 1
+}
+reward_reputation = 6
+min_reputation = 0

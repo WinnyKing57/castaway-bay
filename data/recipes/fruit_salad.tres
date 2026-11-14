@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/recipe_data.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = "fruit_salad"
+display_name = "Salade de fruits"
+description = "Baies fraîches et noix de coco râpée."
+inputs = {"berry": 2, "coconut": 1}
+outputs = {"fruit_salad": 1}
+craft_time = 0.0
+required_station = ""
+category = "cuisine"
+tier = 1
+unlocked_by = ""
+batch_size = 1

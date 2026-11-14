@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="QuestData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/quest_data.gd" id="1_quest"]
+
+[resource]
+script = ExtResource("1_quest")
+id = "rare_supply"
+display_name = "Le trésor de la cale"
+description = "Pour sa collection, l'automate convoite l'or et les cristaux des profondeurs."
+required_items = {
+"gold": 3,
+"crystal": 2
+}
+reward_items = {
+"electronics": 2,
+"fuel": 1
+}
+reward_reputation = 15
+min_reputation = 35

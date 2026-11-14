@@ -14,6 +14,11 @@ var master_volume := 0.8
 ## Multiplicateur appliqué à la sensibilité de base de la souris.
 var mouse_sensitivity := 1.0
 var fullscreen := false
+## Mode créatif : les coûts de construction et d'artisanat sont ignorés
+## ( cheat optionnel, hors sauvegarde — réglage persistant comme le volume).
+var infinite_resources := false
+## Jour constant : fige l'heure du jour (pas de cycle jour/nuit).
+var always_day := false
 
 
 func _ready() -> void:
@@ -32,6 +37,8 @@ func load_settings() -> void:
 		SENSITIVITY_MAX
 	)
 	fullscreen = bool(config.get_value("video", "fullscreen", fullscreen))
+	infinite_resources = bool(config.get_value("gameplay", "infinite_resources", infinite_resources))
+	always_day = bool(config.get_value("gameplay", "always_day", always_day))
 
 
 func save_settings() -> void:
@@ -39,6 +46,8 @@ func save_settings() -> void:
 	config.set_value("audio", "master_volume", master_volume)
 	config.set_value("input", "mouse_sensitivity", mouse_sensitivity)
 	config.set_value("video", "fullscreen", fullscreen)
+	config.set_value("gameplay", "infinite_resources", infinite_resources)
+	config.set_value("gameplay", "always_day", always_day)
 	config.save(PATH)
 
 

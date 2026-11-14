@@ -1,73 +1,83 @@
 class_name Boat
-extends CharacterBody3D
-## Bateau du portage d'Ocean Is Home : locomotion sur l'eau.
+extends Vehicle
+## Bateau : locomotion sur l'eau.
 ##
-## Physique simple : le bateau est propulsé par l'utilisateur via les actions
-## de la barre rapide / de déplacement, et consomme du carburant.
+## Physique simple : le bateau est propulsé par l'utilisateur via les actions de
+## la barre rapide / de deplacement, et consomme du carburant.
 
-const SPEED := 5.0
-const TURN_SPEED := 2.5
 const FUEL_MAX := 30.0
 const FUEL_PER_ITEM := 30.0
-const FUEL_ITEM_ID := "fuel"
-const METAL_ITEM_ID := "metal"
-
-var fuel := FUEL_MAX
-var metal := 0
-var _controlled := false
-var _player: Node3D = null
 
 
-func _ready() -> void:
-	collision_layer = 1
-	collision_mask = 0
-	var shape := CollisionShape3D.new()
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.9
-	capsule.height = 2.4
-	shape.shape = capsule
-	add_child(shape)
+## Bateau : coque allongee longitudinalement.
+func _visual_length() -> float:
+	return 2.4
 
 
-func _physics_process(_delta: float) -> void:
-	if not _controlled:
-		velocity = Vector3.ZERO
-		return
-	if global_position.y > 0.0:
-		velocity = Vector3.ZERO
-		return
-	var input := Input.get_vector("move_forward", "move_backward", "move_left", "move_right")
-	var direction := (transform.basis * Vector3(input.x, 0.0, input.y)).normalized()
-	if direction.length() > 0.0 and fuel > 0.0:
-		velocity = direction * SPEED
-		fuel = maxf(0.0, fuel - _delta * 5.0)
-		if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) > 0:
-			GameState.remove_item(FUEL_ITEM_ID, 1)
-			fuel = FUEL_MAX
-	else:
-		velocity = Vector3.ZERO
-	move_and_slide()
-	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).velocity = velocity
+func _speed() -> float:
+	return 5.0
+
+
+func _turn_speed() -> float:
+	return 2.5
+
+
+func _reverse_speed() -> float:
+	return 2.5
+
+
+func _fuel_enabled() -> bool:
+	return true
+
+
+func _fuel_max() -> float:
+	return FUEL_MAX
+
+
+func _fuel_per_item() -> float:
+	return FUEL_PER_ITEM
+
+
+func _seat_offset() -> Vector3:
+	return Vector3(0.0, 1.0, 0.0)
+
+
+func _collision_mask() -> int:
+	return 0
+
+
+func _shape_radius() -> float:
+	return 0.9
+
+
+func _shape_height() -> float:
+	return 2.4
+
+
+func get_save_state() -> Dictionary:
+	var state := super.get_save_state()
+	state["fuel"] = fuel
+	return state
+
+
+func apply_save_state(state: Dictionary) -> void:
+	super.apply_save_state(state)
+	var saved_fuel: Variant = state.get("fuel")
+	if (typeof(saved_fuel) == TYPE_FLOAT or typeof(saved_fuel) == TYPE_INT) and is_finite(float(saved_fuel)):
+		fuel = clampf(float(saved_fuel), 0.0, _fuel_max())
 
 
 func interact(player: Node) -> void:
 	if not _controlled and fuel <= 0.0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
 		repair()
 		return
-	_controlled = not _controlled
-	_player = player if is_instance_valid(player) else null
-	if not _controlled:
-		if _player is CharacterBody3D:
-			(_player as CharacterBody3D).exit_boat()
-		_player = null
+	if _controlled:
+		_release()
 		return
 	if fuel <= 0.0 and GameState.get_item_count(FUEL_ITEM_ID) <= 0:
-		_controlled = false
 		GameState.notify("Bateau : carburant insuffisant")
 		return
-	if _player is CharacterBody3D:
-		(_player as CharacterBody3D).enter_boat()
+	board(player)
 
 
 func get_interaction_prompt() -> String:
@@ -81,8 +91,6 @@ func get_interaction_prompt() -> String:
 
 
 func repair() -> void:
-	if metal > 0 and GameState.get_item_count(METAL_ITEM_ID) > 0:
-		GameState.remove_item(METAL_ITEM_ID, 1)
-		metal -= 1
-		fuel = FUEL_MAX
+	if GameState.remove_item(METAL_ITEM_ID, 1):
+		fuel = _fuel_max()
 		GameState.notify("Bateau réparé")

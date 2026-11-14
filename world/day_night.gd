@@ -9,6 +9,10 @@ extends DirectionalLight3D
 @export var day_color := Color(1.0, 0.96, 0.88)
 @export var sunset_color := Color(1.0, 0.62, 0.38)
 
+## 0.0 = ambiance normale, 1.0 = grotte (très sombre, torche nécessaire).
+## Piloté par main.gd selon la proximité d'une grotte.
+var cave_darkness := 0.0
+
 var _environment: Environment
 var _sky_material: ProceduralSkyMaterial
 
@@ -34,9 +38,14 @@ func _process(_delta: float) -> void:
 	light_color = sunset_color.lerp(day_color, clampf(elevation * 2.5, 0.0, 1.0))
 
 	if _environment != null:
-		_environment.ambient_light_energy = lerpf(0.25, 0.9, elevation)
+		var base_ambient := lerpf(0.25, 0.9, elevation)
+		# En grotte : l'ambiance s'effondre pour forcer l'usage de la torche.
+		_environment.ambient_light_energy = lerpf(base_ambient, 0.06, cave_darkness)
 		_environment.fog_light_color = Color(0.05, 0.08, 0.14).lerp(Color(0.62, 0.72, 0.82), elevation)
+		_environment.fog_density = lerpf(0.0035, 0.02, cave_darkness)
 
 	if _sky_material != null:
-		_sky_material.sky_top_color = Color(0.02, 0.03, 0.09).lerp(Color(0.18, 0.36, 0.62), elevation)
-		_sky_material.sky_horizon_color = Color(0.05, 0.07, 0.13).lerp(Color(0.62, 0.74, 0.86), elevation)
+		var base_top := Color(0.02, 0.03, 0.09).lerp(Color(0.18, 0.36, 0.62), elevation)
+		var base_horizon := Color(0.05, 0.07, 0.13).lerp(Color(0.62, 0.74, 0.86), elevation)
+		_sky_material.sky_top_color = base_top.lerp(Color(0.01, 0.01, 0.02), cave_darkness)
+		_sky_material.sky_horizon_color = base_horizon.lerp(Color(0.02, 0.02, 0.03), cave_darkness)

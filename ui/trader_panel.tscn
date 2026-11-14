@@ -1,0 +1,138 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/trader_panel.gd" id="1_trader"]
+
+[node name="TraderPanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_trader")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -320.0
+offset_right = 500.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Marchand itinérant"
+
+[node name="Header" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Dialogue" type="Label" parent="Panel/Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+autowrap_mode = 2
+text = "..."
+
+[node name="Reputation" type="VBoxContainer" parent="Panel/Margin/VBox/Header"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="RepLabel" type="Label" parent="Panel/Margin/VBox/Header/Reputation"]
+layout_mode = 2
+text = "Réputation : 0/100 — Méfiant"
+horizontal_alignment = 2
+
+[node name="RepBar" type="ProgressBar" parent="Panel/Margin/VBox/Header/Reputation"]
+custom_minimum_size = Vector2(260, 18)
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="Columns" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="TradesCol" type="VBoxContainer" parent="Panel/Margin/VBox/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="TradesHeader" type="Label" parent="Panel/Margin/VBox/Columns/TradesCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Troc"
+
+[node name="TradesScroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/TradesCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Trades" type="VBoxContainer" parent="Panel/Margin/VBox/Columns/TradesCol/TradesScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Sep" type="VSeparator" parent="Panel/Margin/VBox/Columns"]
+layout_mode = 2
+
+[node name="QuestsCol" type="VBoxContainer" parent="Panel/Margin/VBox/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="QuestsHeader" type="Label" parent="Panel/Margin/VBox/Columns/QuestsCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Quêtes d'approvisionnement"
+
+[node name="QuestsScroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/QuestsCol"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Quests" type="VBoxContainer" parent="Panel/Margin/VBox/Columns/QuestsCol/QuestsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Status" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+text = ""
+
+[node name="Close" type="Button" parent="Panel/Margin/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+text = "Fermer (E / Échap)"

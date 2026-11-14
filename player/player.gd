@@ -26,8 +26,13 @@ const SWIM_ENTER_DEPTH := 1.4
 const SWIM_EXIT_DEPTH := 0.5
 ## Profondeur à laquelle le joueur flotte (le corps est à moitié immergé).
 const SWIM_FLOAT_DEPTH := 1.0
-## Limite du monde : le terrain fait ±130 m, on reste dans ce cercle.
-const WORLD_RADIUS := 128.0
+## Limite du monde : déterminée dynamiquement par Island.world_radius().
+## La valeur par défaut 128.0 est conservée comme valeur minimale
+## mais la vraie borne vient du générateur d'île actif.
+var world_radius_offset := 20.0
+
+## Rayon à proximité duquel un feu de camp / fourneau compte comme station.
+const CRAFT_STATION_RANGE := 4.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -40,6 +45,7 @@ var _torch_light: OmniLight3D
 var _swimming := false
 var _step_timer := 0.0
 var _in_boat := false
+var _boat: Node3D = null
 
 
 func _ready() -> void:
@@ -129,23 +135,78 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
-	# Limite du monde : on clamp le joueur dans le cercle de rayon WORLD_RADIUS.
+	# Limite du monde : on clamp le joueur dans le cercle de rayon Island.world_radius() + offset.
 	var horizontal := Vector2(global_position.x, global_position.z)
-	if horizontal.length() > WORLD_RADIUS:
+	var max_radius := 128.0
+	var world_node := get_node_or_null("/root/Main/World")
+	if world_node != null and world_node.has_method("world_radius"):
+		max_radius = float(world_node.call("world_radius")) + world_radius_offset
+	if horizontal.length() > max_radius:
 		var angle := atan2(global_position.z, global_position.x)
-		global_position.x = cos(angle) * WORLD_RADIUS
-		global_position.z = sin(angle) * WORLD_RADIUS
+		global_position.x = cos(angle) * max_radius
+		global_position.z = sin(angle) * max_radius
+	_update_craft_station()
 	_update_interaction_prompt()
 	_update_footsteps(delta)
 
 
-## Vrai quand le joueur nage (l'eau lui arrive au-dessus de la taille).
-func enter_boat() -> void:
+## Station de fabrication à portée : mise à jour chaque frame pour que
+## GameState.craft_station reflète les vraies proximités (et se réinitialise
+## dès qu'on s'éloigne du feu de camp ou du fourneau).
+func _update_craft_station() -> void:
+	var nearest_id := ""
+	var nearest_dist := CRAFT_STATION_RANGE
+	for node in get_tree().get_nodes_in_group("craft_station"):
+		if not node is Node3D or not node.visible:
+			continue
+		var dist := global_position.distance_to((node as Node3D).global_position)
+		if dist <= nearest_dist:
+			nearest_dist = dist
+			nearest_id = str(node.get("kind"))
+	if nearest_id.is_empty():
+		if GameState.craft_stations.size() > 0:
+			GameState.clear_stations()
+	else:
+		if not GameState.has_station(nearest_id) or GameState.craft_stations.size() != 1 or not GameState.craft_stations.has(nearest_id):
+			GameState.clear_stations()
+			GameState.register_station(nearest_id)
+
+
+## Monte à bord du bateau (le joueur y est "parenté" de fait : le bateau le
+## déplace chaque frame). Sortir près d'une plage remet le joueur sur terre.
+func enter_boat(boat: Node3D = null) -> void:
 	_in_boat = true
+	_boat = boat
 
 
 func exit_boat() -> void:
 	_in_boat = false
+	# Si l'on descend près d'une plage, on se pose au sol ; en pleine eau,
+	# la nage du joueur reprend le relais (hystérésis dans _physics_process).
+	var ground := get_node_or_null("/root/Main/World")
+	if _boat != null and ground != null and ground.has_method("get_height_at"):
+		var pos := global_position
+		var h: float = ground.get_height_at(pos.x, pos.z)
+		if h > -0.5:
+			global_position.y = h + 1.2
+	_boat = null
+
+
+func is_in_boat() -> bool:
+	return _in_boat
+
+
+func are_controls_enabled() -> bool:
+	return _controls_enabled
+
+
+## Inclinaison de la tête (regard haut/bas), sauvegardée avec la position.
+func get_pitch() -> float:
+	return head.rotation.x
+
+
+func set_pitch(value: float) -> void:
+	head.rotation.x = clampf(value, -PITCH_LIMIT, PITCH_LIMIT)
 
 
 func is_swimming() -> bool:
@@ -200,5 +261,7 @@ func _get_interaction_target() -> Node:
 		return null
 	var collider := ray.get_collider()
 	if collider != null and collider.has_method("interact") and collider.has_method("get_interaction_prompt"):
+		if str(collider.get_interaction_prompt()).is_empty():
+			return null
 		return collider
 	return null

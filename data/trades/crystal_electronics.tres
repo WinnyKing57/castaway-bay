@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/trade_data.gd" id="1_trade"]
+
+[resource]
+script = ExtResource("1_trade")
+id = "crystal_electronics"
+display_name = "Cristaux contre électronique"
+description = "Les cristaux piézoélectriques alimentent ses circuits ; il en fait des composants."
+give = {
+"crystal": 2,
+"metal": 3
+}
+receive = {
+"electronics": 1
+}
+min_reputation = 50

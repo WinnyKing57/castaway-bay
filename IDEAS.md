@@ -8,6 +8,8 @@ Une idée ne sort de ce fichier que si elle entre dans un jalon de la roadmap.
 - ✅ Placement fantôme avec validation (M4)
 - ✅ Artisanat data-driven avec interface (M3)
 - ✅ Consommation (manger / boire) et mort / respawn (M2)
+- ✅ MultiMesh pour la végétation dense (chunks + instances par élément)
+- ✅ Démolition (clic droit, remboursement partiel des matériaux)
 
 ## Gameplay
 - Pêche à la ligne (mini-jeu de tension)
@@ -29,13 +31,11 @@ Une idée ne sort de ce fichier que si elle entre dans un jalon de la roadmap.
 - Peinture des murs (palette de couleurs)
 - Réseau électrique (générateur, câbles, ampoules)
 - Stockage : coffres avec interface
-- Démolition (récupérer une partie des matériaux)
 - Snapping intelligent : murs qui s'alignent aux fondations voisines
 
 ## Technique
 - Streaming des zones (chargement/déchargement par distance)
 - Sauvegarde par zone plutôt que globale
-- MultiMesh pour la végétation dense
 - LOD + occlusion culling
 - Mode manette complet
 - Support Steam Deck (icônes, réglages par défaut)

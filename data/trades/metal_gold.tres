@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/trade_data.gd" id="1_trade"]
+
+[resource]
+script = ExtResource("1_trade")
+id = "metal_gold"
+display_name = "Métal contre or"
+description = "Sa réserve d'or ne s'ouvre qu'aux visiteurs de confiance."
+give = {
+"metal": 4
+}
+receive = {
+"gold": 1
+}
+min_reputation = 40

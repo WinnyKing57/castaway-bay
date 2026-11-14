@@ -17,3 +17,7 @@ outputs = {
 }
 craft_time = 1.5
 required_station = ""
+category = "outils"
+tier = 1
+unlocked_by = ""
+batch_size = 1
