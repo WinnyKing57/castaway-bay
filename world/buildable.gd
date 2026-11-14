@@ -669,7 +669,7 @@ func _build_gate() -> void:
 	sphere.radius = 0.06
 	sphere.radial_segments = 6
 	sphere.rings = 3
-	sphere.mesh = sphere
+	knob.mesh = sphere
 	knob.position = Vector3(0.0, 1.1, 0.0)
 	knob.material_override = _make_material(Color(0.8, 0.65, 0.2))
 	add_child(knob)
