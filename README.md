@@ -239,6 +239,7 @@ La documentation complète du jeu et des mécaniques est disponible dans
 | [`docs/11-tests.md`](docs/11-tests.md) | Tests, smoke test, outils |
 | [`docs/12-donnees.md`](docs/12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
 | [`docs/13-inventaire-hud.md`](docs/13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
+| [`docs/15-world-npc.md`](docs/15-world-npc.md) | Marchand itinérant + survivant (kind, dialogue distinct) |
 | [`docs/14-progression.md`](docs/14-progression.md) | XP, niveaux, déblocage par niveau et sommeil |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Journal des décisions techniques |
 

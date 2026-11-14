@@ -911,6 +911,7 @@ func _spawn_secondary_islands() -> void:
 		var survivor := Trader.new()
 		survivor.position = wreck.position + Vector3(0.0, 0.5, 0.0)
 		survivor.rotation.y = wreck.rotation.y + deg_to_rad(90.0)
+		survivor.kind = "survivor"
 		add_child(survivor)
 
 

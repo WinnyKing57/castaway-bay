@@ -153,3 +153,15 @@ optionnel, avec valeurs par défaut et validation ; `SAVE_VERSION` reste 3.
 **Pourquoi** : la règle impose des champs nouveaux optionnels. Un ancien
 binaire ignore le bloc ; un nouveau binaire lit les anciennes sauvegardes. Une
 montée de version n'apporterait aucune migration supplémentaire.
+### Survivant de l'épave (kind = "survivor")
+
+**Décision** : le Trader créé dans `_spawn_trader()` (position 60,0,60) est un marchand
+de l'île ; le Trader créé pour le survivant après la destruction de l'épave (`_spawn_crops`)
+(Position wreck + Vector3(0,0.5,0)) reçoit `kind = "survivor"`. Le même mécanisme de
+troc et de quêtes s'applique, mais son premier dialogue et sa journalisation diffèrent.
+
+**Pourquoi** : éviter une duplication de logique de dialogue et de journal entre deux instances
+identiques de `Trader`. La sauvegarde v3 transmet le champ `kind` via `get_save_state()`
+→ `apply_save_state()`.
+
+**Écarté** : donner des comportements physiques différents au survivant (pas fait ici).

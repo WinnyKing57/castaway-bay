@@ -136,6 +136,13 @@
       verrouillage par niveau, persistance, reset
 - [x] Documentation : `docs/14-progression.md`, INDEX, README, artisanat, DECISIONS
 
+## Fait — évolution v3, Phase 6 (monde/NPC : marchand + survivant)
+- [x] `Trader` (marchand) : `get_dialogue()`, `get_available_trades()`, `execute_trade()`,
+    `get_save_state()`/`apply_save_state()` incluent `kind` ("merchant").
+- [x] **Survivant** (`kind = "survivor"`): dialogue de première rencontre différent
+    (« Je me souviens d'une galère naufragée… »), journal distinct, interact "Parler au survivant (E)".
+- [x] `to_save_data`/`apply_save_state` propagent `kind` vers les sauvegarde v3.
+
 ## En cours — évolution v3, Phase 7.1 (découpage du code)
 
 - [x] **`main.gd`** : le smoke test (≈ 1 200 lignes) est extrait dans

@@ -25,6 +25,7 @@ Documentation française complète du fonctionnement du jeu et de ses systèmes.
 | 12 | [`12-donnees.md`](12-donnees.md) | Modèle de données (items, recettes, constructibles) et icônes |
 | 13 | [`13-inventaire-hud.md`](13-inventaire-hud.md) | Inventaire, barre rapide, glisser-déposer et HUD |
 | 14 | [`14-progression.md`](14-progression.md) | XP, niveaux, déblocage par niveau et sommeil |
+| 15 | [`15-world-npc.md`](15-world-npc.md) | Marchand itinérant + survivant du navire marchand (kind, dialogue distinct) |
 | — | [`DECISIONS.md`](DECISIONS.md) | Journal des décisions techniques |
 
 ## Comment lire cette documentation

@@ -5,12 +5,17 @@ extends StaticBody3D
 ## Le marchand propose des offres de troc (data/trades) débloquées par la
 ## réputation, et confie des quêtes d'approvisionnement (data/quests).
 ## Son état (position, rencontres, nombre d'échanges) est sauvegardé.
+##
+## `kind` distingue le marchand de l'île du survivant de l'épave : même
+## logique de troc et de quêtes, dialogue de première rencontre différent.
 
 ## Nombre d'échanges nécessaires entre deux entrées de journal.
 const JOURNAL_TRADE_STEP := 5
 
 var trade_count := 0
 var _met := false
+## "merchant" (marchand de l'île) ou "survivor" (rescapé de l'épave).
+var kind := "merchant"
 
 
 func _ready() -> void:
@@ -20,6 +25,8 @@ func _ready() -> void:
 
 
 func get_interaction_prompt() -> String:
+	if kind == "survivor":
+		return "Parler au survivant de l'épave (E)"
 	return "Parler au marchand itinérant (E)"
 
 
@@ -30,8 +37,12 @@ func interact(_player: Node) -> void:
 	GameState.trader_opened.emit(self)
 	if first_meeting:
 		_met = true
-		GameState.add_journal("Rencontre avec un automate de troc rouillé, seul habitant de l'île.")
-		GameState.notify("L'automate s'anime dans un grincement de rouages.")
+		if kind == "survivor":
+			GameState.add_journal("Rencontre avec un survivant de l'épave du navire marchand.")
+			GameState.notify("Le survivant relève la tête : « Toi aussi, la mer t'a rejeté ? »")
+		else:
+			GameState.add_journal("Rencontre avec un automate de troc rouillé, seul habitant de l'île.")
+			GameState.notify("L'automate s'anime dans un grincement de rouages.")
 
 
 func has_met_player() -> bool:
@@ -45,6 +56,8 @@ func get_trade_count() -> int:
 ## Phrase d'accueil qui évolue avec la réputation et les quêtes en cours.
 func get_dialogue() -> String:
 	if not _met:
+		if kind == "survivor":
+			return "« L'épave m'a craché sur la plage. Mes circuits sont rouillés, mais je troque encore. »"
 		return "« … » L'automate est immobile, une lueur bleue pulse sous sa plaque frontale."
 	var ready_quest := false
 	for quest_id in GameState.accepted_quests:
@@ -105,6 +118,7 @@ func get_save_state() -> Dictionary:
 		"rotation_y": rotation.y,
 		"met": _met,
 		"trade_count": trade_count,
+		"kind": kind,
 	}
 
 
@@ -127,6 +141,9 @@ func apply_save_state(state: Dictionary) -> void:
 	if (typeof(rot) == TYPE_FLOAT or typeof(rot) == TYPE_INT) and is_finite(float(rot)):
 		rotation.y = float(rot)
 	_met = state.get("met", false) == true
+	var saved_kind: Variant = state.get("kind")
+	if typeof(saved_kind) == TYPE_STRING and saved_kind in ["merchant", "survivor"]:
+		kind = saved_kind
 	var saved_trades: Variant = state.get("trade_count")
 	trade_count = 0
 	if (typeof(saved_trades) == TYPE_FLOAT or typeof(saved_trades) == TYPE_INT) and is_finite(float(saved_trades)):
