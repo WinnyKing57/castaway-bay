@@ -913,6 +913,9 @@ func _run_stability_tests(errors: PackedStringArray) -> void:
 	if boat == null:
 		errors.append("bateau introuvable")
 	else:
+		var hull := boat.get_node_or_null("Hull") as MeshInstance3D
+		if hull == null or hull.mesh == null:
+			errors.append("bateau sans mesh visuel")
 		boat.interact(player)
 		if not player.is_in_boat():
 			errors.append("embarquement KO")

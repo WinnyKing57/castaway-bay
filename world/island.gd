@@ -773,22 +773,23 @@ func _build_cave_entrance(pos: Vector3, yaw: float) -> void:
 	mat.albedo_color = Color(0.16, 0.15, 0.14)
 	mat.roughness = 1.0
 
-	# Deux montants massifs.
+	# Deux montants massifs : la cavité s'enfonce depuis l'entrée (sommet du
+	# massif) vers le bas dans la roche (vers -Y local).
 	for side in [-1.0, 1.0]:
 		var pillar := MeshInstance3D.new()
 		var box := BoxMesh.new()
 		box.size = Vector3(1.3, 3.2, 1.3)
 		pillar.mesh = box
-		pillar.position = Vector3(side * 1.7, 1.6, 0.0)
+		pillar.position = Vector3(side * 1.7, -1.6, 0.0)
 		pillar.material_override = mat
 		entrance.add_child(pillar)
 
-	# Linteau.
+	# Linteau : plafond de la cavité juste sous l'entrée.
 	var lintel := MeshInstance3D.new()
 	var lintel_box := BoxMesh.new()
 	lintel_box.size = Vector3(4.7, 1.0, 1.3)
 	lintel.mesh = lintel_box
-	lintel.position = Vector3(0.0, 3.7, 0.0)
+	lintel.position = Vector3(0.0, -0.5, 0.0)
 	lintel.material_override = mat
 	entrance.add_child(lintel)
 
@@ -797,7 +798,7 @@ func _build_cave_entrance(pos: Vector3, yaw: float) -> void:
 	var dark_box := BoxMesh.new()
 	dark_box.size = Vector3(2.6, 3.0, 0.2)
 	dark.mesh = dark_box
-	dark.position = Vector3(0.0, 1.5, -0.9)
+	dark.position = Vector3(0.0, -1.5, -0.9)
 	var dark_mat := StandardMaterial3D.new()
 	dark_mat.albedo_color = Color(0.01, 0.01, 0.015)
 	dark_mat.roughness = 1.0

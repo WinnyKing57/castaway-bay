@@ -9,6 +9,11 @@ const FUEL_MAX := 30.0
 const FUEL_PER_ITEM := 30.0
 
 
+## Bateau : coque allongee longitudinalement.
+func _visual_length() -> float:
+	return 2.4
+
+
 func _speed() -> float:
 	return 5.0
 

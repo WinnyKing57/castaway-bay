@@ -27,6 +27,27 @@ func _ready() -> void:
 	capsule.height = _shape_height()
 	shape.shape = capsule
 	add_child(shape)
+	_build_visual()
+
+
+## Visuel procedural de base partage par les véhicules (bateau / quad) :
+## deux usages reels (Boat + Quad) justifient ce socle commun.
+func _build_visual() -> void:
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(_shape_radius() * 2.0 * _visual_length(), _shape_height(), _shape_radius() * 2.0 * _visual_length())
+	var visual := MeshInstance3D.new()
+	visual.name = "Hull"
+	visual.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.45, 0.28, 0.13)
+	mat.roughness = 0.85
+	visual.material_override = mat
+	add_child(visual)
+
+
+## Facteur de longueur de la coque (1.0 = coque basique, >1.0 = bateau allongé).
+func _visual_length() -> float:
+	return 1.0
 
 
 func _speed() -> float:

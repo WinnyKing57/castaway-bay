@@ -194,3 +194,25 @@ seul binaire autonome suffit pour la distribution. Les autres plateformes
 
 **Écarté** : les builds multi-plateformes automatisés (hors périmètre pour
 l'instant, lot F).
+
+### Visuels des véhicules (Phase 7 — suite)
+
+**Décision** : les véhicules (bateau / quad) disposent d'un mesh visuel de base
+procedural via `Vehicle._build_visual()` ; `Boat` allonge sa coque via
+`_visual_length()`.
+
+**Pourquoi** : le socle `Vehicle` créait la capsule de collision mais **aucun
+mesh** — les véhicules étaient donc invisibles (bateau / quad jamais vus).
+
+**Écarté** : modèles 3D artistiques dédiés (pas d'assets externes dans le périmètre).
+
+### Orientation des grottes (Phase 7 — suite)
+
+**Décision** : les entrées de grottes (`_build_cave_entrance`) s'ouvrent vers le
+bas depuis le sommet du massif (vers -Y local) ; le linteau joue le plafond de la
+cavité, les montants descendent.
+
+**Pourquoi** : l'entrée et la cavité étaient orientées vers le haut (vers +Y),
+l'entrée ne correspondait pas à une ouverture de grotte dans le massif.
+
+**Écarté** : ouverture sur le flanc extérieur du massif plutôt que sur le sommet.
